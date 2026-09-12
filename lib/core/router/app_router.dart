@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/dashboard/presentation/dashboard_page.dart';
 import '../../features/calendar/presentation/staff_schedule_page.dart';
+import '../../features/patients/presentation/patients_page.dart';
 import '../widgets/feature_placeholder_page.dart';
 import 'app_routes.dart';
 
@@ -40,11 +41,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.patients,
       builder: (context, state) {
-        return const FeaturePlaceholderPage(
-          title: '환자',
-          selectedIndex: 1,
-          icon: Icons.person_outline_rounded,
-        );
+        return const PatientsPage();
       },
     ),
 
