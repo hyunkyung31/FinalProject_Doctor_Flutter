@@ -10,7 +10,7 @@ import 'schedule_time_picker_dialog.dart';
 
 // ============================================================
 // STEP 1. Schedule Form Dialog
-// 일정 등록 / 수정 공통 Dialog
+// 개인 일정 등록 / 수정 공통 Dialog
 // ============================================================
 
 class ScheduleFormDialog extends StatefulWidget {
@@ -97,7 +97,6 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
     _endDate = _startDate;
 
     _titleController = TextEditingController();
-
     _descriptionController = TextEditingController();
   }
 
@@ -110,7 +109,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
   }
 
   // ============================================================
-  // STEP 4. 시작 날짜 선택
+  // STEP 3. 시작 날짜 선택
   // Custom Schedule Date Picker 사용
   // ============================================================
 
@@ -119,8 +118,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
       context: context,
       initialDate: _startDate,
 
-      // 개인 일정은 과거 일정 수정 가능성을 고려해서
-      // 휴무 신청처럼 오늘 이후로 제한하지 않음
+      // 개인 일정은 과거 일정 수정 가능
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
     );
@@ -132,8 +130,8 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
     setState(() {
       _startDate = picked;
 
-      // 시작일이 기존 종료일보다 뒤로 이동하면
-      // 종료일도 시작일과 동일하게 맞춤
+      // 시작일이 종료일보다 뒤로 이동하면
+      // 종료일도 시작일로 맞춤
       if (_endDate.isBefore(_startDate)) {
         _endDate = _startDate;
       }
@@ -141,16 +139,13 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
   }
 
   // ============================================================
-  // 종료 날짜 선택
-  // Custom Schedule Date Picker 사용
+  // STEP 4. 종료 날짜 선택
   // ============================================================
 
   Future<void> _pickEndDate() async {
     final picked = await showScheduleDatePicker(
       context: context,
       initialDate: _endDate,
-
-      // 종료일은 시작일보다 이전 날짜 선택 불가
       firstDate: _startDate,
       lastDate: DateTime(2100),
     );
@@ -165,7 +160,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
   }
 
   // ============================================================
-  // STEP 5. 시간 선택
+  // STEP 5. 시작 시간 선택
   // Custom Schedule Time Picker 사용
   // ============================================================
 
@@ -185,8 +180,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
   }
 
   // ============================================================
-  // 종료 시간 선택
-  // Custom Schedule Time Picker 사용
+  // STEP 6. 종료 시간 선택
   // ============================================================
 
   Future<void> _pickEndTime() async {
@@ -205,7 +199,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
   }
 
   // ============================================================
-  // STEP 6. 등록 / 수정 실행
+  // STEP 7. 등록 / 수정 실행
   // ============================================================
 
   Future<void> _submit() async {
@@ -213,7 +207,6 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
 
     if (title.isEmpty) {
       _showError('일정 제목을 입력해 주세요.');
-
       return;
     }
 
@@ -329,7 +322,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
   }
 
   // ============================================================
-  // STEP 7. 개인 일정 Color 통일
+  // STEP 8. 개인 일정 Color
   // ============================================================
 
   String _scheduleColorHex() {
@@ -337,7 +330,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
   }
 
   // ============================================================
-  // STEP 8. Error
+  // STEP 9. Error
   // ============================================================
 
   void _showError(String message) {
@@ -347,11 +340,12 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
   }
 
   // ============================================================
-  // STEP 9. Formatting
+  // STEP 10. Formatting
   // ============================================================
 
   String _formatDate(DateTime date) {
     final month = date.month.toString().padLeft(2, '0');
+
     final day = date.day.toString().padLeft(2, '0');
 
     return '${date.year}.$month.$day';
@@ -359,13 +353,14 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
 
   String _formatTime(TimeOfDay time) {
     final hour = time.hour.toString().padLeft(2, '0');
+
     final minute = time.minute.toString().padLeft(2, '0');
 
     return '$hour:$minute';
   }
 
   // ============================================================
-  // STEP 10. 공통 Field Label
+  // STEP 11. Field Label
   // ============================================================
 
   Widget _buildFieldLabel(String text, {bool required = false}) {
@@ -382,6 +377,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
 
         if (required) ...[
           const SizedBox(width: 3),
+
           const Text(
             '*',
             style: TextStyle(
@@ -396,7 +392,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
   }
 
   // ============================================================
-  // 날짜 Button
+  // STEP 12. 날짜 Button
   // ============================================================
 
   Widget _buildDateButton({
@@ -444,7 +440,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
   }
 
   // ============================================================
-  // 시간 Button
+  // STEP 13. 시간 Button
   // ============================================================
 
   Widget _buildTimeButton({
@@ -492,8 +488,10 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
   }
 
   // ============================================================
-  // 시작 / 종료 Row
-  // 종일 전환 시 시간 영역만 부드럽게 접힘
+  // STEP 14. 시작 / 종료 Row
+  // 날짜는 항상 표시
+  // 시간은 종일 OFF일 때만 즉시 표시
+  // 별도 Animation 없음
   // ============================================================
 
   Widget _buildDateTimeRow({
@@ -508,7 +506,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
       child: Row(
         children: [
           // ======================================================
-          // 시작 / 종료 Label
+          // Label
           // ======================================================
           SizedBox(
             width: 70,
@@ -531,101 +529,43 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
 
           // ======================================================
           // 시간
-          // 종일 ON → 폭 0
-          // 종일 OFF → 폭 86
+          // 하루 종일 OFF일 때만 바로 표시
           // ======================================================
-          Row(
-            children: [
-              const Text(
-                '시작',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
+          if (!_isAllDay) ...[
+            const SizedBox(width: 8),
 
-              const Spacer(),
-
-              SizedBox(
-                width: 108,
-                child: _buildDateButton(
-                  date: _startDate,
-                  onPressed: _isSubmitting ? null : _pickStartDate,
-                ),
-              ),
-
-              if (!_isAllDay) ...[
-                const SizedBox(width: 8),
-
-                SizedBox(
-                  width: 78,
-                  child: _buildTimeButton(
-                    time: _startTime,
-                    onPressed: _isSubmitting ? null : _pickStartTime,
-                  ),
-                ),
-              ],
-            ],
-          ),
-          Row(
-            children: [
-              const Text(
-                '종료',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-
-              const Spacer(),
-
-              SizedBox(
-                width: 108,
-                child: _buildDateButton(
-                  date: _endDate,
-                  onPressed: _isSubmitting ? null : _pickEndDate,
-                ),
-              ),
-
-              if (!_isAllDay) ...[
-                const SizedBox(width: 8),
-
-                SizedBox(
-                  width: 78,
-                  child: _buildTimeButton(
-                    time: _endTime,
-                    onPressed: _isSubmitting ? null : _pickEndTime,
-                  ),
-                ),
-              ],
-            ],
-          ),
+            _buildTimeButton(time: time, onPressed: onTimePressed),
+          ],
         ],
       ),
     );
   }
 
   // ============================================================
-  // STEP 12. Section Container
+  // STEP 15. Section Container
+  // 제목 위치를 조금 위로 조정
   // ============================================================
 
   Widget _buildSection({required Widget child}) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+
+      // 위쪽만 12로 줄여서
+      // 일정 제목 / 일정 일시 / 메모 제목을 위로 이동
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
+
       child: child,
     );
   }
 
   // ============================================================
-  // STEP 13. InputDecoration
+  // STEP 16. InputDecoration
   // ============================================================
 
   InputDecoration _inputDecoration({required String hintText}) {
@@ -651,7 +591,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
   }
 
   // ============================================================
-  // STEP 14. Dialog UI
+  // STEP 17. Dialog UI
   // ============================================================
 
   @override
@@ -660,38 +600,45 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
 
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
+
       child: ConstrainedBox(
         constraints: BoxConstraints(
           minWidth: 500,
           maxWidth: 500,
           maxHeight: screenHeight * 0.88,
         ),
+
         child: Container(
           decoration: BoxDecoration(
+            // 사용자가 선택한 회색 계열 Dialog 배경
             color: AppColors.background,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.border),
           ),
+
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ======================================================
+              // ==================================================
               // Header
-              // ======================================================
+              // ==================================================
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+
                 decoration: const BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                 ),
+
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // ==================================================
+                    // ==============================================
                     // Header Icon
-                    // ==================================================
+                    // ==============================================
                     Container(
                       width: 42,
                       height: 42,
@@ -708,9 +655,9 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
 
                     const SizedBox(width: 13),
 
-                    // ==================================================
-                    // Title
-                    // ==================================================
+                    // ==============================================
+                    // Header Title
+                    // ==============================================
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -784,20 +731,22 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                 ),
               ),
 
+              // Header / Body 구분선은 유지
               const Divider(height: 1, color: AppColors.border),
 
-              // ======================================================
+              // ==================================================
               // Scrollable Body
-              // ======================================================
+              // ==================================================
               Flexible(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
+
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ==================================================
+                      // ============================================
                       // 일정 제목
-                      // ==================================================
+                      // ============================================
                       _buildSection(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -820,23 +769,20 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
 
                       const SizedBox(height: 12),
 
-                      // ==================================================
+                      // ============================================
                       // 일정 일시
-                      // ==================================================
+                      // ============================================
                       _buildSection(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // ========================================================
-                            // Header
-                            // ========================================================
                             _buildFieldLabel('일정 일시', required: true),
 
                             const SizedBox(height: 10),
 
-                            // ========================================================
-                            // 일정 시간 Container
-                            // ========================================================
+                            // ========================================
+                            // 날짜 / 시간 Container
+                            // ========================================
                             Container(
                               width: double.infinity,
                               decoration: BoxDecoration(
@@ -844,11 +790,12 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(color: AppColors.border),
                               ),
+
                               child: Column(
                                 children: [
-                                  // ==================================================
-                                  // 종일
-                                  // ==================================================
+                                  // ==================================
+                                  // 하루 종일
+                                  // ==================================
                                   SizedBox(
                                     height: 48,
                                     child: Padding(
@@ -897,9 +844,9 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                                     color: AppColors.border,
                                   ),
 
-                                  // ==================================================
+                                  // ==================================
                                   // 시작
-                                  // ==================================================
+                                  // ==================================
                                   Padding(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 14,
@@ -924,9 +871,9 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                                     color: AppColors.border,
                                   ),
 
-                                  // ==================================================
+                                  // ==================================
                                   // 종료
-                                  // ==================================================
+                                  // ==================================
                                   Padding(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 14,
@@ -947,9 +894,9 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                               ),
                             ),
 
-                            // ========================================================
+                            // ========================================
                             // 종일 안내
-                            // ========================================================
+                            // ========================================
                             if (_isAllDay) ...[
                               const SizedBox(height: 10),
 
@@ -981,9 +928,9 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
 
                       const SizedBox(height: 12),
 
-                      // ==================================================
+                      // ============================================
                       // 메모
-                      // ==================================================
+                      // ============================================
                       _buildSection(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1016,22 +963,23 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                 ),
               ),
 
-              // ======================================================
-              // Fixed Footer
-              // ======================================================
-              const Divider(height: 1, color: AppColors.border),
-
+              // ==================================================
+              // Footer
+              // Footer 위 Divider는 제거
+              // ==================================================
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
                   vertical: 14,
                 ),
+
                 decoration: const BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.vertical(
                     bottom: Radius.circular(16),
                   ),
                 ),
+
                 child: Row(
                   children: [
                     const Expanded(

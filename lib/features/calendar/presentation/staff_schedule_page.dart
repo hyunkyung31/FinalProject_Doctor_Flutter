@@ -13,6 +13,7 @@ import 'widgets/schedule_calendar_panel.dart';
 import 'widgets/schedule_section_tabs.dart';
 import 'widgets/leave_request_panel.dart';
 import 'widgets/leave_request_form_dialog.dart';
+import 'widgets/on_call_status_panel.dart';
 
 // ============================================================
 // STEP 1. Staff Schedule Page
@@ -319,7 +320,7 @@ class _StaffSchedulePageState extends State<StaffSchedulePage> {
   Widget build(BuildContext context) {
     return AppShell(
       pageTitle: '일정',
-      selectedIndex: 8,
+      selectedIndex: 7,
       body: Material(
         color: AppColors.background,
         child: Container(
@@ -367,7 +368,7 @@ class _StaffSchedulePageState extends State<StaffSchedulePage> {
         return _buildLeaveRequestTab();
 
       case ScheduleSection.onCallStatus:
-        return _buildOnCallTab();
+        return const OnCallStatusPanel();
     }
   }
 
@@ -483,47 +484,6 @@ class _StaffSchedulePageState extends State<StaffSchedulePage> {
       canApproveLeave: false,
 
       onCreateRequest: _openLeaveRequestDialog,
-    );
-  }
-
-  // ============================================================
-  // 당직 현황 Tab
-  // ============================================================
-
-  Widget _buildOnCallTab() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.nightlight_outlined, size: 38, color: AppColors.warning),
-
-            SizedBox(height: 12),
-
-            Text(
-              '당직 현황',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-
-            SizedBox(height: 6),
-
-            Text(
-              '진료과별 당직 의료진 조회 기능을 준비 중입니다.',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

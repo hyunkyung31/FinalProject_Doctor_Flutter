@@ -114,12 +114,6 @@ class _SideNavigation extends StatelessWidget {
     ),
 
     AppNavigationItem(
-      label: 'CDSS',
-      icon: Icons.health_and_safety_outlined,
-      permission: AppPermission.cdssView,
-    ),
-
-    AppNavigationItem(
       label: '협진',
       icon: Icons.groups_outlined,
       permission: AppPermission.consultView,
@@ -137,11 +131,11 @@ class _SideNavigation extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
 
     return Container(
-      width: 116,
+      width: 88,
 
       color: AppColors.navy,
 
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
 
       child: SafeArea(
         child: Column(
@@ -163,7 +157,7 @@ class _SideNavigation extends StatelessWidget {
                 itemCount: items.length,
 
                 separatorBuilder: (_, _) {
-                  return const SizedBox(height: 4);
+                  return const SizedBox(height: 5);
                 },
 
                 itemBuilder: (context, index) {
@@ -253,9 +247,6 @@ class _SideNavigation extends StatelessWidget {
       case 'AI':
         return AppRoutes.ai;
 
-      case 'CDSS':
-        return AppRoutes.cdss;
-
       case '협진':
         return AppRoutes.consult;
 
@@ -317,7 +308,7 @@ class _AppLogo extends StatelessWidget {
 
 // ============================================================
 // STEP 6. Navigation Button
-// 아이콘 + 텍스트 가로형
+// 이전 방식: 아이콘 위 / 텍스트 아래
 // ============================================================
 
 class _NavigationButton extends StatelessWidget {
@@ -347,56 +338,43 @@ class _NavigationButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.medium),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 44),
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
+          constraints: const BoxConstraints(minHeight: 52),
+          padding: const EdgeInsets.symmetric(vertical: 6),
           decoration: BoxDecoration(
             color: selected
                 ? Colors.white.withValues(alpha: 0.13)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(AppRadius.medium),
           ),
-          child: Row(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // ==================================================
-              // Icon
-              // ==================================================
-              SizedBox(
-                width: 24,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  alignment: Alignment.center,
-                  children: [
-                    Icon(item.icon, size: 20, color: foregroundColor),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(item.icon, size: 21, color: foregroundColor),
 
-                    if (!enabled)
-                      const Positioned(
-                        top: -5,
-                        right: -5,
-                        child: Icon(
-                          Icons.lock_rounded,
-                          size: 9,
-                          color: Colors.white54,
-                        ),
+                  if (!enabled)
+                    const Positioned(
+                      top: -5,
+                      right: -7,
+                      child: Icon(
+                        Icons.lock_rounded,
+                        size: 10,
+                        color: Colors.white54,
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
 
-              const SizedBox(width: 7),
+              const SizedBox(height: 4),
 
-              // ==================================================
-              // Label
-              // ==================================================
-              Expanded(
-                child: Text(
-                  item.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: foregroundColor,
-                    fontSize: 11,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  ),
+              Text(
+                item.label,
+                style: TextStyle(
+                  color: foregroundColor,
+                  fontSize: 10,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
                 ),
               ),
             ],
@@ -430,29 +408,20 @@ class _BottomButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.medium),
         child: SizedBox(
-          height: 44,
+          height: 54,
           width: double.infinity,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 24,
-                  child: Icon(icon, color: Colors.white54, size: 20),
-                ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white54, size: 21),
 
-                const SizedBox(width: 10),
+              const SizedBox(height: 4),
 
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white54,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
+              Text(
+                label,
+                style: const TextStyle(color: Colors.white54, fontSize: 10),
+              ),
+            ],
           ),
         ),
       ),
