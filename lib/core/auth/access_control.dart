@@ -91,7 +91,6 @@ class RolePermissions {
       AppPermission.patientEditVitals,
 
       AppPermission.appointmentView,
-      AppPermission.appointmentManage,
 
       AppPermission.examinationView,
       AppPermission.examinationOrder,

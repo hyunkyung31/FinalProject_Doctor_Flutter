@@ -3,6 +3,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/dashboard/presentation/dashboard_page.dart';
 import '../../features/calendar/presentation/staff_schedule_page.dart';
+import '../../features/patients/presentation/patients_page.dart';
+import '../../features/appointments/presentation/appointments_page.dart';
+import '../../features/examinations/presentation/examinations_page.dart';
+import '../../features/imaging/presentation/imaging_page.dart';
+import '../../features/ai/presentation/ai_page.dart';
+import '../../features/consult/presentation/consultation_page.dart';
 import '../widgets/feature_placeholder_page.dart';
 import 'app_routes.dart';
 
@@ -40,11 +46,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.patients,
       builder: (context, state) {
-        return const FeaturePlaceholderPage(
-          title: '환자',
-          selectedIndex: 1,
-          icon: Icons.person_outline_rounded,
-        );
+        return const PatientsPage();
       },
     ),
 
@@ -54,11 +56,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.appointments,
       builder: (context, state) {
-        return const FeaturePlaceholderPage(
-          title: '예약',
-          selectedIndex: 2,
-          icon: Icons.calendar_today_outlined,
-        );
+        return const AppointmentsPage();
       },
     ),
 
@@ -68,11 +66,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.examinations,
       builder: (context, state) {
-        return const FeaturePlaceholderPage(
-          title: '검사',
-          selectedIndex: 3,
-          icon: Icons.science_outlined,
-        );
+        return const ExaminationsPage();
       },
     ),
 
@@ -82,11 +76,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.imaging,
       builder: (context, state) {
-        return const FeaturePlaceholderPage(
-          title: '영상',
-          selectedIndex: 4,
-          icon: Icons.monitor_heart_outlined,
-        );
+        return const ImagingPage();
       },
     ),
 
@@ -96,11 +86,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.ai,
       builder: (context, state) {
-        return const FeaturePlaceholderPage(
-          title: 'AI',
-          selectedIndex: 5,
-          icon: Icons.auto_awesome_outlined,
-        );
+        return const AiPage();
       },
     ),
 
@@ -124,11 +110,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.consult,
       builder: (context, state) {
-        return const FeaturePlaceholderPage(
-          title: '협진',
-          selectedIndex: 7,
-          icon: Icons.groups_outlined,
-        );
+        return const ConsultationPage();
       },
     ),
 
