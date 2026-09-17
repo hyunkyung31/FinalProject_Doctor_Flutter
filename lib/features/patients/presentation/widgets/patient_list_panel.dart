@@ -4,25 +4,53 @@ import '../../../../core/theme/app_theme.dart';
 import 'patient_detail_tabs.dart';
 
 // ============================================================
-// STEP 1. 환자 Filter
+// STEP 1. Patient List Scope
+// 환자 목록 조회 범위
 // ============================================================
 
-enum _PatientFilter { all, outpatient, inpatient, highRisk }
-
-// ============================================================
-// STEP 2. Patient List Panel
-// ============================================================
+enum PatientListScope { all, assigned, consultation, recent }
 
 class PatientListPanel extends StatefulWidget {
   final List<PatientUiModel> patients;
   final String selectedPatientId;
   final ValueChanged<PatientUiModel> onPatientSelected;
 
+  final ValueChanged<String>? onSearchChanged;
+  final VoidCallback? onDetailFilterTap;
+
+  final PatientListScope selectedScope;
+  final ValueChanged<PatientListScope>? onScopeChanged;
+
+  // ============================================================
+  // Pagination
+  // ============================================================
+
+  final int totalCount;
+  final int currentPage;
+  final int pageSize;
+
+  final bool hasPreviousPage;
+  final bool hasNextPage;
+
+  final VoidCallback? onPreviousPage;
+  final VoidCallback? onNextPage;
+
   const PatientListPanel({
     super.key,
     required this.patients,
     required this.selectedPatientId,
     required this.onPatientSelected,
+    this.onSearchChanged,
+    this.selectedScope = PatientListScope.all,
+    this.onScopeChanged,
+    this.totalCount = 0,
+    this.currentPage = 1,
+    this.pageSize = 20,
+    this.hasPreviousPage = false,
+    this.hasNextPage = false,
+    this.onPreviousPage,
+    this.onNextPage,
+    this.onDetailFilterTap,
   });
 
   @override
@@ -32,12 +60,30 @@ class PatientListPanel extends StatefulWidget {
 class _PatientListPanelState extends State<PatientListPanel> {
   final TextEditingController _searchController = TextEditingController();
 
-  _PatientFilter _selectedFilter = _PatientFilter.all;
-
   String _searchText = '';
 
   // ============================================================
-  // STEP 3. Dispose
+  // STEP. Scope별 환자 수 표시
+  // ============================================================
+
+  String _getCountLabel() {
+    switch (widget.selectedScope) {
+      case PatientListScope.all:
+        return '전체 ${widget.totalCount}명';
+
+      case PatientListScope.assigned:
+        return '담당 ${widget.totalCount}명';
+
+      case PatientListScope.consultation:
+        return '협진 ${widget.totalCount}명';
+
+      case PatientListScope.recent:
+        return '최근 ${widget.totalCount}명';
+    }
+  }
+
+  // ============================================================
+  // STEP 2. Dispose
   // ============================================================
 
   @override
@@ -48,60 +94,30 @@ class _PatientListPanelState extends State<PatientListPanel> {
   }
 
   // ============================================================
-  // STEP 4. Filtered Patients
+  // STEP 3. 전체 페이지 수
   // ============================================================
 
-  List<PatientUiModel> get _filteredPatients {
-    final query = _searchText.trim().toLowerCase();
+  int get _totalPages {
+    if (widget.totalCount <= 0) {
+      return 1;
+    }
 
-    return widget.patients.where((patient) {
-      // ========================================================
-      // 검색
-      // ========================================================
-
-      final matchesSearch =
-          query.isEmpty ||
-          patient.name.toLowerCase().contains(query) ||
-          patient.id.toLowerCase().contains(query);
-
-      if (!matchesSearch) {
-        return false;
-      }
-
-      // ========================================================
-      // Filter
-      // ========================================================
-
-      switch (_selectedFilter) {
-        case _PatientFilter.all:
-          return true;
-
-        case _PatientFilter.outpatient:
-          return patient.careType == '외래';
-
-        case _PatientFilter.inpatient:
-          return patient.careType == '입원';
-
-        case _PatientFilter.highRisk:
-          return patient.highRisk;
-      }
-    }).toList();
+    return (widget.totalCount / widget.pageSize).ceil();
   }
 
   // ============================================================
-  // STEP 5. 화면
+  // STEP 4. 화면
   // ============================================================
 
   @override
   Widget build(BuildContext context) {
-    final filteredPatients = _filteredPatients;
-
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
           // ======================================================
@@ -113,7 +129,7 @@ class _PatientListPanelState extends State<PatientListPanel> {
               children: [
                 const Expanded(
                   child: Text(
-                    '환자 리스트',
+                    '환자 목록',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -124,15 +140,17 @@ class _PatientListPanelState extends State<PatientListPanel> {
 
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+                    horizontal: 9,
+                    vertical: 5,
                   ),
                   decoration: BoxDecoration(
                     color: AppColors.surfaceSoft,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    '${filteredPatients.length}명',
+                    widget.totalCount > 0
+                        ? _getCountLabel()
+                        : '${widget.patients.length}명',
                     style: const TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
@@ -144,81 +162,126 @@ class _PatientListPanelState extends State<PatientListPanel> {
             ),
           ),
 
-          // ======================================================
-          // Search
-          // ======================================================
+          // ============================================================
+          // STEP. 검색 + 상세 필터
+          // 검색과 필터를 같은 기능 영역으로 배치
+          // ============================================================
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: SizedBox(
-              height: 40,
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) {
-                  setState(() {
-                    _searchText = value;
-                  });
-                },
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textPrimary,
-                ),
-                decoration: InputDecoration(
-                  hintText: '환자명 · 환자번호 검색',
-                  hintStyle: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textDisabled,
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.search_rounded,
-                    size: 18,
-                    color: AppColors.textSecondary,
-                  ),
-                  suffixIcon: _searchText.isEmpty
-                      ? null
-                      : IconButton(
-                          onPressed: () {
-                            _searchController.clear();
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+            child: Row(
+              children: [
+                // ========================================================
+                // 환자 검색
+                // ========================================================
+                Expanded(
+                  child: SizedBox(
+                    height: 40,
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (value) {
+                        setState(() {
+                          _searchText = value;
+                        });
 
-                            setState(() {
-                              _searchText = '';
-                            });
-                          },
-                          icon: const Icon(Icons.close_rounded, size: 16),
+                        widget.onSearchChanged?.call(value);
+                      },
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textPrimary,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: '환자명 · 환자번호 검색',
+                        hintStyle: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textDisabled,
                         ),
-                  filled: true,
-                  fillColor: AppColors.background,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(9),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(9),
-                    borderSide: const BorderSide(
-                      color: AppColors.primaryBlue,
-                      width: 1.3,
+                        prefixIcon: const Icon(
+                          Icons.search_rounded,
+                          size: 18,
+                          color: AppColors.textSecondary,
+                        ),
+                        suffixIcon: _searchText.isEmpty
+                            ? null
+                            : IconButton(
+                                onPressed: () {
+                                  _searchController.clear();
+
+                                  setState(() {
+                                    _searchText = '';
+                                  });
+
+                                  widget.onSearchChanged?.call('');
+                                },
+                                icon: const Icon(Icons.close_rounded, size: 16),
+                              ),
+                        filled: true,
+                        fillColor: AppColors.background,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(9),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(9),
+                          borderSide: const BorderSide(
+                            color: AppColors.primaryBlue,
+                            width: 1.3,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
+
+                const SizedBox(width: 8),
+
+                // ========================================================
+                // 상세 필터
+                // ========================================================
+                SizedBox(
+                  height: 40,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      widget.onDetailFilterTap?.call();
+                    },
+                    icon: const Icon(Icons.tune_rounded, size: 15),
+                    label: const Text(
+                      '필터',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.navy,
+                      padding: const EdgeInsets.symmetric(horizontal: 11),
+                      side: const BorderSide(color: AppColors.border),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
 
-          const SizedBox(height: 10),
-
           // ======================================================
-          // Filter
+          // Patient Scope
+          // 전체 / 내 담당 / 협진 / 최근 조회
           // ======================================================
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Row(
               children: [
                 Expanded(
-                  child: _FilterButton(
+                  child: _ScopeButton(
                     label: '전체',
-                    selected: _selectedFilter == _PatientFilter.all,
+                    selected: widget.selectedScope == PatientListScope.all,
                     onTap: () {
-                      _changeFilter(_PatientFilter.all);
+                      widget.onScopeChanged?.call(PatientListScope.all);
                     },
                   ),
                 ),
@@ -226,11 +289,11 @@ class _PatientListPanelState extends State<PatientListPanel> {
                 const SizedBox(width: 5),
 
                 Expanded(
-                  child: _FilterButton(
-                    label: '외래',
-                    selected: _selectedFilter == _PatientFilter.outpatient,
+                  child: _ScopeButton(
+                    label: '내 담당',
+                    selected: widget.selectedScope == PatientListScope.assigned,
                     onTap: () {
-                      _changeFilter(_PatientFilter.outpatient);
+                      widget.onScopeChanged?.call(PatientListScope.assigned);
                     },
                   ),
                 ),
@@ -238,11 +301,14 @@ class _PatientListPanelState extends State<PatientListPanel> {
                 const SizedBox(width: 5),
 
                 Expanded(
-                  child: _FilterButton(
-                    label: '입원',
-                    selected: _selectedFilter == _PatientFilter.inpatient,
+                  child: _ScopeButton(
+                    label: '협진',
+                    selected:
+                        widget.selectedScope == PatientListScope.consultation,
                     onTap: () {
-                      _changeFilter(_PatientFilter.inpatient);
+                      widget.onScopeChanged?.call(
+                        PatientListScope.consultation,
+                      );
                     },
                   ),
                 ),
@@ -250,11 +316,11 @@ class _PatientListPanelState extends State<PatientListPanel> {
                 const SizedBox(width: 5),
 
                 Expanded(
-                  child: _FilterButton(
-                    label: '고위험',
-                    selected: _selectedFilter == _PatientFilter.highRisk,
+                  child: _ScopeButton(
+                    label: '최근 조회',
+                    selected: widget.selectedScope == PatientListScope.recent,
                     onTap: () {
-                      _changeFilter(_PatientFilter.highRisk);
+                      widget.onScopeChanged?.call(PatientListScope.recent);
                     },
                   ),
                 ),
@@ -270,16 +336,24 @@ class _PatientListPanelState extends State<PatientListPanel> {
           // Patient List
           // ======================================================
           Expanded(
-            child: filteredPatients.isEmpty
+            child: widget.patients.isEmpty
                 ? const _EmptyPatientList()
                 : ListView.separated(
-                    padding: const EdgeInsets.all(12),
-                    itemCount: filteredPatients.length,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    itemCount: widget.patients.length,
                     separatorBuilder: (context, index) {
-                      return const SizedBox(height: 8);
+                      return const Divider(
+                        height: 1,
+                        indent: 12,
+                        endIndent: 12,
+                        color: AppColors.border,
+                      );
                     },
                     itemBuilder: (context, index) {
-                      final patient = filteredPatients[index];
+                      final patient = widget.patients[index];
 
                       return _PatientListItem(
                         patient: patient,
@@ -291,32 +365,70 @@ class _PatientListPanelState extends State<PatientListPanel> {
                     },
                   ),
           ),
+
+          const Divider(height: 1, color: AppColors.border),
+
+          // ======================================================
+          // Pagination
+          // ======================================================
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _PaginationButton(
+                    icon: Icons.chevron_left_rounded,
+                    label: '이전',
+                    enabled: widget.hasPreviousPage,
+                    onTap: widget.onPreviousPage,
+                  ),
+                ),
+
+                const SizedBox(width: 10),
+
+                Container(
+                  constraints: const BoxConstraints(minWidth: 70),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '${widget.currentPage} / $_totalPages',
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 10),
+
+                Expanded(
+                  child: _PaginationButton(
+                    icon: Icons.chevron_right_rounded,
+                    label: '다음',
+                    enabled: widget.hasNextPage,
+                    onTap: widget.onNextPage,
+                    iconOnRight: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
-
-  // ============================================================
-  // STEP 6. Filter 변경
-  // ============================================================
-
-  void _changeFilter(_PatientFilter filter) {
-    setState(() {
-      _selectedFilter = filter;
-    });
-  }
 }
 
 // ============================================================
-// STEP 7. Filter Button
+// Patient Scope Button
 // ============================================================
 
-class _FilterButton extends StatelessWidget {
+class _ScopeButton extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
 
-  const _FilterButton({
+  const _ScopeButton({
     required this.label,
     required this.selected,
     required this.onTap,
@@ -339,7 +451,7 @@ class _FilterButton extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 10.5,
+              fontSize: 9.5,
               fontWeight: FontWeight.w600,
               color: selected ? Colors.white : AppColors.textSecondary,
             ),
@@ -351,7 +463,9 @@ class _FilterButton extends StatelessWidget {
 }
 
 // ============================================================
-// STEP 8. Patient List Item
+// STEP 5. Patient List Item
+// 실제 환자 기본정보만 표시
+// 이름 / 나이 / 성별 / 환자번호 / 생년월일 / 연락처
 // ============================================================
 
 class _PatientListItem extends StatelessWidget {
@@ -365,101 +479,210 @@ class _PatientListItem extends StatelessWidget {
     required this.onTap,
   });
 
+  // ==========================================================
+  // 생년월일 표시 형식
+  // 1978-05-20 → 1978.05.20
+  // ==========================================================
+
+  String _formatBirthDate(String value) {
+    final normalized = value.trim();
+
+    if (normalized.isEmpty) {
+      return '생년월일 없음';
+    }
+
+    return normalized.replaceAll('-', '.');
+  }
+
+  // ==========================================================
+  // 연락처 표시 형식
+  // +821012345678 → 010-1234-5678
+  // 01073000100   → 010-7300-0100
+  // ==========================================================
+
+  String _formatPhone(String value) {
+    var normalized = value.trim().replaceAll(' ', '').replaceAll('-', '');
+
+    if (normalized.isEmpty) {
+      return '연락처 없음';
+    }
+
+    // +82 국가번호를 국내 형식으로 변경
+    if (normalized.startsWith('+82')) {
+      normalized = '0${normalized.substring(3)}';
+    } else if (normalized.startsWith('82') && !normalized.startsWith('820')) {
+      normalized = '0${normalized.substring(2)}';
+    }
+
+    // 휴대전화 010-0000-0000
+    if (normalized.length == 11 && normalized.startsWith('010')) {
+      return '${normalized.substring(0, 3)}-'
+          '${normalized.substring(3, 7)}-'
+          '${normalized.substring(7, 11)}';
+    }
+
+    return value.trim();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final birthDate = _formatBirthDate(patient.birthDate);
+    final phone = _formatPhone(patient.phone);
+
+    final showStatus =
+        patient.status.isNotEmpty && patient.status.toUpperCase() != 'ACTIVE';
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(9),
         child: Container(
-          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.symmetric(vertical: 3),
           decoration: BoxDecoration(
-            color: selected ? AppColors.surfaceSoft : AppColors.surface,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: selected ? AppColors.primaryBlue : AppColors.border,
-              width: selected ? 1.4 : 1,
-            ),
+            color: selected ? AppColors.surfaceSoft : Colors.transparent,
+            borderRadius: BorderRadius.circular(9),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // ==================================================
-              // 이름 / 상태
+              // 선택 표시
+              // 선택된 환자만 왼쪽 파란 라인 표시
               // ==================================================
-              Row(
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: patient.highRisk
-                          ? AppColors.danger
-                          : AppColors.success,
-                    ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: 4,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: selected ? AppColors.primaryBlue : Colors.transparent,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(9),
+                    bottomLeft: Radius.circular(9),
                   ),
-
-                  const SizedBox(width: 7),
-
-                  Expanded(
-                    child: Text(
-                      '${patient.name} · ${patient.age}세',
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
-
-                  _SmallBadge(
-                    text: patient.careType,
-                    color: AppColors.primaryBlue,
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 6),
-
-              Text(
-                '${patient.id} · ${patient.gender}',
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: AppColors.textSecondary,
                 ),
               ),
 
-              const SizedBox(height: 7),
+              // ==================================================
+              // Patient Information
+              // ==================================================
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ============================================
+                      // 이름 / 나이 / 성별
+                      // ============================================
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              patient.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      patient.currentTask,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                          const SizedBox(width: 8),
+
+                          Text(
+                            '${patient.age}세 · ${patient.gender}',
+                            style: const TextStyle(
+                              fontSize: 10.3,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+
+                          if (showStatus) ...[
+                            const SizedBox(width: 7),
+
+                            _PatientStatusBadge(status: patient.status),
+                          ],
+                        ],
                       ),
-                    ),
+
+                      const SizedBox(height: 5),
+
+                      // ============================================
+                      // 환자번호
+                      // ============================================
+                      Text(
+                        patient.id,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+
+                      const SizedBox(height: 4),
+
+                      // ============================================
+                      // 생년월일 / 연락처
+                      // ============================================
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.cake_outlined,
+                            size: 11,
+                            color: AppColors.textDisabled,
+                          ),
+
+                          const SizedBox(width: 4),
+
+                          Text(
+                            birthDate,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 6),
+                            child: Text(
+                              '·',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: AppColors.textDisabled,
+                              ),
+                            ),
+                          ),
+
+                          const Icon(
+                            Icons.phone_outlined,
+                            size: 11,
+                            color: AppColors.textDisabled,
+                          ),
+
+                          const SizedBox(width: 4),
+
+                          Expanded(
+                            child: Text(
+                              phone,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-
-                  if (patient.aiPending) ...[
-                    const SizedBox(width: 6),
-
-                    _SmallBadge(text: 'AI 검토', color: AppColors.warning),
-                  ],
-
-                  if (patient.highRisk) ...[
-                    const SizedBox(width: 6),
-
-                    _SmallBadge(text: '고위험', color: AppColors.danger),
-                  ],
-                ],
+                ),
               ),
             ],
           ),
@@ -470,17 +693,38 @@ class _PatientListItem extends StatelessWidget {
 }
 
 // ============================================================
-// STEP 9. Small Badge
+// STEP 6. Patient Status Badge
+// ACTIVE는 숨기고 예외 상태만 표시
 // ============================================================
 
-class _SmallBadge extends StatelessWidget {
-  final String text;
-  final Color color;
+class _PatientStatusBadge extends StatelessWidget {
+  final String status;
 
-  const _SmallBadge({required this.text, required this.color});
+  const _PatientStatusBadge({required this.status});
 
   @override
   Widget build(BuildContext context) {
+    final normalizedStatus = status.toUpperCase();
+
+    String label;
+    Color color;
+
+    switch (normalizedStatus) {
+      case 'INACTIVE':
+        label = '비활성';
+        color = AppColors.textSecondary;
+        break;
+
+      case 'SUSPENDED':
+        label = '이용 제한';
+        color = AppColors.danger;
+        break;
+
+      default:
+        label = status;
+        color = AppColors.textSecondary;
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
@@ -488,9 +732,9 @@ class _SmallBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        text,
+        label,
         style: TextStyle(
-          fontSize: 9,
+          fontSize: 8.5,
           fontWeight: FontWeight.w600,
           color: color,
         ),
@@ -500,7 +744,76 @@ class _SmallBadge extends StatelessWidget {
 }
 
 // ============================================================
-// STEP 10. Empty
+// STEP 7. Pagination Button
+// ============================================================
+
+class _PaginationButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool enabled;
+  final VoidCallback? onTap;
+  final bool iconOnRight;
+
+  const _PaginationButton({
+    required this.icon,
+    required this.label,
+    required this.enabled,
+    required this.onTap,
+    this.iconOnRight = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final foregroundColor = enabled
+        ? AppColors.textPrimary
+        : AppColors.textDisabled;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          height: 32,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: enabled ? AppColors.surfaceSoft : AppColors.background,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (!iconOnRight) ...[
+                Icon(icon, size: 16, color: foregroundColor),
+
+                const SizedBox(width: 3),
+              ],
+
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  color: foregroundColor,
+                ),
+              ),
+
+              if (iconOnRight) ...[
+                const SizedBox(width: 3),
+
+                Icon(icon, size: 16, color: foregroundColor),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// STEP 8. Empty Patient List
 // ============================================================
 
 class _EmptyPatientList extends StatelessWidget {

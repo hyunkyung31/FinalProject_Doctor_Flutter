@@ -1,5 +1,6 @@
 import '../network/api_client.dart';
 import '../network/api_endpoints.dart';
+import 'staff_user.dart';
 
 // ============================================================
 // STEP 1. Auth Session
@@ -22,7 +23,8 @@ class AuthService {
   AuthService({required this.apiClient});
 
   // ==========================================================
-  // 의료진 로그인
+  // STEP 3. 의료진 로그인
+  // POST /auth/staff/login/
   // ==========================================================
 
   Future<AuthSession> login({
@@ -52,7 +54,6 @@ class AuthService {
     final data = Map<String, dynamic>.from(response.data as Map);
 
     final accessToken = data['access']?.toString();
-
     final refreshToken = data['refresh']?.toString();
 
     if (accessToken == null || accessToken.isEmpty) {
@@ -66,5 +67,22 @@ class AuthService {
     apiClient.setAccessToken(accessToken);
 
     return AuthSession(accessToken: accessToken, refreshToken: refreshToken);
+  }
+
+  // ==========================================================
+  // STEP 4. 현재 로그인 의료진 조회
+  // GET /staff/me/
+  // ==========================================================
+
+  Future<StaffUser> getCurrentUser() async {
+    final response = await apiClient.dio.get(ApiEndpoints.staffMe);
+
+    if (response.data is! Map) {
+      throw const FormatException('현재 사용자 응답 형식이 올바르지 않습니다.');
+    }
+
+    final data = Map<String, dynamic>.from(response.data as Map);
+
+    return StaffUser.fromJson(data);
   }
 }

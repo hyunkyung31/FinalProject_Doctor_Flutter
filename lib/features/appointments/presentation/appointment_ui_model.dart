@@ -94,7 +94,74 @@ class AppointmentUiModel {
   });
 
   // ============================================================
-  // STEP 4. 수정용 copyWith
+  // STEP 4. Backend JSON → AppointmentUiModel
+  // GET /api/staff/reservations/ 응답 기준
+  // ============================================================
+
+  factory AppointmentUiModel.fromJson(Map<String, dynamic> json) {
+    return AppointmentUiModel(
+      id: (json['id'] as num).toInt(),
+      applicantName: json['applicant_name']?.toString() ?? '',
+      applicantBirthDate: json['applicant_birth_date']?.toString() ?? '',
+      applicantContact: json['applicant_contact']?.toString() ?? '',
+      applicantGender: json['applicant_gender']?.toString(),
+      reservedAt: DateTime.parse(json['reserved_at'].toString()),
+      status: _parseStatus(json['status']?.toString() ?? ''),
+      acceptedAt: _parseNullableDateTime(json['accepted_at']),
+      createdAt: DateTime.parse(json['created_at'].toString()),
+      updatedAt: DateTime.parse(json['updated_at'].toString()),
+      canceledAt: _parseNullableDateTime(json['canceled_at']),
+      cancelReason: json['cancel_reason']?.toString(),
+      patientAccount: (json['patient_account'] as num?)?.toInt(),
+      patient: (json['patient'] as num?)?.toInt(),
+      doctor: (json['doctor'] as num?)?.toInt(),
+      identityVerification: (json['identity_verification'] as num?)?.toInt(),
+      department: (json['department'] as num?)?.toInt(),
+      acceptedBy: (json['accepted_by'] as num?)?.toInt(),
+      canceledBy: (json['canceled_by'] as num?)?.toInt(),
+    );
+  }
+
+  // ============================================================
+  // STEP 5. Backend Status 변환
+  // ============================================================
+
+  static AppointmentStatus _parseStatus(String value) {
+    switch (value.toUpperCase()) {
+      case 'REQUESTED':
+        return AppointmentStatus.requested;
+
+      case 'ACCEPTED':
+        return AppointmentStatus.accepted;
+
+      case 'CANCELED':
+        return AppointmentStatus.canceled;
+
+      default:
+        throw FormatException('지원하지 않는 예약 상태입니다: $value');
+    }
+  }
+
+  // ============================================================
+  // STEP 6. Nullable DateTime 변환
+  // ============================================================
+
+  static DateTime? _parseNullableDateTime(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+
+    final text = value.toString();
+
+    if (text.isEmpty) {
+      return null;
+    }
+
+    return DateTime.parse(text);
+  }
+
+  // ============================================================
+  // STEP 7. 수정용 copyWith
   // Mock 승인 처리 후 실제 API 연결 시에도 사용 가능
   // ============================================================
 
@@ -127,7 +194,7 @@ class AppointmentUiModel {
   }
 
   // ============================================================
-  // STEP 5. Gender 표시
+  // STEP 8. Gender 표시
   // ============================================================
 
   String get genderText {
@@ -144,7 +211,7 @@ class AppointmentUiModel {
   }
 
   // ============================================================
-  // STEP 6. 나이 계산
+  // STEP 9. 나이 계산
   // ============================================================
 
   int? get age {

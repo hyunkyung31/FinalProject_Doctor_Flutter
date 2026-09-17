@@ -20,7 +20,17 @@ class ApiEndpoints {
 
   static const String staffRefresh = '/auth/staff/refresh/';
 
-  static const String staffMe = '/staff/me/';
+  static const String staffMe = '/auth/staff/me/';
+
+  // ==========================================================
+  // Staff Reservations
+  // ==========================================================
+
+  static const String staffReservations = '/staff/reservations/';
+
+  static String staffReservationAccept(int reservationId) {
+    return '/staff/reservations/$reservationId/accept/';
+  }
 
   // ==========================================================
   // Work Items
@@ -53,4 +63,48 @@ class ApiEndpoints {
   static const String notifications = '/notifications/';
 
   static const String notificationUnreadCount = '/notifications/unread-count/';
+
+  // ==========================================================
+  // Patients
+  // ==========================================================
+
+  static const String patients = '/patients/';
+
+  static String patientDetail(int patientId) {
+    return '/patients/$patientId/';
+  }
+
+  static String patientIntegratedData(int patientId) {
+    return '/patients/$patientId/integrated-data/';
+  }
+
+  static const String patientSearch = '/patients/search/';
+
+  // ============================================================
+  // Patient Timeline
+  // ============================================================
+
+  static String patientTimeline(int patientId) =>
+      '/patients/$patientId/timeline';
+
+  // ============================================================
+  // Patient Recent View
+  // ============================================================
+
+  static const String staffRecentPatients = '/me/recent-patients/';
+
+  static String patientView(int patientId) => '/patients/$patientId/view/';
+
+  // ============================================================
+  // Examinations
+  // ============================================================
+
+  static const String examinationTypes = '/examinations/types/';
+  static const String examinationOrders = '/examinations/orders/';
+
+  // ============================================================
+  // Encounters
+  // ============================================================
+
+  static const String encounters = '/encounters/';
 }

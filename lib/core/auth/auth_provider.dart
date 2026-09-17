@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'access_control.dart';
 import 'auth_service.dart';
+import 'staff_user.dart';
 
 // ============================================================
-// STEP 1. 인증 상태 Provider
+// 인증 상태 Provider
 // ============================================================
 
 class AuthProvider extends ChangeNotifier {
@@ -14,14 +15,19 @@ class AuthProvider extends ChangeNotifier {
 
   UserRole _role = UserRole.doctor;
 
+  StaffUser? _currentUser;
+
   bool _isAuthenticated = false;
   bool _isAuthenticating = false;
 
   String? _refreshToken;
   String? _authError;
 
+  String? _reauthToken;
+  DateTime? _reauthExpiresAt;
+
   // ============================================================
-  // STEP 2. 인증 상태
+  // 인증 상태
   // ============================================================
 
   bool get isAuthenticated => _isAuthenticated;
@@ -32,11 +38,57 @@ class AuthProvider extends ChangeNotifier {
 
   String? get refreshToken => _refreshToken;
 
+  String? get reauthToken {
+    if (!hasValidReauthToken) {
+      return null;
+    }
+
+    return _reauthToken;
+  }
+
+  DateTime? get reauthExpiresAt => _reauthExpiresAt;
+
+  bool get hasValidReauthToken {
+    if (_reauthToken == null || _reauthExpiresAt == null) {
+      return false;
+    }
+
+    return DateTime.now().isBefore(_reauthExpiresAt!);
+  }
+
+  Duration get reauthRemaining {
+    if (!hasValidReauthToken) {
+      return Duration.zero;
+    }
+
+    return _reauthExpiresAt!.difference(DateTime.now());
+  }
+
   // ============================================================
-  // STEP 3. 현재 사용자 Role
+  // 현재 사용자 Role
   // ============================================================
 
   UserRole get role => _role;
+  StaffUser? get currentUser => _currentUser;
+  bool get isNurse => _role == UserRole.nurse;
+
+  // ============================================================
+  // STEP 4. Backend Role → Flutter Role 변환
+  // ============================================================
+
+  UserRole _parseRole(List<String> roles) {
+    for (final role in roles) {
+      switch (role.toUpperCase()) {
+        case 'DOCTOR':
+          return UserRole.doctor;
+
+        case 'NURSE':
+          return UserRole.nurse;
+      }
+    }
+
+    throw UnsupportedError('지원하지 않는 의료진 Role입니다: ${roles.join(', ')}');
+  }
 
   // ============================================================
   // STEP 4. 의료진 로그인
@@ -49,6 +101,8 @@ class AuthProvider extends ChangeNotifier {
     _isAuthenticating = true;
     _authError = null;
 
+    clearReauthToken(notify: false);
+
     notifyListeners();
 
     try {
@@ -59,12 +113,44 @@ class AuthProvider extends ChangeNotifier {
 
       _refreshToken = session.refreshToken;
 
+      // ============================================================
+      // 로그인 성공 후 현재 의료진 정보 조회
+      // ============================================================
+
+      final currentUser = await authService.getCurrentUser();
+
+      debugPrint(
+        '[AuthProvider] currentUser: '
+        'id=${currentUser.id}, '
+        'username=${currentUser.username}, '
+        'status=${currentUser.status}, '
+        'roles=${currentUser.roles}',
+      );
+
+      if (!currentUser.isActive) {
+        authService.apiClient.clearAccessToken();
+
+        throw StateError('비활성화된 의료진 계정입니다.');
+      }
+
+      _currentUser = currentUser;
+
+      // ============================================================
+      // 실제 Backend Role 적용
+      // ============================================================
+
+      _role = _parseRole(currentUser.roles);
+
+      debugPrint('[AuthProvider] parsed role: $_role');
+
       _isAuthenticated = true;
 
       return true;
     } catch (error) {
       _isAuthenticated = false;
       _refreshToken = null;
+      _currentUser = null;
+      clearReauthToken(notify: false);
 
       _authError = error.toString();
 
@@ -79,28 +165,15 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // ============================================================
-  // STEP 5. 테스트용 사용자 정보
-  // /staff/me 연결 전까지 유지
+  // STEP 5. 사용자 정보
   // ============================================================
 
   String get userName {
-    switch (_role) {
-      case UserRole.doctor:
-        return '김OO';
-
-      case UserRole.nurse:
-        return '박OO';
-    }
+    return _currentUser?.username ?? '의료진';
   }
 
   String get position {
-    switch (_role) {
-      case UserRole.doctor:
-        return '의사';
-
-      case UserRole.nurse:
-        return '간호사';
-    }
+    return _role.label;
   }
 
   String get department {
@@ -108,7 +181,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // ============================================================
-  // STEP 6. Permission 보유 여부 확인
+  // Permission 보유 여부 확인
   // ============================================================
 
   bool hasPermission(AppPermission permission) {
@@ -116,25 +189,31 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // ============================================================
-  // STEP 7. 전체 Permission
+  // 전체 Permission
   // ============================================================
 
   Set<AppPermission> get permissions {
     return RolePermissions.permissionsOf(_role);
   }
 
-  // ============================================================
-  // STEP 8. 개발용 Role 변경
-  // 실제 /staff/me 연결 후 제거 예정
-  // ============================================================
-
-  void switchRole(UserRole role) {
-    if (_role == role) {
+  void saveReauthToken({required String token, required int expiresInSeconds}) {
+    if (token.trim().isEmpty || expiresInSeconds <= 0) {
+      clearReauthToken();
       return;
     }
 
-    _role = role;
+    _reauthToken = token;
+    _reauthExpiresAt = DateTime.now().add(Duration(seconds: expiresInSeconds));
 
     notifyListeners();
+  }
+
+  void clearReauthToken({bool notify = true}) {
+    _reauthToken = null;
+    _reauthExpiresAt = null;
+
+    if (notify) {
+      notifyListeners();
+    }
   }
 }

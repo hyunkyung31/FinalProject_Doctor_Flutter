@@ -4,8 +4,15 @@ import '../../../../core/theme/app_theme.dart';
 import '../examination_ui_models.dart';
 
 // ============================================================
-// STEP 1. 검사 오더 상세
+// 검사 오더 상세
 // ============================================================
+
+typedef ExaminationOrderEditCallback =
+    Future<ExaminationOrderUiModel?> Function({
+      required int orderId,
+      required String priority,
+      required String clinicalNote,
+    });
 
 class ExaminationOrderDetailPanel extends StatelessWidget {
   final ExaminationOrderUiModel order;
@@ -14,9 +21,15 @@ class ExaminationOrderDetailPanel extends StatelessWidget {
   final ExaminationPatientUiModel patient;
 
   final bool canOrder;
-
+  final ExaminationOrderEditCallback onUpdateOrder;
   final VoidCallback onSchedule;
   final VoidCallback onCancel;
+  final VoidCallback onPrepareExecution;
+
+  final bool canEnterLabResult;
+  final String? labResultStatus;
+  final bool labResultLoaded;
+  final VoidCallback? onLabResultAction;
 
   const ExaminationOrderDetailPanel({
     super.key,
@@ -25,12 +38,180 @@ class ExaminationOrderDetailPanel extends StatelessWidget {
     required this.encounter,
     required this.patient,
     required this.canOrder,
+    required this.onUpdateOrder,
     required this.onSchedule,
     required this.onCancel,
+    required this.onPrepareExecution,
+    this.canEnterLabResult = false,
+    this.labResultStatus,
+    this.labResultLoaded = true,
+    this.onLabResultAction,
   });
+
+  bool get _canEditOrder {
+    return canOrder &&
+        (order.status == 'ORDERED' || order.status == 'SCHEDULED');
+  }
+
+  Future<void> _openOrderEditDialog(BuildContext context) async {
+    var priority = order.priority;
+    var isSaving = false;
+
+    final noteController = TextEditingController(
+      text: order.clinicalNote ?? '',
+    );
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text(
+                '검사 오더 수정',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              ),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '우선순위',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+
+                    const SizedBox(height: 7),
+
+                    DropdownButtonFormField<String>(
+                      initialValue: priority,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'NORMAL', child: Text('일반')),
+                        DropdownMenuItem(value: 'URGENT', child: Text('응급')),
+                        DropdownMenuItem(value: 'STAT', child: Text('긴급')),
+                      ],
+                      onChanged: isSaving
+                          ? null
+                          : (value) {
+                              if (value != null) {
+                                setDialogState(() {
+                                  priority = value;
+                                });
+                              }
+                            },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    const Text(
+                      '임상 메모',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+
+                    const SizedBox(height: 7),
+
+                    TextField(
+                      controller: noteController,
+                      enabled: !isSaving,
+                      minLines: 3,
+                      maxLines: 5,
+                      decoration: const InputDecoration(
+                        hintText: '검사 요청사항 또는 임상 메모를 입력하세요.',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSaving
+                      ? null
+                      : () {
+                          Navigator.of(dialogContext).pop();
+                        },
+                  child: const Text('취소'),
+                ),
+                FilledButton(
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          setDialogState(() {
+                            isSaving = true;
+                          });
+
+                          final updatedOrder = await onUpdateOrder(
+                            orderId: order.id,
+                            priority: priority,
+                            clinicalNote: noteController.text,
+                          );
+
+                          if (!dialogContext.mounted) {
+                            return;
+                          }
+
+                          if (updatedOrder != null) {
+                            Navigator.of(dialogContext).pop();
+                            return;
+                          }
+
+                          setDialogState(() {
+                            isSaving = false;
+                          });
+                        },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.navy,
+                  ),
+                  child: Text(isSaving ? '저장 중...' : '저장'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    noteController.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isLab = type.category == 'LAB';
+
+    Widget? footer;
+
+    if (isLab) {
+      if (order.status != 'CANCELED' && labResultLoaded) {
+        footer = _LabResultFooter(
+          canEnterLabResult: canEnterLabResult,
+          resultStatus: labResultStatus,
+          resultLoaded: labResultLoaded,
+          onLabResultAction: onLabResultAction,
+        );
+      }
+    } else if (order.status == 'ORDERED') {
+      footer = _OrderFooter(
+        canOrder: canOrder,
+        showPrepareExecution:
+            type.category == 'IMAGING' || type.category == 'PROCEDURE',
+        onSchedule: onSchedule,
+        onCancel: onCancel,
+        onPrepareExecution: onPrepareExecution,
+      );
+    }
+
     return _DetailShell(
       header: _DetailHeader(
         icon: Icons.science_outlined,
@@ -42,6 +223,26 @@ class ExaminationOrderDetailPanel extends StatelessWidget {
         _InfoCard(
           title: '검사 오더',
           icon: Icons.assignment_outlined,
+          action: _canEditOrder
+              ? TextButton.icon(
+                  onPressed: () {
+                    _openOrderEditDialog(context);
+                  },
+                  style: TextButton.styleFrom(
+                    minimumSize: Size.zero,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 5,
+                    ),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  icon: const Icon(Icons.edit_outlined, size: 14),
+                  label: const Text(
+                    '수정',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+                  ),
+                )
+              : null,
           children: [
             _InfoRow(label: '오더 번호', value: '#${order.id}'),
             _InfoRow(label: '검사 코드', value: type.code),
@@ -98,13 +299,7 @@ class ExaminationOrderDetailPanel extends StatelessWidget {
           ),
         ],
       ],
-      footer: order.status == 'ORDERED'
-          ? _OrderFooter(
-              canOrder: canOrder,
-              onSchedule: onSchedule,
-              onCancel: onCancel,
-            )
-          : null,
+      footer: footer,
     );
   }
 }
@@ -415,11 +610,13 @@ class _DetailHeader extends StatelessWidget {
 class _InfoCard extends StatelessWidget {
   final String title;
   final IconData icon;
+  final Widget? action;
   final List<Widget> children;
 
   const _InfoCard({
     required this.title,
     required this.icon,
+    this.action,
     required this.children,
   });
 
@@ -442,14 +639,18 @@ class _InfoCard extends StatelessWidget {
 
               const SizedBox(width: 7),
 
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
+
+              ?action,
             ],
           ),
 
@@ -637,19 +838,91 @@ const TextStyle _tableHeaderStyle = TextStyle(
   color: AppColors.textSecondary,
 );
 
+class _LabResultFooter extends StatelessWidget {
+  final bool canEnterLabResult;
+  final String? resultStatus;
+  final bool resultLoaded;
+  final VoidCallback? onLabResultAction;
+
+  const _LabResultFooter({
+    required this.canEnterLabResult,
+    required this.resultStatus,
+    required this.resultLoaded,
+    required this.onLabResultAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final status = resultStatus?.toUpperCase();
+
+    if (!resultLoaded) {
+      return const _ReadOnlyFooter(text: '혈액 검사 결과 상태를 확인하고 있습니다...');
+    }
+
+    if (status == 'FINAL') {
+      return const _ReadOnlyFooter(text: '혈액 검사 결과가 최종 확정되었습니다.');
+    }
+
+    if (status == 'VALIDATED') {
+      return const _ReadOnlyFooter(text: '혈액 검사 결과 검토가 완료되어 최종 확정을 기다리고 있습니다.');
+    }
+
+    if (status != null && status != 'DRAFT') {
+      return const _ReadOnlyFooter(text: '현재 상태에서는 혈액 검사 결과를 수정할 수 없습니다.');
+    }
+
+    if (!canEnterLabResult) {
+      return const _ReadOnlyFooter(text: '현재 역할에서는 혈액 검사 결과를 조회할 수 있습니다.');
+    }
+
+    final isDraft = status == 'DRAFT';
+
+    return _ActionContainer(
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              isDraft ? '작성 중인 혈액 검사 결과가 있습니다.' : '혈액 검사 결과가 아직 입력되지 않았습니다.',
+              style: const TextStyle(
+                fontSize: 10.5,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          FilledButton.icon(
+            onPressed: onLabResultAction,
+            style: FilledButton.styleFrom(backgroundColor: AppColors.navy),
+            icon: Icon(
+              isDraft ? Icons.edit_outlined : Icons.add_rounded,
+              size: 16,
+            ),
+            label: Text(isDraft ? '결과 수정' : '결과 입력'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ============================================================
-// STEP 9. Order Footer
+// Order Footer
+// 영상 / 시술 검사에서만 실제 검사 수행 준비 제공
 // ============================================================
 
 class _OrderFooter extends StatelessWidget {
   final bool canOrder;
+  final bool showPrepareExecution;
+
   final VoidCallback onSchedule;
   final VoidCallback onCancel;
+  final VoidCallback onPrepareExecution;
 
   const _OrderFooter({
     required this.canOrder,
+    required this.showPrepareExecution,
     required this.onSchedule,
     required this.onCancel,
+    required this.onPrepareExecution,
   });
 
   @override
@@ -676,11 +949,18 @@ class _OrderFooter extends StatelessWidget {
 
           const SizedBox(width: 8),
 
-          FilledButton(
-            onPressed: onSchedule,
-            style: FilledButton.styleFrom(backgroundColor: AppColors.navy),
-            child: const Text('일정 등록'),
-          ),
+          OutlinedButton(onPressed: onSchedule, child: const Text('일정 등록')),
+
+          if (showPrepareExecution) ...[
+            const SizedBox(width: 8),
+
+            FilledButton.icon(
+              onPressed: onPrepareExecution,
+              style: FilledButton.styleFrom(backgroundColor: AppColors.navy),
+              icon: const Icon(Icons.play_circle_outline_rounded, size: 16),
+              label: const Text('검사 수행 준비'),
+            ),
+          ],
         ],
       ),
     );
@@ -713,7 +993,7 @@ class _ProgressFooter extends StatelessWidget {
       return const _ReadOnlyFooter(text: '현재 역할에서는 검사 진행 상태를 조회할 수 있습니다.');
     }
 
-    if (status == 'READY') {
+    if (status == 'SCHEDULED' || status == 'READY') {
       return _ActionContainer(
         child: Row(
           children: [
@@ -913,7 +1193,7 @@ String formatExamDateTime(DateTime date) {
 String _categoryLabel(String category) {
   switch (category) {
     case 'LAB':
-      return '혈액·임상';
+      return '혈액 검사';
 
     case 'IMAGING':
       return '영상';
@@ -946,6 +1226,9 @@ String _statusLabel(String status) {
   switch (status) {
     case 'ORDERED':
       return '처방';
+
+    case 'SCHEDULED':
+      return '검사 예정';
 
     case 'READY':
       return '검사 대기';
@@ -984,6 +1267,7 @@ Color _statusColor(String status) {
       return AppColors.success;
 
     case 'ORDERED':
+    case 'SCHEDULED':
     case 'READY':
     case 'DRAFT':
       return AppColors.warning;
@@ -1008,6 +1292,7 @@ Color _statusBackground(String status) {
       return AppColors.successBackground;
 
     case 'ORDERED':
+    case 'SCHEDULED':
     case 'READY':
     case 'DRAFT':
       return AppColors.warningBackground;
