@@ -11,8 +11,13 @@ import 'patient_lab_trend_chart.dart';
 
 class PatientResultTab extends StatefulWidget {
   final PatientUiModel patient;
+  final List<PatientTimelineItem> timelineItems;
 
-  const PatientResultTab({super.key, required this.patient});
+  const PatientResultTab({
+    super.key,
+    required this.patient,
+    required this.timelineItems,
+  });
 
   @override
   State<PatientResultTab> createState() => _PatientResultTabState();
@@ -20,9 +25,33 @@ class PatientResultTab extends StatefulWidget {
 
 class _PatientResultTabState extends State<PatientResultTab> {
   List<ExaminationResultUiModel> _results = [];
-
+  String? _selectedMeasurementCode;
   bool _isLoading = true;
   String? _loadError;
+
+  List<int> get _bloodExaminationIds {
+    final ids = <int>[];
+
+    for (final item in widget.timelineItems) {
+      if (item.eventType.trim().toUpperCase() != 'EXAMINATION') {
+        continue;
+      }
+
+      final code =
+          item.data['examination_type_code']?.toString().trim().toUpperCase() ??
+          '';
+
+      if (code != 'BLOOD' && code != 'CARDIAC_LAB_PANEL') {
+        continue;
+      }
+
+      if (item.referenceId > 0) {
+        ids.add(item.referenceId);
+      }
+    }
+
+    return ids.toSet().toList();
+  }
 
   @override
   void initState() {
@@ -37,12 +66,46 @@ class _PatientResultTabState extends State<PatientResultTab> {
   void didUpdateWidget(covariant PatientResultTab oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.patient.patientId != widget.patient.patientId) {
+    final patientChanged =
+        oldWidget.patient.patientId != widget.patient.patientId;
+
+    final oldIds = oldWidget.timelineItems
+        .where((item) => item.eventType.trim().toUpperCase() == 'EXAMINATION')
+        .map((item) => item.referenceId)
+        .where((id) => id > 0)
+        .toSet();
+
+    final newIds = widget.timelineItems
+        .where((item) => item.eventType.trim().toUpperCase() == 'EXAMINATION')
+        .map((item) => item.referenceId)
+        .where((id) => id > 0)
+        .toSet();
+
+    final timelineChanged =
+        oldIds.length != newIds.length || !oldIds.containsAll(newIds);
+
+    if (patientChanged || timelineChanged) {
       _loadResults();
     }
   }
 
   Future<void> _loadResults() async {
+    final bloodExaminationIds = _bloodExaminationIds;
+
+    if (bloodExaminationIds.isEmpty) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _results = [];
+        _isLoading = false;
+        _loadError = null;
+      });
+
+      return;
+    }
+
     if (mounted) {
       setState(() {
         _isLoading = true;
@@ -61,9 +124,10 @@ class _PatientResultTabState extends State<PatientResultTab> {
         examinationService: examinationService,
       );
 
-      final results = await resultService.fetchPatientLabResults(
-        patientId: widget.patient.patientId,
-      );
+      final results = await resultService
+          .fetchPatientLabResultsByExaminationIds(
+            examinationIds: bloodExaminationIds,
+          );
 
       if (!mounted) {
         return;
@@ -77,7 +141,8 @@ class _PatientResultTabState extends State<PatientResultTab> {
     } catch (error) {
       debugPrint(
         '[PatientResultTab] 혈액검사 결과 조회 실패: '
-        'patientId=${widget.patient.patientId}, error=$error',
+        'patientId=${widget.patient.patientId}, '
+        'error=$error',
       );
 
       if (!mounted) {
@@ -207,10 +272,6 @@ class _PatientResultTabState extends State<PatientResultTab> {
 
           _LatestResultSummary(result: latestResult),
 
-          const SizedBox(height: 16),
-
-          PatientLabTrendChart(results: _results),
-
           const SizedBox(height: 20),
 
           const Text(
@@ -224,7 +285,35 @@ class _PatientResultTabState extends State<PatientResultTab> {
 
           const SizedBox(height: 10),
 
-          _MeasurementGrid(measurements: latestResult.measurements),
+          _MeasurementGrid(
+            measurements: latestResult.measurements,
+            selectedCode: _selectedMeasurementCode,
+            onSelectedCodeChanged: (code) {
+              if (_selectedMeasurementCode == code) {
+                return;
+              }
+
+              setState(() {
+                _selectedMeasurementCode = code;
+              });
+            },
+          ),
+
+          const SizedBox(height: 20),
+
+          PatientLabTrendChart(
+            results: _results,
+            selectedCode: _selectedMeasurementCode,
+            onSelectedCodeChanged: (code) {
+              if (_selectedMeasurementCode == code) {
+                return;
+              }
+
+              setState(() {
+                _selectedMeasurementCode = code;
+              });
+            },
+          ),
 
           const SizedBox(height: 20),
 
@@ -329,8 +418,14 @@ class _LatestResultSummary extends StatelessWidget {
 
 class _MeasurementGrid extends StatelessWidget {
   final List<ExaminationMeasurementUiModel> measurements;
+  final String? selectedCode;
+  final ValueChanged<String> onSelectedCodeChanged;
 
-  const _MeasurementGrid({required this.measurements});
+  const _MeasurementGrid({
+    required this.measurements,
+    required this.selectedCode,
+    required this.onSelectedCodeChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -348,25 +443,243 @@ class _MeasurementGrid extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = constraints.maxWidth;
+        if (constraints.maxWidth >= 620) {
+          return _MeasurementTable(
+            measurements: measurements,
+            selectedCode: selectedCode,
+            onSelectedCodeChanged: onSelectedCodeChanged,
+          );
+        }
 
-        final cardWidth = width >= 900
-            ? (width - 24) / 3
-            : width >= 600
-            ? (width - 12) / 2
-            : width;
-
-        return Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: measurements.map((measurement) {
-            return SizedBox(
-              width: cardWidth,
-              child: _MeasurementCard(measurement: measurement),
-            );
-          }).toList(),
+        return Column(
+          children: [
+            for (var index = 0; index < measurements.length; index++) ...[
+              _MeasurementCard(measurement: measurements[index]),
+              if (index != measurements.length - 1) const SizedBox(height: 10),
+            ],
+          ],
         );
       },
+    );
+  }
+}
+
+class _MeasurementTable extends StatelessWidget {
+  final List<ExaminationMeasurementUiModel> measurements;
+  final String? selectedCode;
+  final ValueChanged<String> onSelectedCodeChanged;
+
+  const _MeasurementTable({
+    required this.measurements,
+    required this.selectedCode,
+    required this.onSelectedCodeChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          Container(
+            color: AppColors.surfaceSoft,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: const Row(
+              children: [
+                Expanded(
+                  flex: 10,
+                  child: _ResultTableHeaderText(
+                    text: '코드',
+                    textAlign: TextAlign.left,
+                  ),
+                ),
+                Expanded(
+                  flex: 31,
+                  child: Padding(
+                    padding: EdgeInsets.only(left: 30),
+                    child: _ResultTableHeaderText(
+                      text: '검사항목',
+                      textAlign: TextAlign.left,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 21,
+                  child: _ResultTableHeaderText(
+                    text: '정상범위',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                Expanded(
+                  flex: 21,
+                  child: _ResultTableHeaderText(
+                    text: '결과',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                Expanded(
+                  flex: 17,
+                  child: _ResultTableHeaderText(
+                    text: '단위',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          for (var index = 0; index < measurements.length; index++) ...[
+            _MeasurementTableRow(
+              measurement: measurements[index],
+              selected:
+                  selectedCode?.trim().toUpperCase() ==
+                  measurements[index].code.trim().toUpperCase(),
+              onTap: () {
+                final code = measurements[index].code.trim();
+
+                if (code.isEmpty) {
+                  return;
+                }
+
+                onSelectedCodeChanged(code);
+              },
+            ),
+            if (index != measurements.length - 1)
+              const Divider(height: 1, color: AppColors.border),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ResultTableHeaderText extends StatelessWidget {
+  final String text;
+  final TextAlign textAlign;
+
+  const _ResultTableHeaderText({
+    required this.text,
+    this.textAlign = TextAlign.left,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      textAlign: textAlign,
+      style: const TextStyle(
+        fontSize: 9.5,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textSecondary,
+      ),
+    );
+  }
+}
+
+class _MeasurementTableRow extends StatelessWidget {
+  final ExaminationMeasurementUiModel measurement;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _MeasurementTableRow({
+    required this.measurement,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final abnormalColor = _abnormalColor(measurement.abnormalFlag);
+
+    final referenceText = _formatReferenceText(
+      measurement.referenceText?.trim() ?? '',
+    );
+
+    return Material(
+      color: selected
+          ? AppColors.primaryBlue.withValues(alpha: 0.06)
+          : Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                flex: 10,
+                child: Text(
+                  measurement.code.trim().isEmpty ? '-' : measurement.code,
+                  textAlign: TextAlign.left,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.navy,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 31,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 30),
+                  child: Text(
+                    measurement.displayLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.left,
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 21,
+                child: Text(
+                  referenceText.isEmpty ? '-' : referenceText,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 21,
+                child: Text(
+                  measurement.displayValue,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: measurement.isAbnormal
+                        ? abnormalColor
+                        : AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 17,
+                child: Text(
+                  (measurement.unit ?? '').trim().isEmpty
+                      ? '-'
+                      : measurement.unit!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

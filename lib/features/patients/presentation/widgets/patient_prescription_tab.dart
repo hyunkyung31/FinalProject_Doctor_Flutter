@@ -10,8 +10,13 @@ import 'prescription_sign_dialog.dart';
 
 class PatientPrescriptionTab extends StatefulWidget {
   final PatientUiModel patient;
+  final bool embedded;
 
-  const PatientPrescriptionTab({super.key, required this.patient});
+  const PatientPrescriptionTab({
+    super.key,
+    required this.patient,
+    this.embedded = false,
+  });
 
   @override
   State<PatientPrescriptionTab> createState() => _PatientPrescriptionTabState();
@@ -356,67 +361,148 @@ class _PatientPrescriptionTabState extends State<PatientPrescriptionTab> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const SizedBox(
+        height: 120,
+        child: Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (_loadError != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              '처방 정보를 불러오지 못했습니다.',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+      return SizedBox(
+        height: 140,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                '처방 정보를 불러오지 못했습니다.',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            TextButton.icon(
-              onPressed: _loadPrescriptions,
-              icon: const Icon(Icons.refresh_rounded, size: 16),
-              label: const Text('다시 시도'),
-            ),
-          ],
+              const SizedBox(height: 10),
+              TextButton.icon(
+                onPressed: _loadPrescriptions,
+                icon: const Icon(Icons.refresh_rounded, size: 16),
+                label: const Text('다시 시도'),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     final auth = context.watch<AuthProvider>();
 
+    Widget buildPrescriptionCard(int index) {
+      final detail = _prescriptions[index];
+
+      return _PrescriptionCard(
+        detail: detail,
+        canAddMedication:
+            !auth.isNurse &&
+            detail.prescription.status.toUpperCase() == 'DRAFT',
+        canRunDurCheck:
+            !auth.isNurse &&
+            detail.prescription.status.toUpperCase() == 'DRAFT' &&
+            detail.items.isNotEmpty,
+        canSign: !auth.isNurse && _canSignPrescription(detail),
+        isRunningDurCheck:
+            _runningDurCheckPrescriptionId == detail.prescription.id,
+        onAddMedication: () {
+          _openAddMedicationDialog(detail.prescription.id);
+        },
+        onRunDurCheck: () {
+          _runDurCheck(detail.prescription.id);
+        },
+        onSign: () {
+          _openSignPrescriptionDialog(detail.prescription.id);
+        },
+      );
+    }
+
+    final header = Row(
+      children: [
+        const Expanded(
+          child: Text(
+            '약물 처방',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        if (!auth.isNurse)
+          SizedBox(
+            height: 34,
+            child: FilledButton.icon(
+              onPressed: _isCreatingPrescription
+                  ? null
+                  : _openCreatePrescriptionDialog,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.navy,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              icon: const Icon(Icons.add_rounded, size: 14),
+              label: Text(
+                _isCreatingPrescription ? '등록 중' : '처방 추가',
+                style: const TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+
+    if (widget.embedded) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            header,
+
+            const SizedBox(height: 12),
+
+            if (_prescriptions.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(
+                  child: Text(
+                    '등록된 처방이 없습니다.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              )
+            else
+              for (var index = 0; index < _prescriptions.length; index++) ...[
+                buildPrescriptionCard(index),
+                if (index != _prescriptions.length - 1)
+                  const SizedBox(height: 12),
+              ],
+          ],
+        ),
+      );
+    }
+
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  '처방 이력',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-              if (!auth.isNurse)
-                TextButton.icon(
-                  onPressed: _isCreatingPrescription
-                      ? null
-                      : _openCreatePrescriptionDialog,
-                  icon: const Icon(Icons.add_rounded, size: 16),
-                  label: Text(
-                    _isCreatingPrescription ? '등록 중' : '처방 추가',
-                    style: const TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          child: header,
         ),
         Expanded(
           child: _prescriptions.isEmpty
@@ -433,33 +519,7 @@ class _PatientPrescriptionTabState extends State<PatientPrescriptionTab> {
                   padding: const EdgeInsets.all(16),
                   itemCount: _prescriptions.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final detail = _prescriptions[index];
-
-                    return _PrescriptionCard(
-                      detail: detail,
-                      canAddMedication:
-                          !auth.isNurse &&
-                          detail.prescription.status.toUpperCase() == 'DRAFT',
-                      canRunDurCheck:
-                          !auth.isNurse &&
-                          detail.prescription.status.toUpperCase() == 'DRAFT' &&
-                          detail.items.isNotEmpty,
-                      canSign: !auth.isNurse && _canSignPrescription(detail),
-                      isRunningDurCheck:
-                          _runningDurCheckPrescriptionId ==
-                          detail.prescription.id,
-                      onAddMedication: () {
-                        _openAddMedicationDialog(detail.prescription.id);
-                      },
-                      onRunDurCheck: () {
-                        _runDurCheck(detail.prescription.id);
-                      },
-                      onSign: () {
-                        _openSignPrescriptionDialog(detail.prescription.id);
-                      },
-                    );
-                  },
+                  itemBuilder: (context, index) => buildPrescriptionCard(index),
                 ),
         ),
       ],
@@ -505,89 +565,87 @@ class _PrescriptionCard extends StatelessWidget {
     final latestDurCheck = durChecks.isEmpty ? null : durChecks.first;
 
     return Container(
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _formatDate(prescription.prescribedAt),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Text(
+                        _formatDate(prescription.prescribedAt),
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+
+                      const SizedBox(width: 8),
+
+                      _PrescriptionStatusBadge(status: prescription.status),
+
+                      if (latestDurCheck != null) ...[
+                        const SizedBox(width: 8),
+                        _DurStatusRow(status: latestDurCheck.status),
+                      ],
+                    ],
                   ),
                 ),
-              ),
-              _PrescriptionStatusBadge(status: prescription.status),
-            ],
-          ),
 
-          if (prescription.notes.trim().isNotEmpty) ...[
-            const SizedBox(height: 5),
-            Text(
-              prescription.notes,
-              style: const TextStyle(
-                fontSize: 10,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 12),
-
-          if (detail.items.isEmpty)
-            const Text(
-              '등록된 처방 약물이 없습니다.',
-              style: TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
-            )
-          else
-            ...detail.items.map((item) => _PrescriptionItemCard(item: item)),
-
-          if (canAddMedication || canRunDurCheck || canSign) ...[
-            const SizedBox(height: 6),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
                 if (canAddMedication)
                   TextButton.icon(
                     onPressed: onAddMedication,
-                    icon: const Icon(Icons.add_rounded, size: 16),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 5,
+                      ),
+                      visualDensity: VisualDensity.compact,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    icon: const Icon(Icons.add_rounded, size: 13),
                     label: const Text(
                       '약물 추가',
                       style: TextStyle(
-                        fontSize: 10.5,
+                        fontSize: 9,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
 
                 if (canRunDurCheck) ...[
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 4),
                   OutlinedButton.icon(
                     onPressed: isRunningDurCheck ? null : onRunDurCheck,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 5,
+                      ),
+                      visualDensity: VisualDensity.compact,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
                     icon: isRunningDurCheck
                         ? const SizedBox(
-                            width: 13,
-                            height: 13,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            width: 11,
+                            height: 11,
+                            child: CircularProgressIndicator(strokeWidth: 1.5),
                           )
-                        : const Icon(
-                            Icons.health_and_safety_outlined,
-                            size: 15,
-                          ),
+                        : const Icon(Icons.verified_user_outlined, size: 13),
                     label: Text(
-                      isRunningDurCheck ? '검사 중' : 'DUR 검사',
+                      isRunningDurCheck ? '검사 중' : 'DUR',
                       style: const TextStyle(
-                        fontSize: 10.5,
+                        fontSize: 9,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -595,27 +653,103 @@ class _PrescriptionCard extends StatelessWidget {
                 ],
 
                 if (canSign) ...[
-                  const SizedBox(width: 6),
-                  FilledButton.icon(
-                    onPressed: onSign,
-                    icon: const Icon(Icons.draw_outlined, size: 15),
-                    label: const Text(
-                      '처방 서명',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
+                  const SizedBox(width: 4),
+                  SizedBox(
+                    height: 30,
+                    child: FilledButton.icon(
+                      onPressed: onSign,
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 9),
+                        visualDensity: VisualDensity.compact,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      icon: const Icon(Icons.draw_outlined, size: 13),
+                      label: const Text(
+                        '서명',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
                 ],
               ],
             ),
+          ),
+
+          if (prescription.notes.trim().isNotEmpty) ...[
+            const Divider(height: 1, color: AppColors.border),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '처방 메모',
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+
+                  const SizedBox(width: 10),
+
+                  Expanded(
+                    child: Text(
+                      prescription.notes,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
 
-          if (latestDurCheck != null) ...[
-            const SizedBox(height: 10),
-            _DurStatusRow(status: latestDurCheck.status),
-          ],
+          const Divider(height: 1, color: AppColors.border),
+
+          if (detail.items.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 18),
+              child: Text(
+                '등록된 처방 약물이 없습니다.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+              ),
+            )
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final showTable = constraints.maxWidth >= 620;
+
+                return Column(
+                  children: [
+                    if (showTable) ...[
+                      const _PrescriptionTableHeader(),
+                      const Divider(height: 1, color: AppColors.border),
+                    ],
+
+                    for (
+                      var index = 0;
+                      index < detail.items.length;
+                      index++
+                    ) ...[
+                      _PrescriptionItemCard(item: detail.items[index]),
+
+                      if (index != detail.items.length - 1)
+                        const Divider(height: 1, color: AppColors.border),
+                    ],
+                  ],
+                );
+              },
+            ),
         ],
       ),
     );
@@ -1103,6 +1237,46 @@ class _MedicationAddDialogState extends State<_MedicationAddDialog> {
   }
 }
 
+class _PrescriptionTableHeader extends StatelessWidget {
+  const _PrescriptionTableHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    const style = TextStyle(
+      fontSize: 8.5,
+      fontWeight: FontWeight.w600,
+      color: AppColors.textSecondary,
+    );
+
+    return Container(
+      height: 30,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      color: AppColors.surfaceSoft,
+      child: const Row(
+        children: [
+          Expanded(flex: 38, child: Text('약품명', style: style)),
+          Expanded(
+            flex: 18,
+            child: Text('용량', textAlign: TextAlign.center, style: style),
+          ),
+          Expanded(
+            flex: 14,
+            child: Text('횟수', textAlign: TextAlign.center, style: style),
+          ),
+          Expanded(
+            flex: 14,
+            child: Text('기간', textAlign: TextAlign.center, style: style),
+          ),
+          Expanded(
+            flex: 16,
+            child: Text('경로', textAlign: TextAlign.center, style: style),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PrescriptionItemCard extends StatelessWidget {
   final PatientPrescriptionItem item;
 
@@ -1114,45 +1288,152 @@ class _PrescriptionItemCard extends StatelessWidget {
         ? '약물 정보 없음'
         : item.medication.name;
 
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
-        borderRadius: BorderRadius.circular(9),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            medicationName,
-            style: const TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 620) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  medicationName,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _buildDoseSummary(item),
+                  style: const TextStyle(
+                    fontSize: 9,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                if (item.instructions.trim().isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    item.instructions,
+                    style: const TextStyle(
+                      fontSize: 9,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ],
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _buildDoseSummary(item),
-            style: const TextStyle(
-              fontSize: 10.5,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          if (item.instructions.trim().isNotEmpty) ...[
-            const SizedBox(height: 5),
-            Text(
-              item.instructions,
-              style: const TextStyle(
-                fontSize: 10.5,
-                color: AppColors.textPrimary,
+          );
+        }
+
+        final dose = _normalizedDose(item.doseValue);
+
+        final doseText =
+            '${dose.isEmpty ? '-' : dose} '
+                    '${item.doseUnit}'
+                .trim();
+
+        final frequencyText = item.frequencyPerDay == null
+            ? '-'
+            : '${item.frequencyPerDay}회/일';
+
+        final durationText = item.durationDays == null
+            ? '-'
+            : '${item.durationDays}일';
+
+        final routeText = item.route.trim().isEmpty
+            ? '-'
+            : _routeLabel(item.route);
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 38,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      medicationName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    if (item.instructions.trim().isNotEmpty) ...[
+                      const SizedBox(height: 1),
+                      Text(
+                        item.instructions,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 8,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-            ),
-          ],
-        ],
-      ),
+
+              Expanded(
+                flex: 18,
+                child: Text(
+                  doseText,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 8.5,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+
+              Expanded(
+                flex: 14,
+                child: Text(
+                  frequencyText,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 8.5,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+
+              Expanded(
+                flex: 14,
+                child: Text(
+                  durationText,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 8.5,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+
+              Expanded(
+                flex: 16,
+                child: Text(
+                  routeText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 8.5,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -1162,7 +1443,11 @@ class _PrescriptionItemCard extends StatelessWidget {
     final dose = _normalizedDose(item.doseValue);
 
     if (dose.isNotEmpty || item.doseUnit.trim().isNotEmpty) {
-      values.add('${dose.isEmpty ? '-' : dose} ${item.doseUnit}'.trim());
+      values.add(
+        '${dose.isEmpty ? '-' : dose} '
+                '${item.doseUnit}'
+            .trim(),
+      );
     }
 
     if (item.frequencyPerDay != null) {
@@ -1221,11 +1506,11 @@ class _DurStatusRow extends StatelessWidget {
     final normalizedStatus = status.toUpperCase();
 
     final text = switch (normalizedStatus) {
-      'PASSED' => '통과',
-      'WARNING' => '경고',
-      'FAILED' => '실패',
-      'PENDING' => '검사 중',
-      _ => status.isEmpty ? '-' : status,
+      'PASSED' => 'DUR 통과',
+      'WARNING' => 'DUR 경고',
+      'FAILED' => 'DUR 실패',
+      'PENDING' => 'DUR 검사 중',
+      _ => status.isEmpty ? 'DUR -' : 'DUR $status',
     };
 
     final color = switch (normalizedStatus) {
@@ -1235,26 +1520,20 @@ class _DurStatusRow extends StatelessWidget {
       _ => AppColors.textSecondary,
     };
 
-    return Row(
-      children: [
-        const Text(
-          'DUR 검사',
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
-          ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 8.5,
+          fontWeight: FontWeight.w700,
+          color: color,
         ),
-        const SizedBox(width: 8),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: color,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

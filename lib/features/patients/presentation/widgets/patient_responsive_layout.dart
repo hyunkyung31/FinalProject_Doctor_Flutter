@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
 
-// ============================================================
-// STEP 1. Patient Responsive Layout
-// ============================================================
-
-class PatientResponsiveLayout extends StatelessWidget {
+class PatientResponsiveLayout extends StatefulWidget {
   final Widget patientList;
   final Widget patientDetail;
 
@@ -25,56 +21,67 @@ class PatientResponsiveLayout extends StatelessWidget {
   });
 
   @override
+  State<PatientResponsiveLayout> createState() =>
+      _PatientResponsiveLayoutState();
+}
+
+class _PatientResponsiveLayoutState extends State<PatientResponsiveLayout> {
+  bool _isPatientListCollapsed = false;
+
+  @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isCompact = constraints.maxWidth < breakpoint;
-
-        // ========================================================
-        // Wide Layout
-        // 환자 목록 + 환자 상세 동시 표시
-        // ========================================================
+        final isCompact = constraints.maxWidth < widget.breakpoint;
 
         if (!isCompact) {
+          const handleWidth = 28.0;
+          const handleGap = 6.0;
+
+          final availableWidth =
+              constraints.maxWidth - handleWidth - (handleGap * 2);
+
+          final patientListWidth = availableWidth * 0.30;
+
           return Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(flex: 3, child: patientList),
+              Offstage(
+                offstage: _isPatientListCollapsed,
+                child: SizedBox(
+                  width: patientListWidth,
+                  child: widget.patientList,
+                ),
+              ),
 
-              const SizedBox(width: 14),
+              if (!_isPatientListCollapsed) const SizedBox(width: handleGap),
 
-              Expanded(flex: 7, child: patientDetail),
+              _PatientListToggleButton(
+                collapsed: _isPatientListCollapsed,
+                onTap: () {
+                  setState(() {
+                    _isPatientListCollapsed = !_isPatientListCollapsed;
+                  });
+                },
+              ),
+
+              const SizedBox(width: handleGap),
+
+              Expanded(child: widget.patientDetail),
             ],
           );
         }
 
-        // ========================================================
-        // Compact Layout
-        // 목록 / 상세 중 하나만 표시
-        //
-        // IndexedStack 사용:
-        // 상세 화면에 갔다 돌아와도 목록 Widget 상태 유지
-        // ========================================================
-
         return IndexedStack(
-          index: showCompactDetail ? 1 : 0,
+          index: widget.showCompactDetail ? 1 : 0,
           children: [
-            // ====================================================
-            // Patient List
-            // ====================================================
-            patientList,
-
-            // ====================================================
-            // Patient Detail
-            // ====================================================
+            widget.patientList,
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _CompactBackBar(onBackToList: onBackToList),
-
+                _CompactBackBar(onBackToList: widget.onBackToList),
                 const SizedBox(height: 6),
-
-                Expanded(child: patientDetail),
+                Expanded(child: widget.patientDetail),
               ],
             ),
           ],
@@ -84,11 +91,52 @@ class PatientResponsiveLayout extends StatelessWidget {
   }
 }
 
-// ============================================================
-// STEP 2. Compact Detail Back Button
-// 세로형 상세 화면 → 환자 목록 복귀
-// 시각적 크기는 작게 유지하고 터치 영역만 확보
-// ============================================================
+class _PatientListToggleButton extends StatelessWidget {
+  final bool collapsed;
+  final VoidCallback onTap;
+
+  const _PatientListToggleButton({
+    required this.collapsed,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 5),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Tooltip(
+          message: collapsed ? '환자 목록 펼치기' : '환자 목록 접기',
+          child: Container(
+            width: 28,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(8),
+                child: Icon(
+                  collapsed
+                      ? Icons.chevron_right_rounded
+                      : Icons.chevron_left_rounded,
+                  size: 18,
+                  color: AppColors.navy,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _CompactBackBar extends StatelessWidget {
   final VoidCallback onBackToList;
@@ -118,9 +166,7 @@ class _CompactBackBar extends StatelessWidget {
                       size: 16,
                       color: AppColors.navy,
                     ),
-
                     SizedBox(width: 7),
-
                     Text(
                       '환자 목록',
                       style: TextStyle(

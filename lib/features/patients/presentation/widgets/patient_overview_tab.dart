@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../../core/auth/auth_provider.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../data/services/patient_care_service.dart';
 import 'patient_detail_tabs.dart';
 
 // ============================================================
@@ -30,14 +33,7 @@ class PatientOverviewTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ======================================================
-          // STEP 2. 연결 데이터
-          // ======================================================
-          _MedicalDataSection(
-            labCount: patient.labMeasurementCount,
-            ctCount: patient.ctStudyCount,
-            angiographyCount: patient.angiographySequenceCount,
-          ),
+          _OverviewPatientInfoSection(patient: patient),
 
           const SizedBox(height: 18),
 
@@ -45,9 +41,14 @@ class PatientOverviewTab extends StatelessWidget {
 
           const SizedBox(height: 18),
 
-          // ======================================================
-          // STEP 3. 최근 진료기록
-          // ======================================================
+          _OverviewClinicalSummarySection(patient: patient),
+
+          const SizedBox(height: 18),
+
+          const Divider(height: 1, color: AppColors.border),
+
+          const SizedBox(height: 18),
+
           _RecentTimelineSection(
             items: timelineItems,
             isLoading: isTimelineLoading,
@@ -59,20 +60,10 @@ class PatientOverviewTab extends StatelessWidget {
   }
 }
 
-// ============================================================
-// STEP 8. Medical Data Section
-// ============================================================
+class _OverviewPatientInfoSection extends StatelessWidget {
+  final PatientUiModel patient;
 
-class _MedicalDataSection extends StatelessWidget {
-  final int labCount;
-  final int ctCount;
-  final int angiographyCount;
-
-  const _MedicalDataSection({
-    required this.labCount,
-    required this.ctCount,
-    required this.angiographyCount,
-  });
+  const _OverviewPatientInfoSection({required this.patient});
 
   @override
   Widget build(BuildContext context) {
@@ -80,187 +71,336 @@ class _MedicalDataSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _SectionHeader(
-          icon: Icons.folder_shared_outlined,
-          title: '연결 데이터',
+          icon: Icons.person_outline_rounded,
+          title: '환자 기본정보',
         ),
-
         const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final columnCount = constraints.maxWidth >= 720 ? 3 : 2;
+              final spacing = 12.0;
+              final totalSpacing = spacing * (columnCount - 1);
+              final itemWidth =
+                  (constraints.maxWidth - totalSpacing) / columnCount;
 
-        LayoutBuilder(
-          builder: (context, constraints) {
-            // ==================================================
-            // 넓은 화면
-            // ==================================================
-
-            if (constraints.maxWidth >= 620) {
-              return Row(
+              return Wrap(
+                spacing: spacing,
+                runSpacing: 16,
                 children: [
-                  Expanded(
-                    child: _MedicalMetric(
-                      icon: Icons.science_outlined,
-                      label: '검사',
-                      value: '$labCount',
-                      unit: '개',
-                      color: AppColors.navy,
+                  SizedBox(
+                    width: itemWidth,
+                    child: _OverviewInfoItem(
+                      label: '환자번호',
+                      value: _overviewValue(patient.medicalRecordNo),
                     ),
                   ),
-
-                  const _VerticalSectionDivider(),
-
-                  Expanded(
-                    child: _MedicalMetric(
-                      icon: Icons.monitor_heart_outlined,
-                      label: 'CT',
-                      value: '$ctCount',
-                      unit: 'Study',
-                      color: AppColors.primaryBlue,
+                  SizedBox(
+                    width: itemWidth,
+                    child: _OverviewInfoItem(
+                      label: '성별 / 나이',
+                      value:
+                          '${_overviewValue(patient.gender)} / ${patient.age}세',
                     ),
                   ),
-
-                  const _VerticalSectionDivider(),
-
-                  Expanded(
-                    child: _MedicalMetric(
-                      icon: Icons.video_library_outlined,
-                      label: '혈관조영',
-                      value: '$angiographyCount',
-                      unit: 'Sequence',
-                      color: AppColors.secondaryBlue,
+                  SizedBox(
+                    width: itemWidth,
+                    child: _OverviewInfoItem(
+                      label: '생년월일',
+                      value: _formatOverviewDate(patient.birthDate),
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _OverviewInfoItem(
+                      label: '연락처',
+                      value: _overviewValue(patient.phone),
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _OverviewInfoItem(
+                      label: '진료과',
+                      value: _overviewValue(patient.department),
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _OverviewInfoItem(
+                      label: '담당 의료진',
+                      value: _overviewValue(patient.doctorName),
                     ),
                   ),
                 ],
               );
-            }
-
-            // ==================================================
-            // 좁은 화면
-            // ==================================================
-
-            return Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                SizedBox(
-                  width: (constraints.maxWidth - 8) / 2,
-                  child: _MedicalMetric(
-                    icon: Icons.science_outlined,
-                    label: '검사',
-                    value: '$labCount',
-                    unit: '개',
-                    color: AppColors.navy,
-                  ),
-                ),
-
-                SizedBox(
-                  width: (constraints.maxWidth - 8) / 2,
-                  child: _MedicalMetric(
-                    icon: Icons.monitor_heart_outlined,
-                    label: 'CT',
-                    value: '$ctCount',
-                    unit: 'Study',
-                    color: AppColors.primaryBlue,
-                  ),
-                ),
-
-                SizedBox(
-                  width: (constraints.maxWidth - 8) / 2,
-                  child: _MedicalMetric(
-                    icon: Icons.video_library_outlined,
-                    label: '혈관조영',
-                    value: '$angiographyCount',
-                    unit: 'Sequence',
-                    color: AppColors.secondaryBlue,
-                  ),
-                ),
-              ],
-            );
-          },
+            },
+          ),
         ),
       ],
     );
   }
 }
 
-// ============================================================
-// STEP 9. Medical Metric
-// 개별 Card 대신 한 줄 정보 강조
-// ============================================================
+class _OverviewClinicalSummarySection extends StatefulWidget {
+  final PatientUiModel patient;
 
-class _MedicalMetric extends StatelessWidget {
-  final IconData icon;
+  const _OverviewClinicalSummarySection({required this.patient});
+
+  @override
+  State<_OverviewClinicalSummarySection> createState() =>
+      _OverviewClinicalSummarySectionState();
+}
+
+class _OverviewClinicalSummarySectionState
+    extends State<_OverviewClinicalSummarySection> {
+  List<PatientMedicalHistory> _medicalHistories = [];
+  bool _isLoadingMedicalHistories = true;
+  bool _medicalHistoryLoadFailed = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadMedicalHistories();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _OverviewClinicalSummarySection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.patient.patientId != widget.patient.patientId) {
+      _loadMedicalHistories();
+    }
+  }
+
+  Future<void> _loadMedicalHistories() async {
+    final requestedPatientId = widget.patient.patientId;
+
+    setState(() {
+      _isLoadingMedicalHistories = true;
+      _medicalHistoryLoadFailed = false;
+    });
+
+    try {
+      final auth = context.read<AuthProvider>();
+
+      final careService = PatientCareService(
+        apiClient: auth.authService.apiClient,
+      );
+
+      final histories = await careService.fetchMedicalHistories(
+        requestedPatientId,
+      );
+
+      if (!mounted || requestedPatientId != widget.patient.patientId) {
+        return;
+      }
+
+      histories.sort((a, b) {
+        final aActive = a.status.toUpperCase() == 'ACTIVE';
+        final bActive = b.status.toUpperCase() == 'ACTIVE';
+
+        if (aActive != bActive) {
+          return aActive ? -1 : 1;
+        }
+
+        final aDate = a.onsetDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bDate = b.onsetDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+
+        return bDate.compareTo(aDate);
+      });
+
+      setState(() {
+        _medicalHistories = histories;
+        _isLoadingMedicalHistories = false;
+      });
+    } catch (error) {
+      debugPrint('[PatientOverviewTab] 과거력 조회 실패: $error');
+
+      if (!mounted || requestedPatientId != widget.patient.patientId) {
+        return;
+      }
+
+      setState(() {
+        _medicalHistories = [];
+        _isLoadingMedicalHistories = false;
+        _medicalHistoryLoadFailed = true;
+      });
+    }
+  }
+
+  String _medicalHistorySummary() {
+    if (_isLoadingMedicalHistories) {
+      return '불러오는 중';
+    }
+
+    if (_medicalHistoryLoadFailed) {
+      return '과거력 정보를 불러오지 못했습니다.';
+    }
+
+    if (_medicalHistories.isEmpty) {
+      return '등록된 과거력 없음';
+    }
+
+    return _medicalHistories
+        .take(5)
+        .map((history) {
+          final name = history.conditionName.trim().isEmpty
+              ? history.conditionCode
+              : history.conditionName;
+
+          if (history.onsetDate == null) {
+            return name;
+          }
+
+          final date = history.onsetDate!;
+          final year = date.year.toString();
+          final month = date.month.toString().padLeft(2, '0');
+          final day = date.day.toString().padLeft(2, '0');
+
+          return '$name ($year.$month.$day~)';
+        })
+        .join(', ');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHeader(
+          icon: Icons.monitor_heart_outlined,
+          title: '임상 요약',
+        ),
+
+        const SizedBox(height: 12),
+
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: [
+              _OverviewClinicalRow(
+                label: '주요 진단',
+                value: _overviewValue(
+                  widget.patient.primaryDiagnosis,
+                  fallback: '등록된 주요 진단 없음',
+                ),
+              ),
+
+              const Divider(height: 1, color: AppColors.border),
+
+              _OverviewClinicalRow(
+                label: '과거력',
+                value: _medicalHistorySummary(),
+              ),
+
+              const Divider(height: 1, color: AppColors.border),
+
+              _OverviewClinicalRow(
+                label: '위험 요인',
+                value: _overviewValue(
+                  widget.patient.riskFactors,
+                  fallback: '등록된 위험 요인 없음',
+                ),
+              ),
+
+              const Divider(height: 1, color: AppColors.border),
+
+              _OverviewClinicalRow(
+                label: '알레르기',
+                value: _overviewValue(
+                  widget.patient.allergy,
+                  fallback: '등록된 알레르기 없음',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _OverviewInfoItem extends StatelessWidget {
   final String label;
   final String value;
-  final String unit;
-  final Color color;
 
-  const _MedicalMetric({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.unit,
-    required this.color,
-  });
+  const _OverviewInfoItem({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          value,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _OverviewClinicalRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _OverviewClinicalRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 11),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.09),
-              borderRadius: BorderRadius.circular(9),
+          SizedBox(
+            width: 92,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
             ),
-            child: Icon(icon, size: 18, color: color),
           ),
-
-          const SizedBox(width: 11),
-
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-
-                const SizedBox(height: 3),
-
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      value,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-
-                    const SizedBox(width: 5),
-
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 2),
-                      child: Text(
-                        unit,
-                        style: const TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
         ],
@@ -268,8 +408,33 @@ class _MedicalMetric extends StatelessWidget {
     );
   }
 }
+
+String _overviewValue(String value, {String fallback = '-'}) {
+  final text = value.trim();
+
+  if (text.isEmpty) {
+    return fallback;
+  }
+
+  return text;
+}
+
+String _formatOverviewDate(String value) {
+  final parsed = DateTime.tryParse(value);
+
+  if (parsed == null) {
+    return _overviewValue(value);
+  }
+
+  final year = parsed.year.toString().padLeft(4, '0');
+  final month = parsed.month.toString().padLeft(2, '0');
+  final day = parsed.day.toString().padLeft(2, '0');
+
+  return '$year.$month.$day';
+}
+
 // ============================================================
-// STEP 10. Recent Timeline Section
+// Recent Timeline Section
 // 날짜별 Accordion + 임상 유형별 그룹
 // 최신 날짜는 기본 펼침
 // ============================================================
@@ -1013,24 +1178,6 @@ class _SectionHeader extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-// ============================================================
-// STEP 14. Vertical Divider
-// ============================================================
-
-class _VerticalSectionDivider extends StatelessWidget {
-  const _VerticalSectionDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 46,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      color: AppColors.border,
     );
   }
 }

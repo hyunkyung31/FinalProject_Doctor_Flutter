@@ -234,43 +234,13 @@ class _PatientListPanelState extends State<PatientListPanel> {
                     ),
                   ),
                 ),
-
-                const SizedBox(width: 8),
-
-                // ========================================================
-                // 상세 필터
-                // ========================================================
-                SizedBox(
-                  height: 40,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      widget.onDetailFilterTap?.call();
-                    },
-                    icon: const Icon(Icons.tune_rounded, size: 15),
-                    label: const Text(
-                      '필터',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.navy,
-                      padding: const EdgeInsets.symmetric(horizontal: 11),
-                      side: const BorderSide(color: AppColors.border),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(9),
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
 
           // ======================================================
           // Patient Scope
-          // 전체 / 내 담당 / 협진 / 최근 조회
+          // 환자 조회 / 협진 / 최근 조회
           // ======================================================
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -278,22 +248,10 @@ class _PatientListPanelState extends State<PatientListPanel> {
               children: [
                 Expanded(
                   child: _ScopeButton(
-                    label: '전체',
+                    label: '환자 조회',
                     selected: widget.selectedScope == PatientListScope.all,
                     onTap: () {
                       widget.onScopeChanged?.call(PatientListScope.all);
-                    },
-                  ),
-                ),
-
-                const SizedBox(width: 5),
-
-                Expanded(
-                  child: _ScopeButton(
-                    label: '내 담당',
-                    selected: widget.selectedScope == PatientListScope.assigned,
-                    onTap: () {
-                      widget.onScopeChanged?.call(PatientListScope.assigned);
                     },
                   ),
                 ),

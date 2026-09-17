@@ -834,7 +834,7 @@ class _WorkflowHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final labels = _isLab
-        ? const ['오더', '결과 등록', '검토', '확정']
+        ? const ['오더', '결과 확인', '검토', '확정']
         : const ['오더', '수행', '결과 검토', '확정'];
 
     return Container(

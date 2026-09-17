@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../examinations/presentation/examination_ui_models.dart';
 import 'patient_detail_tabs.dart';
 import 'patient_overview_tab.dart';
 import 'patient_header.dart';
 import 'patient_examination_tab.dart';
-import 'patient_care_tab.dart';
+// import 'patient_care_tab.dart';
 import 'patient_prescription_tab.dart';
 import 'patient_result_tab.dart';
+import 'patient_care_workspace.dart';
 
 // ============================================================
 // STEP 1. Patient Detail Panel
 // ============================================================
 
-class PatientDetailPanel extends StatelessWidget {
+class PatientDetailPanel extends StatefulWidget {
   final PatientUiModel patient;
 
   final PatientDetailTab selectedTab;
@@ -30,6 +32,8 @@ class PatientDetailPanel extends StatelessWidget {
 
   final VoidCallback onOpenExaminationManagement;
 
+  final Future<List<ExaminationEncounterUiModel>> Function()? encounterLoader;
+
   const PatientDetailPanel({
     super.key,
     required this.patient,
@@ -39,8 +43,61 @@ class PatientDetailPanel extends StatelessWidget {
     required this.isTimelineLoading,
     required this.timelineError,
     required this.canEditLabResults,
+    this.encounterLoader,
     required this.onOpenExaminationManagement,
   });
+
+  @override
+  State<PatientDetailPanel> createState() => _PatientDetailPanelState();
+}
+
+class _PatientDetailPanelState extends State<PatientDetailPanel> {
+  late Set<PatientDetailTab> _visitedTabs;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _visitedTabs = {PatientDetailTab.overview, widget.selectedTab};
+  }
+
+  @override
+  void didUpdateWidget(covariant PatientDetailPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.patient.patientId != widget.patient.patientId) {
+      _visitedTabs = {PatientDetailTab.overview, widget.selectedTab};
+      return;
+    }
+
+    _visitedTabs.add(widget.selectedTab);
+  }
+
+  int get _selectedIndex {
+    switch (widget.selectedTab) {
+      case PatientDetailTab.overview:
+        return 0;
+
+      case PatientDetailTab.care:
+        return 1;
+
+      case PatientDetailTab.examinations:
+        return 2;
+
+      case PatientDetailTab.prescriptions:
+        return 3;
+
+      case PatientDetailTab.aiCdss:
+        return 4;
+
+      case PatientDetailTab.results:
+        return 5;
+    }
+  }
+
+  bool _hasVisited(PatientDetailTab tab) {
+    return _visitedTabs.contains(tab);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,59 +110,106 @@ class PatientDetailPanel extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          // ======================================================
-          // Patient Header
-          // ======================================================
-          PatientHeader(patient: patient),
+          PatientHeader(patient: widget.patient),
 
-          // ======================================================
-          // Tabs
-          // ======================================================
-          PatientDetailTabs(selectedTab: selectedTab, onChanged: onTabChanged),
+          PatientDetailTabs(
+            selectedTab: widget.selectedTab,
+            onChanged: widget.onTabChanged,
+          ),
 
-          // ======================================================
-          // Tab Content
-          // ======================================================
-          Expanded(child: _buildTabContent(context)),
+          Expanded(
+            child: IndexedStack(
+              index: _selectedIndex,
+              children: [
+                _buildOverviewTab(),
+                _buildCareTab(),
+                _buildExaminationTab(),
+                _buildPrescriptionTab(),
+                _buildAiTab(),
+                _buildResultTab(),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // ============================================================
-  // STEP 2. Tab Content
-  // ============================================================
-
-  Widget _buildTabContent(BuildContext context) {
-    switch (selectedTab) {
-      case PatientDetailTab.overview:
-        return PatientOverviewTab(
-          patient: patient,
-          timelineItems: timelineItems,
-          isTimelineLoading: isTimelineLoading,
-          timelineError: timelineError,
-        );
-
-      case PatientDetailTab.care:
-        return PatientCareTab(patient: patient);
-
-      case PatientDetailTab.examinations:
-        return PatientExaminationTab(
-          patient: patient,
-          timelineItems: timelineItems,
-          canEditLabResults: canEditLabResults,
-          onOpenExaminationManagement: onOpenExaminationManagement,
-        );
-
-      case PatientDetailTab.prescriptions:
-        return PatientPrescriptionTab(patient: patient);
-
-      case PatientDetailTab.aiCdss:
-        return _AiTab(patient: patient);
-
-      case PatientDetailTab.results:
-        return PatientResultTab(patient: patient);
+  Widget _buildOverviewTab() {
+    if (!_hasVisited(PatientDetailTab.overview)) {
+      return const SizedBox.shrink();
     }
+
+    return PatientOverviewTab(
+      key: ValueKey('patient-overview-${widget.patient.patientId}'),
+      patient: widget.patient,
+      timelineItems: widget.timelineItems,
+      isTimelineLoading: widget.isTimelineLoading,
+      timelineError: widget.timelineError,
+    );
+  }
+
+  Widget _buildCareTab() {
+    if (!_hasVisited(PatientDetailTab.care)) {
+      return const SizedBox.shrink();
+    }
+
+    return PatientCareWorkspace(
+      key: ValueKey('patient-care-workspace-${widget.patient.patientId}'),
+      patient: widget.patient,
+      timelineItems: widget.timelineItems,
+      canEditLabResults: widget.canEditLabResults,
+      encounterLoader: widget.encounterLoader,
+      onOpenExaminationManagement: widget.onOpenExaminationManagement,
+    );
+  }
+
+  Widget _buildExaminationTab() {
+    if (!_hasVisited(PatientDetailTab.examinations)) {
+      return const SizedBox.shrink();
+    }
+
+    return PatientExaminationTab(
+      key: ValueKey('patient-examinations-${widget.patient.patientId}'),
+      patient: widget.patient,
+      timelineItems: widget.timelineItems,
+      canEditLabResults: widget.canEditLabResults,
+      onOpenExaminationManagement: widget.onOpenExaminationManagement,
+    );
+  }
+
+  Widget _buildPrescriptionTab() {
+    if (!_hasVisited(PatientDetailTab.prescriptions)) {
+      return const SizedBox.shrink();
+    }
+
+    return PatientPrescriptionTab(
+      key: ValueKey('patient-prescriptions-${widget.patient.patientId}'),
+      patient: widget.patient,
+    );
+  }
+
+  Widget _buildAiTab() {
+    if (!_hasVisited(PatientDetailTab.aiCdss)) {
+      return const SizedBox.shrink();
+    }
+
+    return _AiTab(
+      key: ValueKey('patient-ai-${widget.patient.patientId}'),
+      patient: widget.patient,
+    );
+  }
+
+  Widget _buildResultTab() {
+    if (!_hasVisited(PatientDetailTab.results)) {
+      return const SizedBox.shrink();
+    }
+
+    return PatientResultTab(
+      key: ValueKey('patient-results-${widget.patient.patientId}'),
+      patient: widget.patient,
+      timelineItems: widget.timelineItems,
+    );
   }
 }
 
@@ -116,7 +220,7 @@ class PatientDetailPanel extends StatelessWidget {
 class _AiTab extends StatelessWidget {
   final PatientUiModel patient;
 
-  const _AiTab({required this.patient});
+  const _AiTab({super.key, required this.patient});
 
   @override
   Widget build(BuildContext context) {

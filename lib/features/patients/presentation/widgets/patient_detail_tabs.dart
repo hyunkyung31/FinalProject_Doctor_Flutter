@@ -391,54 +391,49 @@ class PatientDetailTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 46,
+      height: 44,
       decoration: const BoxDecoration(
         color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
+        border: Border(
+          top: BorderSide(color: AppColors.border),
+          bottom: BorderSide(color: AppColors.border),
+        ),
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 18),
-        child: Row(
-          children: [
-            _PatientTabButton(
+      child: Row(
+        children: [
+          Expanded(
+            child: _PatientTabButton(
               label: '개요',
               tab: PatientDetailTab.overview,
               selectedTab: selectedTab,
               onChanged: onChanged,
             ),
-            _PatientTabButton(
+          ),
+          Expanded(
+            child: _PatientTabButton(
               label: '진료',
               tab: PatientDetailTab.care,
               selectedTab: selectedTab,
               onChanged: onChanged,
             ),
-            _PatientTabButton(
-              label: '검사',
-              tab: PatientDetailTab.examinations,
-              selectedTab: selectedTab,
-              onChanged: onChanged,
-            ),
-            _PatientTabButton(
-              label: '약물 처방',
-              tab: PatientDetailTab.prescriptions,
-              selectedTab: selectedTab,
-              onChanged: onChanged,
-            ),
-            _PatientTabButton(
-              label: 'AI·CDSS',
+          ),
+          Expanded(
+            child: _PatientTabButton(
+              label: 'AI 분석',
               tab: PatientDetailTab.aiCdss,
               selectedTab: selectedTab,
               onChanged: onChanged,
             ),
-            _PatientTabButton(
+          ),
+          Expanded(
+            child: _PatientTabButton(
               label: '결과',
               tab: PatientDetailTab.results,
               selectedTab: selectedTab,
               onChanged: onChanged,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -465,28 +460,30 @@ class _PatientTabButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final selected = selectedTab == tab;
 
-    return InkWell(
-      onTap: () {
-        onChanged(tab);
-      },
-      child: Container(
-        height: 46,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: selected ? AppColors.primaryBlue : Colors.transparent,
-              width: 2,
+    return Material(
+      color: selected ? AppColors.primaryBlue : AppColors.surface,
+      child: InkWell(
+        onTap: () {
+          onChanged(tab);
+        },
+        child: Container(
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            border: Border(
+              right: BorderSide(
+                color: AppColors.border,
+                width: tab == PatientDetailTab.results ? 0 : 1,
+              ),
             ),
           ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            color: selected ? AppColors.navy : AppColors.textSecondary,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+              color: selected ? Colors.white : AppColors.textSecondary,
+            ),
           ),
         ),
       ),

@@ -106,6 +106,64 @@ class ExaminationResultDetail {
   }
 }
 
+class PatientQueryFilter {
+  final String? birthDate;
+  final String? examDateFrom;
+  final String? examDateTo;
+  final String? examinationStatus;
+  final int? examinationTypeId;
+  final String? aiStatus;
+
+  const PatientQueryFilter({
+    this.birthDate,
+    this.examDateFrom,
+    this.examDateTo,
+    this.examinationStatus,
+    this.examinationTypeId,
+    this.aiStatus,
+  });
+
+  bool get isEmpty =>
+      birthDate == null &&
+      examDateFrom == null &&
+      examDateTo == null &&
+      examinationStatus == null &&
+      examinationTypeId == null &&
+      aiStatus == null;
+
+  Map<String, dynamic> toQueryParameters({required int page}) {
+    return {
+      'page': page,
+      if (birthDate != null) 'birth_date': birthDate,
+      if (examDateFrom != null) 'exam_date_from': examDateFrom,
+      if (examDateTo != null) 'exam_date_to': examDateTo,
+      if (examinationStatus != null) 'examination_status': examinationStatus,
+      if (examinationTypeId != null) 'examination_type_id': examinationTypeId,
+      if (aiStatus != null) 'ai_status': aiStatus,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is PatientQueryFilter &&
+        other.birthDate == birthDate &&
+        other.examDateFrom == examDateFrom &&
+        other.examDateTo == examDateTo &&
+        other.examinationStatus == examinationStatus &&
+        other.examinationTypeId == examinationTypeId &&
+        other.aiStatus == aiStatus;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    birthDate,
+    examDateFrom,
+    examDateTo,
+    examinationStatus,
+    examinationTypeId,
+    aiStatus,
+  );
+}
 // ============================================================
 // Patient Service : 실제 Patient API 연결
 // ============================================================
@@ -131,10 +189,13 @@ class PatientService {
   // GET /patients/?page={page}
   // ==========================================================
 
-  Future<PatientPageResult> fetchPatientPage({int page = 1}) async {
+  Future<PatientPageResult> fetchPatientPage({
+    int page = 1,
+    PatientQueryFilter filter = const PatientQueryFilter(),
+  }) async {
     final response = await apiClient.dio.get(
       ApiEndpoints.patients,
-      queryParameters: {'page': page},
+      queryParameters: filter.toQueryParameters(page: page),
     );
 
     return _parsePatientPageResponse(response.data, responseName: '환자 목록');
