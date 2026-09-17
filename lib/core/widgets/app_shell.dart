@@ -96,7 +96,7 @@ class _SideNavigation extends StatelessWidget {
     ),
 
     AppNavigationItem(
-      label: '검사',
+      label: '검사 관리',
       icon: Icons.science_outlined,
       permission: AppPermission.examinationView,
     ),
@@ -186,7 +186,8 @@ class _SideNavigation extends StatelessWidget {
             _BottomButton(
               icon: Icons.settings_outlined,
               label: '설정',
-
+              selected:
+                  GoRouterState.of(context).uri.path == AppRoutes.settings,
               onTap: () {
                 context.go(AppRoutes.settings);
               },
@@ -238,7 +239,7 @@ class _SideNavigation extends StatelessWidget {
       case '예약':
         return AppRoutes.appointments;
 
-      case '검사':
+      case '검사 관리':
         return AppRoutes.examinations;
 
       case '영상':
@@ -392,34 +393,50 @@ class _NavigationButton extends StatelessWidget {
 class _BottomButton extends StatelessWidget {
   final IconData icon;
   final String label;
+  final bool selected;
   final VoidCallback onTap;
 
   const _BottomButton({
     required this.icon,
     required this.label,
     required this.onTap,
+    this.selected = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      width: double.infinity,
+      height: 54,
+      decoration: BoxDecoration(
+        color: selected ? AppColors.navyLight : Colors.transparent,
         borderRadius: BorderRadius.circular(AppRadius.medium),
-        child: SizedBox(
-          height: 54,
-          width: double.infinity,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.medium),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: Colors.white54, size: 21),
+              Icon(
+                icon,
+                color: selected ? Colors.white : Colors.white54,
+                size: 21,
+              ),
 
               const SizedBox(height: 4),
 
               Text(
                 label,
-                style: const TextStyle(color: Colors.white54, fontSize: 10),
+                style: TextStyle(
+                  color: selected ? Colors.white : Colors.white54,
+                  fontSize: 10,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                ),
               ),
             ],
           ),
@@ -588,70 +605,20 @@ class _TopBar extends StatelessWidget {
           ),
 
           const SizedBox(width: 5),
-
-          // ====================================================
-          // 개발용 Role 변경
-          // 실제 로그인 API 연결 후 제거
-          // ====================================================
-          PopupMenuButton<UserRole>(
-            tooltip: '테스트 사용자 변경',
-
-            icon: const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: AppColors.textSecondary,
-            ),
-
-            onSelected: (role) {
-              auth.switchRole(role);
-            },
-
-            itemBuilder: (_) {
-              return const [
-                PopupMenuItem(
-                  value: UserRole.doctor,
-
-                  child: Row(
-                    children: [
-                      Icon(Icons.medical_services_outlined, size: 18),
-
-                      SizedBox(width: 10),
-
-                      Text('의사 계정으로 보기'),
-                    ],
-                  ),
-                ),
-
-                PopupMenuItem(
-                  value: UserRole.nurse,
-
-                  child: Row(
-                    children: [
-                      Icon(Icons.local_hospital_outlined, size: 18),
-
-                      SizedBox(width: 10),
-
-                      Text('간호사 계정으로 보기'),
-                    ],
-                  ),
-                ),
-              ];
-            },
-          ),
         ],
       ),
     );
   }
 
   // ============================================================
-  // STEP 9. 오늘 날짜
+  // 오늘 날짜
   // intl 패키지 없이 기본 Dart로 처리
   // ============================================================
 
   String _todayText() {
-    final now = DateTime.now();
+    final now = DateTime.now().toUtc().add(const Duration(hours: 9));
 
     final month = now.month.toString().padLeft(2, '0');
-
     final day = now.day.toString().padLeft(2, '0');
 
     return '${now.year}.$month.$day';

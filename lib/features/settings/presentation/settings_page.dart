@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/settings/text_scale_provider.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/app_shell.dart';
+import '../../../../core/settings/text_scale_provider.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_shell.dart';
 
 // ============================================================
 // STEP 2. Settings Page
@@ -52,21 +52,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     return AppShell(
       pageTitle: '설정',
-
-      // ========================================================
-      // IMPORTANT
-      // 현재 프로젝트의 Settings용 selectedIndex 값을
-      // 확인한 뒤 필요하면 이 값만 변경합니다.
-      //
-      // CDSS 제거 후 일반 Sidebar:
-      // 홈 0 / 환자 1 / 예약 2 / 검사 3 /
-      // 영상 4 / AI 5 / 협진 6 / 일정 7
-      //
-      // 설정은 하단 별도 메뉴이므로 AppShell 구현에 따라
-      // 별도 처리될 수 있습니다.
-      // ========================================================
-      selectedIndex: 7,
-
+      selectedIndex: -1,
       body: Material(
         color: AppColors.background,
         child: Container(

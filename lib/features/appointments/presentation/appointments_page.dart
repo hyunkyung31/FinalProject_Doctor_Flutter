@@ -7,6 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_shell.dart';
 
 import 'appointment_ui_model.dart';
+import '../data/services/appointment_service.dart';
 import 'widgets/appointment_detail_panel.dart';
 import 'widgets/appointment_list_panel.dart';
 import 'widgets/appointment_status_filter.dart';
@@ -29,7 +30,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
   // 실제 /api/staff/reservations/ 응답 구조 기준
   // ============================================================
 
-  late List<AppointmentUiModel> _appointments;
+  List<AppointmentUiModel> _appointments = [];
 
   AppointmentStatusFilter _selectedFilter = AppointmentStatusFilter.all;
 
@@ -43,10 +44,66 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
   void initState() {
     super.initState();
 
-    _appointments = _buildMockAppointments();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAppointments();
+    });
+  }
 
-    if (_appointments.isNotEmpty) {
-      _selectedAppointmentId = _appointments.first.id;
+  // ============================================================
+  // STEP 4. 실제 예약 목록 조회
+  // GET /staff/reservations/
+  // ============================================================
+
+  Future<void> _loadAppointments() async {
+    try {
+      final auth = context.read<AuthProvider>();
+
+      final appointmentService = AppointmentService(
+        apiClient: auth.authService.apiClient,
+      );
+
+      final appointments = await appointmentService.fetchAppointments();
+
+      // 예약 시간 기준 정렬
+      appointments.sort((a, b) => a.reservedAt.compareTo(b.reservedAt));
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _appointments = appointments;
+
+        if (_appointments.isEmpty) {
+          _selectedAppointmentId = null;
+          return;
+        }
+
+        final selectedExists = _appointments.any(
+          (item) => item.id == _selectedAppointmentId,
+        );
+
+        if (!selectedExists) {
+          _selectedAppointmentId = _appointments.first.id;
+        }
+      });
+
+      debugPrint('[APPOINTMENTS] 예약 목록 조회 완료: ${appointments.length}건');
+    } catch (error) {
+      debugPrint('[APPOINTMENTS] 예약 목록 조회 실패: $error');
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('예약 목록을 불러오지 못했습니다.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
     }
   }
 
@@ -153,33 +210,122 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
   }
 
   // ============================================================
-  // STEP 8. Mock 예약 승인
-  // 현재는 UI 확인용
-  // 추후 POST /staff/reservations/{id}/accept/ 연결
+  // STEP 8. 실제 예약 승인
+  // POST /staff/reservations/{id}/accept/
   // ============================================================
 
-  void _acceptAppointment(AppointmentUiModel appointment) {
-    final index = _appointments.indexWhere((item) => item.id == appointment.id);
+  Future<void> _acceptAppointment(AppointmentUiModel appointment) async {
+    // ==========================================================
+    // RBAC 이중 확인
+    // 간호사만 예약 승인 가능
+    // ==========================================================
 
-    if (index < 0) {
+    final auth = context.read<AuthProvider>();
+
+    if (!auth.hasPermission(AppPermission.appointmentManage)) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('현재 계정에는 예약 승인 권한이 없습니다.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+
       return;
     }
 
-    setState(() {
-      _appointments[index] = appointment.copyWith(
-        status: AppointmentStatus.accepted,
-        acceptedAt: DateTime.now(),
-      );
-    });
+    // ==========================================================
+    // 승인 가능한 예약인지 확인
+    // ==========================================================
 
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text('예약 승인 UI가 반영되었습니다. 실제 API는 아직 연결하지 않았습니다.'),
-          duration: Duration(seconds: 2),
-        ),
+    if (appointment.status != AppointmentStatus.requested) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('승인 대기 상태의 예약만 승인할 수 있습니다.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+      return;
+    }
+
+    // ==========================================================
+    // 담당 의사 확인
+    // Backend에서 doctor_id 필수
+    // ==========================================================
+
+    final doctorId = appointment.doctor;
+
+    if (doctorId == null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('담당 의사 정보가 없어 예약을 승인할 수 없습니다.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+      return;
+    }
+
+    // ==========================================================
+    // 실제 예약 승인 API 호출
+    // ==========================================================
+
+    try {
+      final appointmentService = AppointmentService(
+        apiClient: auth.authService.apiClient,
       );
+
+      await appointmentService.acceptAppointment(
+        reservationId: appointment.id,
+        doctorId: doctorId,
+      );
+
+      // ========================================================
+      // 승인 후 서버 데이터 다시 조회
+      // ========================================================
+
+      await _loadAppointments();
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('예약이 승인되었습니다.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+      debugPrint(
+        '[APPOINTMENTS] 예약 승인 완료: '
+        'reservationId=${appointment.id}, '
+        'doctorId=$doctorId',
+      );
+    } catch (error) {
+      debugPrint('[APPOINTMENTS] 예약 승인 실패: $error');
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('예약 승인에 실패했습니다.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+    }
   }
 
   // ============================================================
@@ -272,146 +418,5 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
         ),
       ),
     );
-  }
-
-  // ============================================================
-  // STEP 11. Mock Data
-  // Swagger 실제 응답을 기반으로 구성
-  // ============================================================
-
-  List<AppointmentUiModel> _buildMockAppointments() {
-    return [
-      AppointmentUiModel(
-        id: 8,
-        applicantName: '김유리',
-        applicantBirthDate: '1972-01-01',
-        applicantContact: '+821012345678',
-        applicantGender: null,
-        reservedAt: DateTime(2026, 9, 14, 8, 30),
-        status: AppointmentStatus.requested,
-        acceptedAt: null,
-        createdAt: DateTime(2026, 9, 12, 12, 28),
-        updatedAt: DateTime(2026, 9, 12, 12, 28),
-        canceledAt: null,
-        cancelReason: null,
-        patientAccount: 6,
-        patient: null,
-        doctor: 3,
-        identityVerification: 18,
-        department: 1,
-        acceptedBy: null,
-        canceledBy: null,
-      ),
-
-      AppointmentUiModel(
-        id: 10,
-        applicantName: '123',
-        applicantBirthDate: '1995-04-20',
-        applicantContact: '+821012345678',
-        applicantGender: null,
-        reservedAt: DateTime(2026, 9, 14, 9, 0),
-        status: AppointmentStatus.requested,
-        acceptedAt: null,
-        createdAt: DateTime(2026, 9, 12, 15, 44),
-        updatedAt: DateTime(2026, 9, 12, 15, 44),
-        canceledAt: null,
-        cancelReason: null,
-        patientAccount: 6,
-        patient: null,
-        doctor: 3,
-        identityVerification: 20,
-        department: 1,
-        acceptedBy: null,
-        canceledBy: null,
-      ),
-
-      AppointmentUiModel(
-        id: 9,
-        applicantName: '123',
-        applicantBirthDate: '1995-01-01',
-        applicantContact: '+821012345678',
-        applicantGender: null,
-        reservedAt: DateTime(2026, 9, 14, 9, 30),
-        status: AppointmentStatus.requested,
-        acceptedAt: null,
-        createdAt: DateTime(2026, 9, 12, 14, 4),
-        updatedAt: DateTime(2026, 9, 12, 14, 4),
-        canceledAt: null,
-        cancelReason: null,
-        patientAccount: 6,
-        patient: null,
-        doctor: 3,
-        identityVerification: 19,
-        department: 1,
-        acceptedBy: null,
-        canceledBy: null,
-      ),
-
-      AppointmentUiModel(
-        id: 11,
-        applicantName: '김유리',
-        applicantBirthDate: '1999-01-01',
-        applicantContact: '+821012345678',
-        applicantGender: null,
-        reservedAt: DateTime(2026, 9, 14, 11, 0),
-        status: AppointmentStatus.requested,
-        acceptedAt: null,
-        createdAt: DateTime(2026, 9, 12, 17, 14),
-        updatedAt: DateTime(2026, 9, 12, 17, 14),
-        canceledAt: null,
-        cancelReason: null,
-        patientAccount: 6,
-        patient: null,
-        doctor: 3,
-        identityVerification: 21,
-        department: 1,
-        acceptedBy: null,
-        canceledBy: null,
-      ),
-
-      AppointmentUiModel(
-        id: 2,
-        applicantName: '테스트환자',
-        applicantBirthDate: '1990-01-01',
-        applicantContact: '010-1111-2222',
-        applicantGender: 'FEMALE',
-        reservedAt: DateTime(2026, 8, 26, 22, 26),
-        status: AppointmentStatus.accepted,
-        acceptedAt: DateTime(2026, 8, 24, 22, 30),
-        createdAt: DateTime(2026, 8, 24, 22, 26),
-        updatedAt: DateTime(2026, 8, 24, 22, 30),
-        canceledAt: null,
-        cancelReason: null,
-        patientAccount: 1,
-        patient: 2,
-        doctor: null,
-        identityVerification: null,
-        department: 1,
-        acceptedBy: 2,
-        canceledBy: null,
-      ),
-
-      AppointmentUiModel(
-        id: 4,
-        applicantName: '김유리',
-        applicantBirthDate: '1995-12-20',
-        applicantContact: '01012345678',
-        applicantGender: null,
-        reservedAt: DateTime(2026, 9, 24, 10, 30),
-        status: AppointmentStatus.canceled,
-        acceptedAt: null,
-        createdAt: DateTime(2026, 9, 10, 16, 10),
-        updatedAt: DateTime(2026, 9, 12, 13, 2),
-        canceledAt: DateTime(2026, 9, 12, 13, 2),
-        cancelReason: null,
-        patientAccount: 6,
-        patient: null,
-        doctor: 3,
-        identityVerification: 13,
-        department: 1,
-        acceptedBy: null,
-        canceledBy: null,
-      ),
-    ];
   }
 }

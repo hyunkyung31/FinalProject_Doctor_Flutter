@@ -3,27 +3,202 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 
 // ============================================================
+// LAB. 환자 검사 측정값 Model
+// integrated-data의 lab_measurements 기준
+// ============================================================
+
+class PatientLabMeasurement {
+  final int? measurementId;
+  final int? clinicalVariableId;
+
+  final String code;
+  final String name;
+  final String displayName;
+
+  final String value;
+  final String unit;
+
+  final int? referenceRangeId;
+  final double? referenceMin;
+  final double? referenceMax;
+  final String referenceText;
+
+  final String abnormalFlag;
+  final String validationStatus;
+
+  final DateTime? measuredAt;
+
+  const PatientLabMeasurement({
+    required this.measurementId,
+    required this.clinicalVariableId,
+    required this.code,
+    required this.name,
+    required this.displayName,
+    required this.value,
+    required this.unit,
+    required this.referenceRangeId,
+    required this.referenceMin,
+    required this.referenceMax,
+    required this.referenceText,
+    required this.abnormalFlag,
+    required this.validationStatus,
+    required this.measuredAt,
+  });
+
+  factory PatientLabMeasurement.fromJson(Map<String, dynamic> json) {
+    return PatientLabMeasurement(
+      measurementId: _parseInt(json['measurement_id'] ?? json['id']),
+      clinicalVariableId: _parseInt(json['clinical_variable_id']),
+      code: json['code']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      displayName:
+          json['display_name']?.toString() ?? json['name']?.toString() ?? '',
+      value: _parseValue(json),
+      unit: json['unit']?.toString() ?? '',
+      referenceRangeId: _parseInt(json['reference_range_id']),
+      referenceMin: _parseDouble(json['reference_min']),
+      referenceMax: _parseDouble(json['reference_max']),
+      referenceText: json['reference_text']?.toString() ?? '',
+      abnormalFlag: json['abnormal_flag']?.toString().toUpperCase() ?? '',
+      validationStatus:
+          json['validation_status']?.toString().toUpperCase() ?? '',
+      measuredAt: DateTime.tryParse(json['measured_at']?.toString() ?? ''),
+    );
+  }
+
+  static int? _parseInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+
+    if (value is num) {
+      return value.toInt();
+    }
+
+    return int.tryParse(value?.toString() ?? '');
+  }
+
+  static double? _parseDouble(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    return double.tryParse(value?.toString() ?? '');
+  }
+
+  static String _parseValue(Map<String, dynamic> json) {
+    final value =
+        json['value'] ??
+        json['value_numeric'] ??
+        json['value_text'] ??
+        json['value_boolean'];
+
+    return value?.toString() ?? '-';
+  }
+
+  String get displayValue {
+    if (unit.isEmpty) {
+      return value;
+    }
+
+    return '$value $unit';
+  }
+
+  bool get isAbnormal {
+    return abnormalFlag == 'HIGH' || abnormalFlag == 'LOW';
+  }
+
+  bool get isHigh => abnormalFlag == 'HIGH';
+
+  bool get isLow => abnormalFlag == 'LOW';
+
+  bool get isNormal => abnormalFlag == 'NORMAL';
+}
+
+// ============================================================
+// TIMELINE. 환자 진료이력 Model
+// GET /patients/{patientId}/timeline
+// ============================================================
+
+class PatientTimelineItem {
+  final String eventType;
+  final int referenceId;
+  final DateTime? occurredAt;
+  final String title;
+  final String status;
+  final String summary;
+  final Map<String, dynamic> data;
+
+  const PatientTimelineItem({
+    required this.eventType,
+    required this.referenceId,
+    required this.occurredAt,
+    required this.title,
+    required this.status,
+    required this.summary,
+    required this.data,
+  });
+
+  factory PatientTimelineItem.fromJson(Map<String, dynamic> json) {
+    final rawData = json['data'];
+
+    return PatientTimelineItem(
+      eventType: json['event_type']?.toString() ?? '',
+      referenceId: (json['reference_id'] as num?)?.toInt() ?? 0,
+      occurredAt: DateTime.tryParse(json['occurred_at']?.toString() ?? ''),
+      title: json['title']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+      summary: json['summary']?.toString() ?? '',
+      data: rawData is Map
+          ? Map<String, dynamic>.from(rawData)
+          : <String, dynamic>{},
+    );
+  }
+}
+
+// ============================================================
 // STEP 1. 환자 UI Model
-// 현재는 Mock UI 전용
-// 추후 Backend Patient Model 연결 시 교체
+// 실제 Patient API + 기존 UI 호환
 // ============================================================
 
 class PatientUiModel {
-  final String id;
+  // ==========================================================
+  // Backend 실제 Patient 기본 정보
+  // ==========================================================
+
+  final int patientId;
+  final String medicalRecordNo;
+
   final String name;
-  final int age;
+  final String birthDate;
   final String gender;
+  final String phone;
+  final String status;
+
+  final DateTime? registeredAt;
+
+  // ==========================================================
+  // Integrated Data
+  // ==========================================================
 
   final String department;
   final String doctorName;
-  final String careType;
 
+  final List<PatientLabMeasurement> labMeasurements;
+
+  final int labMeasurementCount;
+  final int ctStudyCount;
+  final int angiographySequenceCount;
+
+  // ==========================================================
+  // 아직 실제 API가 확인되지 않은 UI 정보
+  // ==========================================================
+
+  final String careType;
   final bool highRisk;
   final bool aiPending;
-
   final String currentTask;
 
-  final String phone;
   final String primaryDiagnosis;
   final String riskFactors;
   final String allergy;
@@ -35,79 +210,172 @@ class PatientUiModel {
   final String nextAppointment;
 
   const PatientUiModel({
-    required this.id,
+    required this.patientId,
+    required this.medicalRecordNo,
     required this.name,
-    required this.age,
+    required this.birthDate,
     required this.gender,
-    required this.department,
-    required this.doctorName,
-    required this.careType,
-    required this.highRisk,
-    required this.aiPending,
-    required this.currentTask,
     required this.phone,
-    required this.primaryDiagnosis,
-    required this.riskFactors,
-    required this.allergy,
-    required this.latestExam,
-    required this.latestExamDate,
-    required this.aiSummary,
-    required this.nextAppointment,
+    required this.status,
+    required this.registeredAt,
+    this.department = '진료과 정보 없음',
+    this.doctorName = '담당 의료진 정보 없음',
+    this.labMeasurements = const [],
+    this.labMeasurementCount = 0,
+    this.ctStudyCount = 0,
+    this.angiographySequenceCount = 0,
+    this.careType = '미확인',
+    this.highRisk = false,
+    this.aiPending = false,
+    this.currentTask = '현재 업무 정보 없음',
+    this.primaryDiagnosis = '진단 정보 없음',
+    this.riskFactors = '위험 요인 정보 없음',
+    this.allergy = '알레르기 정보 없음',
+    this.latestExam = '검사 정보 없음',
+    this.latestExamDate = '-',
+    this.aiSummary = 'AI 분석 정보 없음',
+    this.nextAppointment = '예정된 일정 정보 없음',
   });
-}
 
-// ============================================================
-// STEP 2. 환자 상세 Tab
-// ============================================================
+  // ==========================================================
+  // Patient List JSON → PatientUiModel
+  // GET /api/patients/
+  // ==========================================================
 
-enum PatientDetailTab { overview, timeline, examinations, imaging, ai }
+  factory PatientUiModel.fromJson(Map<String, dynamic> json) {
+    return PatientUiModel(
+      patientId: (json['id'] as num).toInt(),
+      medicalRecordNo: json['medical_record_no']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      birthDate: json['birth_date']?.toString() ?? '',
+      gender: _parseGender(json['gender']?.toString()),
+      phone: json['contact']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+      registeredAt: _parseNullableDateTime(json['registered_at']),
+    );
+  }
 
-// ============================================================
-// STEP 3. Tab Extension
-// ============================================================
+  // ==========================================================
+  // 화면 표시용 기존 id 호환
+  // ==========================================================
 
-extension PatientDetailTabExtension on PatientDetailTab {
-  String get label {
-    switch (this) {
-      case PatientDetailTab.overview:
-        return '개요';
+  String get id => medicalRecordNo;
 
-      case PatientDetailTab.timeline:
-        return '타임라인';
+  // ==========================================================
+  // 나이 계산
+  // ==========================================================
 
-      case PatientDetailTab.examinations:
-        return '검사';
+  int get age {
+    final parsedBirthDate = DateTime.tryParse(birthDate);
 
-      case PatientDetailTab.imaging:
-        return '영상';
+    if (parsedBirthDate == null) {
+      return 0;
+    }
 
-      case PatientDetailTab.ai:
-        return 'AI';
+    final now = DateTime.now();
+
+    var result = now.year - parsedBirthDate.year;
+
+    final birthdayPassed =
+        now.month > parsedBirthDate.month ||
+        (now.month == parsedBirthDate.month && now.day >= parsedBirthDate.day);
+
+    if (!birthdayPassed) {
+      result -= 1;
+    }
+
+    return result;
+  }
+
+  // ==========================================================
+  // Gender 변환
+  // ==========================================================
+
+  static String _parseGender(String? value) {
+    switch (value?.toUpperCase()) {
+      case 'M':
+      case 'MALE':
+        return '남';
+
+      case 'F':
+      case 'FEMALE':
+        return '여';
+
+      default:
+        return '미상';
     }
   }
 
-  IconData get icon {
-    switch (this) {
-      case PatientDetailTab.overview:
-        return Icons.dashboard_outlined;
+  // ==========================================================
+  // Nullable DateTime
+  // ==========================================================
 
-      case PatientDetailTab.timeline:
-        return Icons.timeline_rounded;
-
-      case PatientDetailTab.examinations:
-        return Icons.science_outlined;
-
-      case PatientDetailTab.imaging:
-        return Icons.monitor_heart_outlined;
-
-      case PatientDetailTab.ai:
-        return Icons.auto_awesome_outlined;
+  static DateTime? _parseNullableDateTime(dynamic value) {
+    if (value == null) {
+      return null;
     }
+
+    return DateTime.tryParse(value.toString());
+  }
+
+  // ==========================================================
+  // Integrated Data 적용
+  // ==========================================================
+
+  PatientUiModel copyWithIntegratedData({
+    String? department,
+    String? doctorName,
+    List<PatientLabMeasurement>? labMeasurements,
+    int? labMeasurementCount,
+    int? ctStudyCount,
+    int? angiographySequenceCount,
+  }) {
+    return PatientUiModel(
+      patientId: patientId,
+      medicalRecordNo: medicalRecordNo,
+      name: name,
+      birthDate: birthDate,
+      gender: gender,
+      phone: phone,
+      status: status,
+      registeredAt: registeredAt,
+      department: department ?? this.department,
+      doctorName: doctorName ?? this.doctorName,
+      labMeasurements: labMeasurements ?? this.labMeasurements,
+      labMeasurementCount: labMeasurementCount ?? this.labMeasurementCount,
+      ctStudyCount: ctStudyCount ?? this.ctStudyCount,
+      angiographySequenceCount:
+          angiographySequenceCount ?? this.angiographySequenceCount,
+      careType: careType,
+      highRisk: highRisk,
+      aiPending: aiPending,
+      currentTask: currentTask,
+      primaryDiagnosis: primaryDiagnosis,
+      riskFactors: riskFactors,
+      allergy: allergy,
+      latestExam: latestExam,
+      latestExamDate: latestExamDate,
+      aiSummary: aiSummary,
+      nextAppointment: nextAppointment,
+    );
   }
 }
 
 // ============================================================
-// STEP 4. Patient Detail Tabs
+// STEP 2. Patient Detail Tab
+// ============================================================
+
+enum PatientDetailTab {
+  overview,
+  care,
+  examinations,
+  prescriptions,
+  aiCdss,
+  results,
+}
+
+// ============================================================
+// STEP 3. Patient Detail Tabs
 // ============================================================
 
 class PatientDetailTabs extends StatelessWidget {
@@ -123,80 +391,102 @@ class PatientDetailTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 48,
+      height: 46,
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
-      child: Row(
-        children: [
-          for (final tab in PatientDetailTab.values)
-            Expanded(
-              child: _PatientTabButton(
-                tab: tab,
-                selected: tab == selectedTab,
-                onTap: () {
-                  onChanged(tab);
-                },
-              ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        child: Row(
+          children: [
+            _PatientTabButton(
+              label: '개요',
+              tab: PatientDetailTab.overview,
+              selectedTab: selectedTab,
+              onChanged: onChanged,
             ),
-        ],
+            _PatientTabButton(
+              label: '진료',
+              tab: PatientDetailTab.care,
+              selectedTab: selectedTab,
+              onChanged: onChanged,
+            ),
+            _PatientTabButton(
+              label: '검사',
+              tab: PatientDetailTab.examinations,
+              selectedTab: selectedTab,
+              onChanged: onChanged,
+            ),
+            _PatientTabButton(
+              label: '약물 처방',
+              tab: PatientDetailTab.prescriptions,
+              selectedTab: selectedTab,
+              onChanged: onChanged,
+            ),
+            _PatientTabButton(
+              label: 'AI·CDSS',
+              tab: PatientDetailTab.aiCdss,
+              selectedTab: selectedTab,
+              onChanged: onChanged,
+            ),
+            _PatientTabButton(
+              label: '결과',
+              tab: PatientDetailTab.results,
+              selectedTab: selectedTab,
+              onChanged: onChanged,
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 // ============================================================
-// STEP 5. 개별 Tab Button
+// STEP 4. Patient Tab Button
 // ============================================================
 
 class _PatientTabButton extends StatelessWidget {
+  final String label;
   final PatientDetailTab tab;
-  final bool selected;
-  final VoidCallback onTap;
+  final PatientDetailTab selectedTab;
+  final ValueChanged<PatientDetailTab> onChanged;
 
   const _PatientTabButton({
+    required this.label,
     required this.tab,
-    required this.selected,
-    required this.onTap,
+    required this.selectedTab,
+    required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: selected ? AppColors.navy : Colors.transparent,
-                width: selected ? 3 : 0,
-              ),
+    final selected = selectedTab == tab;
+
+    return InkWell(
+      onTap: () {
+        onChanged(tab);
+      },
+      child: Container(
+        height: 46,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: selected ? AppColors.primaryBlue : Colors.transparent,
+              width: 2,
             ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                tab.icon,
-                size: 16,
-                color: selected ? AppColors.navy : AppColors.textSecondary,
-              ),
-
-              const SizedBox(width: 6),
-
-              Text(
-                tab.label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: selected ? AppColors.navy : AppColors.textSecondary,
-                ),
-              ),
-            ],
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color: selected ? AppColors.navy : AppColors.textSecondary,
           ),
         ),
       ),

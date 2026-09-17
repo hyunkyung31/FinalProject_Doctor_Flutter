@@ -157,11 +157,11 @@ class _ExaminationProgressPanelState extends State<ExaminationProgressPanel> {
                       ),
                       const SizedBox(width: 5),
                       _StatusFilter(
-                        text: '대기',
-                        selected: _statusFilter == 'READY',
+                        text: '예정',
+                        selected: _statusFilter == 'SCHEDULED',
                         onTap: () {
                           setState(() {
-                            _statusFilter = 'READY';
+                            _statusFilter = 'SCHEDULED';
                           });
                         },
                       ),
@@ -381,6 +381,48 @@ class _EmptyProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(child: Text('검사를 선택해 주세요.'));
+  }
+}
+
+class ExaminationProgressDetailArea extends StatelessWidget {
+  final ExaminationExecutionUiModel examination;
+  final ExaminationOrderUiModel order;
+  final ExaminationTypeUiModel type;
+  final ExaminationPatientUiModel patient;
+
+  final bool canPerform;
+  final bool canEditProcedureNursing;
+
+  final VoidCallback onStart;
+  final VoidCallback onComplete;
+  final VoidCallback onFail;
+
+  const ExaminationProgressDetailArea({
+    super.key,
+    required this.examination,
+    required this.order,
+    required this.type,
+    required this.patient,
+    required this.canPerform,
+    required this.canEditProcedureNursing,
+    required this.onStart,
+    required this.onComplete,
+    required this.onFail,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _ProgressDetailArea(
+      examination: examination,
+      order: order,
+      type: type,
+      patient: patient,
+      canPerform: canPerform,
+      canEditProcedureNursing: canEditProcedureNursing,
+      onStart: onStart,
+      onComplete: onComplete,
+      onFail: onFail,
+    );
   }
 }
 

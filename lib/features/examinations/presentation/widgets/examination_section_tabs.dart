@@ -3,19 +3,16 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 
 // ============================================================
-// STEP 1. 검사 화면 Section
+// 검사 관리 화면 Section
 // ============================================================
 
-enum ExaminationSection { orders, progress, results }
+enum ExaminationSection { orders, results }
 
 extension ExaminationSectionExtension on ExaminationSection {
   String get label {
     switch (this) {
       case ExaminationSection.orders:
-        return '검사 오더';
-
-      case ExaminationSection.progress:
-        return '검사 진행';
+        return '검사 관리';
 
       case ExaminationSection.results:
         return '결과 확인';
@@ -24,12 +21,11 @@ extension ExaminationSectionExtension on ExaminationSection {
 }
 
 // ============================================================
-// STEP 2. Section Tabs
+// Section Tabs
 // ============================================================
 
 class ExaminationSectionTabs extends StatelessWidget {
   final ExaminationSection selectedSection;
-
   final ValueChanged<ExaminationSection> onChanged;
 
   const ExaminationSectionTabs({
@@ -56,7 +52,7 @@ class ExaminationSectionTabs extends StatelessWidget {
 }
 
 // ============================================================
-// STEP 3. Tab Button
+// Tab Button
 // ============================================================
 
 class _SectionTabButton extends StatelessWidget {

@@ -9,6 +9,7 @@ import '../../features/examinations/presentation/examinations_page.dart';
 import '../../features/imaging/presentation/imaging_page.dart';
 import '../../features/ai/presentation/ai_page.dart';
 import '../../features/consult/presentation/consultation_page.dart';
+import '../../features/settings/presentation/settings_page.dart';
 import '../widgets/feature_placeholder_page.dart';
 import 'app_routes.dart';
 
@@ -60,13 +61,29 @@ final GoRouter appRouter = GoRouter(
       },
     ),
 
-    // ========================================================
-    // Examinations
-    // ========================================================
+    // ============================================================
+    // 검사 관리
+    // 환자 상세 > 검사 이력 화면에서 전달된 Context 지원
+    // ============================================================
     GoRoute(
       path: AppRoutes.examinations,
       builder: (context, state) {
-        return const ExaminationsPage();
+        final query = state.uri.queryParameters;
+
+        final patientId = int.tryParse(query['patientId'] ?? '');
+
+        final encounterId = int.tryParse(query['encounterId'] ?? '');
+
+        final orderId = int.tryParse(query['orderId'] ?? '');
+
+        final openCreateOrder = query['openCreateOrder'] == 'true';
+
+        return ExaminationsPage(
+          initialPatientId: patientId,
+          initialEncounterId: encounterId,
+          initialOrderId: orderId,
+          openCreateOrder: openCreateOrder,
+        );
       },
     ),
 
@@ -143,11 +160,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.settings,
       builder: (context, state) {
-        return const FeaturePlaceholderPage(
-          title: '설정',
-          selectedIndex: -1,
-          icon: Icons.settings_outlined,
-        );
+        return const SettingsPage();
       },
     ),
   ],
