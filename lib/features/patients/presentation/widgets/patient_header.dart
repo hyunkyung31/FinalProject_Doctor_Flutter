@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import 'patient_detail_tabs.dart';
@@ -13,7 +14,10 @@ class PatientHeader extends StatelessWidget {
 
   const PatientHeader({super.key, required this.patient});
 
+  // ==========================================================
   // 생년월일
+  // ==========================================================
+
   String _formatBirthDate(String value) {
     final normalized = value.trim();
 
@@ -24,7 +28,10 @@ class PatientHeader extends StatelessWidget {
     return normalized.replaceAll('-', '.');
   }
 
+  // ==========================================================
   // 연락처
+  // ==========================================================
+
   String _formatPhone(String value) {
     var normalized = value.trim().replaceAll(' ', '').replaceAll('-', '');
 
@@ -47,21 +54,27 @@ class PatientHeader extends StatelessWidget {
     return value.trim();
   }
 
+  // ==========================================================
+  // UI
+  // ==========================================================
+
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
-      color: AppColors.surface,
+      color: context.appSurface,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ====================================================
           // Avatar
+          // ====================================================
           Container(
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: AppColors.surfaceSoft,
+              color: context.appSurfaceSoft,
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(
@@ -73,12 +86,16 @@ class PatientHeader extends StatelessWidget {
 
           const SizedBox(width: 13),
 
+          // ====================================================
           // Patient Information
+          // ====================================================
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // =================================================
                 // Name / Age / Gender
+                // =================================================
                 Wrap(
                   spacing: 8,
                   runSpacing: 4,
@@ -86,17 +103,17 @@ class PatientHeader extends StatelessWidget {
                   children: [
                     Text(
                       patient.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                       ),
                     ),
                     Text(
                       '${patient.age}세 · ${patient.gender}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   ],
@@ -104,7 +121,9 @@ class PatientHeader extends StatelessWidget {
 
                 const SizedBox(height: 6),
 
+                // =================================================
                 // 환자 식별 정보
+                // =================================================
                 Wrap(
                   spacing: 7,
                   runSpacing: 4,
@@ -139,10 +158,10 @@ class _HeaderText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 10.5,
         fontWeight: FontWeight.w500,
-        color: AppColors.textSecondary,
+        color: context.appTextSecondary,
       ),
     );
   }
@@ -160,8 +179,8 @@ class _HeaderDot extends StatelessWidget {
     return Container(
       width: 3,
       height: 3,
-      decoration: const BoxDecoration(
-        color: AppColors.border,
+      decoration: BoxDecoration(
+        color: context.appBorder,
         shape: BoxShape.circle,
       ),
     );

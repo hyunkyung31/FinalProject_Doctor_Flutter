@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../patients/presentation/widgets/patient_detail_tabs.dart';
 import '../appointment_ui_model.dart';
 
 // ============================================================
@@ -9,6 +11,7 @@ import '../appointment_ui_model.dart';
 
 class AppointmentDetailPanel extends StatelessWidget {
   final AppointmentUiModel? appointment;
+  final PatientUiModel? patient;
 
   final bool canManage;
 
@@ -17,6 +20,7 @@ class AppointmentDetailPanel extends StatelessWidget {
   const AppointmentDetailPanel({
     super.key,
     required this.appointment,
+    required this.patient,
     required this.canManage,
     required this.onAccept,
   });
@@ -31,9 +35,9 @@ class AppointmentDetailPanel extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -41,9 +45,9 @@ class AppointmentDetailPanel extends StatelessWidget {
           // ======================================================
           // Header
           // ======================================================
-          _DetailHeader(appointment: item),
+          _DetailHeader(appointment: item, patient: patient),
 
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.appBorder),
 
           // ======================================================
           // Body
@@ -111,18 +115,31 @@ class AppointmentDetailPanel extends StatelessWidget {
                     icon: Icons.link_rounded,
                     children: [
                       _DetailRow(
-                        label: '환자 계정',
-                        value: item.patientAccount == null
-                            ? '-'
-                            : '#${item.patientAccount}',
+                        label: '연결 상태',
+                        value: patient == null ? '아직 연결되지 않음' : '연결됨',
                       ),
 
-                      _DetailRow(
-                        label: '환자',
-                        value: item.patient == null
-                            ? '아직 연결되지 않음'
-                            : '#${item.patient}',
-                      ),
+                      if (patient != null) ...[
+                        _DetailRow(label: '환자명', value: patient!.name),
+
+                        _DetailRow(
+                          label: '환자번호',
+                          value: patient!.medicalRecordNo.isEmpty
+                              ? '#${patient!.patientId}'
+                              : patient!.medicalRecordNo,
+                        ),
+
+                        _DetailRow(label: '생년월일', value: patient!.birthDate),
+
+                        _DetailRow(label: '성별', value: patient!.gender),
+
+                        _DetailRow(
+                          label: '연락처',
+                          value: patient!.phone.isEmpty
+                              ? '-'
+                              : _formatContact(patient!.phone),
+                        ),
+                      ],
 
                       _DetailRow(
                         label: '담당 의료진',
@@ -225,12 +242,17 @@ class AppointmentDetailPanel extends StatelessWidget {
 
 class _DetailHeader extends StatelessWidget {
   final AppointmentUiModel appointment;
+  final PatientUiModel? patient;
 
-  const _DetailHeader({required this.appointment});
+  const _DetailHeader({required this.appointment, required this.patient});
 
   @override
   Widget build(BuildContext context) {
-    final age = appointment.age;
+    final displayName = patient?.name ?? appointment.applicantName;
+
+    final displayAge = patient?.age ?? appointment.age;
+
+    final displayGender = patient?.gender ?? appointment.genderText;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 15, 18, 14),
@@ -240,13 +262,13 @@ class _DetailHeader extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: AppColors.surfaceSoft,
+              color: context.appSurfaceSoft,
               borderRadius: BorderRadius.circular(11),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.event_note_outlined,
               size: 21,
-              color: AppColors.navy,
+              color: context.appBrand,
             ),
           ),
 
@@ -258,26 +280,27 @@ class _DetailHeader extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(
-                      appointment.applicantName,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                    Flexible(
+                      child: Text(
+                        displayName,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: context.appTextPrimary,
+                        ),
                       ),
                     ),
 
-                    if (age != null) ...[
-                      const SizedBox(width: 7),
+                    const SizedBox(width: 7),
 
-                      Text(
-                        '$age세 · ${appointment.genderText}',
-                        style: const TextStyle(
-                          fontSize: 10.5,
-                          color: AppColors.textSecondary,
-                        ),
+                    Text(
+                      '$displayAge세 · $displayGender',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: context.appTextSecondary,
                       ),
-                    ],
+                    ),
 
                     const SizedBox(width: 9),
 
@@ -288,10 +311,11 @@ class _DetailHeader extends StatelessWidget {
                 const SizedBox(height: 5),
 
                 Text(
-                  '예약 #${appointment.id} · ${_formatDateTime(appointment.reservedAt)}',
-                  style: const TextStyle(
+                  '예약 #${appointment.id} · '
+                  '${_formatDateTime(appointment.reservedAt)}',
+                  style: TextStyle(
                     fontSize: 10.5,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -323,14 +347,14 @@ class _ActionFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        border: Border(top: BorderSide(color: context.appBorder)),
       ),
       child: canManage
           ? Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -339,7 +363,7 @@ class _ActionFooter extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                         ),
                       ),
 
@@ -349,7 +373,7 @@ class _ActionFooter extends StatelessWidget {
                         '신청 정보를 확인한 후 예약을 승인해 주세요.',
                         style: TextStyle(
                           fontSize: 9.5,
-                          color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                         ),
                       ),
                     ],
@@ -375,12 +399,12 @@ class _ActionFooter extends StatelessWidget {
                 ),
               ],
             )
-          : const Row(
+          : Row(
               children: [
                 Icon(
                   Icons.visibility_outlined,
                   size: 16,
-                  color: AppColors.textSecondary,
+                  color: context.appTextSecondary,
                 ),
 
                 SizedBox(width: 7),
@@ -389,7 +413,7 @@ class _ActionFooter extends StatelessWidget {
                   '예약 조회 권한만 있습니다.',
                   style: TextStyle(
                     fontSize: 10.5,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -419,25 +443,25 @@ class _DetailCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 16, color: AppColors.navy),
+              Icon(icon, size: 16, color: context.appBrand),
 
               const SizedBox(width: 7),
 
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: context.appTextPrimary,
                 ),
               ),
             ],
@@ -474,9 +498,9 @@ class _DetailRow extends StatelessWidget {
             width: 86,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ),
@@ -486,10 +510,10 @@ class _DetailRow extends StatelessWidget {
                 valueWidget ??
                 Text(
                   value ?? '-',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
           ),
@@ -562,18 +586,18 @@ class _EmptyDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
-      child: const Center(
+      child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.calendar_month_outlined,
               size: 38,
-              color: AppColors.textDisabled,
+              color: context.appTextDisabled,
             ),
 
             SizedBox(height: 10),
@@ -583,7 +607,7 @@ class _EmptyDetail extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ],
@@ -598,15 +622,14 @@ class _EmptyDetail extends StatelessWidget {
 // ============================================================
 
 String _formatDateTime(DateTime date) {
-  final month = date.month.toString().padLeft(2, '0');
+  final local = date.toLocal();
 
-  final day = date.day.toString().padLeft(2, '0');
+  final month = local.month.toString().padLeft(2, '0');
+  final day = local.day.toString().padLeft(2, '0');
+  final hour = local.hour.toString().padLeft(2, '0');
+  final minute = local.minute.toString().padLeft(2, '0');
 
-  final hour = date.hour.toString().padLeft(2, '0');
-
-  final minute = date.minute.toString().padLeft(2, '0');
-
-  return '${date.year}.$month.$day $hour:$minute';
+  return '${local.year}.$month.$day $hour:$minute';
 }
 
 // ============================================================

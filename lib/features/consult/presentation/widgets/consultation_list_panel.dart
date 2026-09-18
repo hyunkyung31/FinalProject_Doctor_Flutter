@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../consultation_ui_models.dart';
@@ -73,9 +74,9 @@ class _ConsultationListPanelState extends State<ConsultationListPanel> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         children: [
@@ -83,13 +84,13 @@ class _ConsultationListPanelState extends State<ConsultationListPanel> {
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     '협진 목록',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
                 ),
@@ -123,10 +124,10 @@ class _ConsultationListPanelState extends State<ConsultationListPanel> {
                   hintText: '환자 · 협진 제목 · 의료진 검색',
                   prefixIcon: const Icon(Icons.search_rounded, size: 17),
                   filled: true,
-                  fillColor: AppColors.background,
+                  fillColor: context.appBackground,
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.border),
+                    borderSide: BorderSide(color: context.appBorder),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -188,16 +189,16 @@ class _ConsultationListPanelState extends State<ConsultationListPanel> {
 
           const SizedBox(height: 10),
 
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.appBorder),
 
           Expanded(
             child: consultations.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       '조건에 맞는 협진이 없습니다.',
                       style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   )
@@ -250,10 +251,10 @@ class _ConsultationListItem extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(11),
         decoration: BoxDecoration(
-          color: selected ? AppColors.surfaceSoft : AppColors.surface,
+          color: selected ? context.appSurfaceSoft : context.appSurface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: selected ? AppColors.primaryBlue : AppColors.border,
+            color: selected ? AppColors.primaryBlue : context.appBorder,
             width: selected ? 1.4 : 1,
           ),
         ),
@@ -265,10 +266,10 @@ class _ConsultationListItem extends StatelessWidget {
                 Expanded(
                   child: Text(
                     consultation.patientName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
                 ),
@@ -288,10 +289,10 @@ class _ConsultationListItem extends StatelessWidget {
               consultation.subject,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
 
@@ -299,9 +300,9 @@ class _ConsultationListItem extends StatelessWidget {
 
             Text(
               '${consultation.assignedDepartment} · ${consultation.assignedDoctorName}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9.5,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ],
@@ -336,7 +337,7 @@ class _FilterButton extends StatelessWidget {
           height: 30,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? AppColors.navy : AppColors.surfaceSoft,
+            color: selected ? AppColors.navy : context.appSurfaceSoft,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
@@ -344,7 +345,7 @@ class _FilterButton extends StatelessWidget {
             style: TextStyle(
               fontSize: 9.5,
               fontWeight: FontWeight.w600,
-              color: selected ? Colors.white : AppColors.textSecondary,
+              color: selected ? Colors.white : context.appTextSecondary,
             ),
           ),
         ),
@@ -375,7 +376,7 @@ class _StatusBadge extends StatelessWidget {
 
       case ConsultationUiStatus.inProgress:
         color = AppColors.primaryBlue;
-        background = AppColors.surfaceSoft;
+        background = context.appSurfaceSoft;
         break;
 
       case ConsultationUiStatus.completed:

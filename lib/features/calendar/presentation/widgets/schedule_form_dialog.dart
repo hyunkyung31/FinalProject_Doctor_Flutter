@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -368,10 +369,10 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
       children: [
         Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: context.appTextPrimary,
           ),
         ),
 
@@ -403,7 +404,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
       width: 108,
       height: 34,
       child: Material(
-        color: AppColors.surfaceSoft,
+        color: context.appSurfaceSoft,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onPressed,
@@ -412,10 +413,10 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.calendar_today_outlined,
                   size: 14,
-                  color: AppColors.textSecondary,
+                  color: context.appTextSecondary,
                 ),
 
                 const SizedBox(width: 7),
@@ -424,10 +425,10 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                   child: Text(
                     _formatDate(date),
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
                 ),
@@ -451,7 +452,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
       width: 78,
       height: 34,
       child: Material(
-        color: AppColors.surfaceSoft,
+        color: context.appSurfaceSoft,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onPressed,
@@ -460,10 +461,10 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
             padding: const EdgeInsets.symmetric(horizontal: 9),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.schedule_outlined,
                   size: 14,
-                  color: AppColors.textSecondary,
+                  color: context.appTextSecondary,
                 ),
 
                 const SizedBox(width: 6),
@@ -472,10 +473,10 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                   child: Text(
                     _formatTime(time),
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
                 ),
@@ -512,10 +513,10 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
             width: 70,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
           ),
@@ -555,9 +556,9 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
 
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
 
       child: child,
@@ -571,13 +572,13 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
   InputDecoration _inputDecoration({required String hintText}) {
     return InputDecoration(
       hintText: hintText,
-      hintStyle: const TextStyle(fontSize: 13, color: AppColors.textDisabled),
+      hintStyle: TextStyle(fontSize: 13, color: context.appTextDisabled),
       filled: true,
-      fillColor: AppColors.surface,
+      fillColor: context.appSurface,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: context.appBorder),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
@@ -585,7 +586,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
       ),
       disabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: context.appBorder),
       ),
     );
   }
@@ -614,9 +615,9 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
         child: Container(
           decoration: BoxDecoration(
             // 사용자가 선택한 회색 계열 Dialog 배경
-            color: AppColors.background,
+            color: context.appBackground,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.appBorder),
           ),
 
           child: Column(
@@ -628,8 +629,8 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
 
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
+                decoration: BoxDecoration(
+                  color: context.appSurface,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                 ),
 
@@ -643,13 +644,13 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceSoft,
+                        color: context.appSurfaceSoft,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.calendar_month_outlined,
                         size: 21,
-                        color: AppColors.navy,
+                        color: context.appBrand,
                       ),
                     ),
 
@@ -666,10 +667,10 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                             children: [
                               Text(
                                 _isEditMode ? '일정 수정' : '일정 등록',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
+                                  color: context.appTextPrimary,
                                 ),
                               ),
 
@@ -682,7 +683,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                                     vertical: 3,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: AppColors.surfaceSoft,
+                                    color: context.appSurfaceSoft,
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: const Text(
@@ -704,9 +705,9 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                             _isEditMode
                                 ? '등록된 개인 일정을 수정합니다.'
                                 : '회의, 교육, 학회 등 개인 일정을 등록합니다.',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.textSecondary,
+                              color: context.appTextSecondary,
                             ),
                           ),
                         ],
@@ -721,10 +722,10 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                             },
                       tooltip: '닫기',
                       visualDensity: VisualDensity.compact,
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.close_rounded,
                         size: 21,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   ],
@@ -732,7 +733,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
               ),
 
               // Header / Body 구분선은 유지
-              const Divider(height: 1, color: AppColors.border),
+              Divider(height: 1, color: context.appBorder),
 
               // ==================================================
               // Scrollable Body
@@ -786,9 +787,9 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                             Container(
                               width: double.infinity,
                               decoration: BoxDecoration(
-                                color: AppColors.surface,
+                                color: context.appSurface,
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: AppColors.border),
+                                border: Border.all(color: context.appBorder),
                               ),
 
                               child: Column(
@@ -804,12 +805,12 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                                       ),
                                       child: Row(
                                         children: [
-                                          const Text(
+                                          Text(
                                             '하루 종일',
                                             style: TextStyle(
                                               fontSize: 13,
                                               fontWeight: FontWeight.w600,
-                                              color: AppColors.textPrimary,
+                                              color: context.appTextPrimary,
                                             ),
                                           ),
 
@@ -839,10 +840,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                                     ),
                                   ),
 
-                                  const Divider(
-                                    height: 1,
-                                    color: AppColors.border,
-                                  ),
+                                  Divider(height: 1, color: context.appBorder),
 
                                   // ==================================
                                   // 시작
@@ -864,11 +862,11 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                                     ),
                                   ),
 
-                                  const Divider(
+                                  Divider(
                                     height: 1,
                                     indent: 14,
                                     endIndent: 14,
-                                    color: AppColors.border,
+                                    color: context.appBorder,
                                   ),
 
                                   // ==================================
@@ -900,7 +898,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                             if (_isAllDay) ...[
                               const SizedBox(height: 10),
 
-                              const Row(
+                              Row(
                                 children: [
                                   Icon(
                                     Icons.info_outline_rounded,
@@ -915,7 +913,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                                       '종일 일정은 선택한 날짜 전체로 등록됩니다.',
                                       style: TextStyle(
                                         fontSize: 10,
-                                        color: AppColors.textSecondary,
+                                        color: context.appTextSecondary,
                                       ),
                                     ),
                                   ),
@@ -935,12 +933,12 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               '메모',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
+                                color: context.appTextPrimary,
                               ),
                             ),
 
@@ -973,8 +971,8 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                   vertical: 14,
                 ),
 
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
+                decoration: BoxDecoration(
+                  color: context.appSurface,
                   borderRadius: BorderRadius.vertical(
                     bottom: Radius.circular(16),
                   ),
@@ -982,12 +980,12 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
 
                 child: Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         '* 필수 입력 항목',
                         style: TextStyle(
                           fontSize: 10,
-                          color: AppColors.textDisabled,
+                          color: context.appTextDisabled,
                         ),
                       ),
                     ),
@@ -999,9 +997,9 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                               Navigator.of(context).pop();
                             },
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.textSecondary,
+                        foregroundColor: context.appTextSecondary,
                         minimumSize: const Size(82, 42),
-                        side: const BorderSide(color: AppColors.border),
+                        side: BorderSide(color: context.appBorder),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),

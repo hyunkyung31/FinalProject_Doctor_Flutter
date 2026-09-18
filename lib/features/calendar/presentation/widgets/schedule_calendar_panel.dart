@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../data/models/staff_schedule.dart';
@@ -43,9 +44,9 @@ class ScheduleCalendarPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -59,10 +60,10 @@ class ScheduleCalendarPanel extends StatelessWidget {
               Text(
                 '${focusedMonth.year}년 '
                 '${focusedMonth.month}월',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: context.appTextPrimary,
                 ),
               ),
 
@@ -79,7 +80,7 @@ class ScheduleCalendarPanel extends StatelessWidget {
 
               const SizedBox(width: 13),
 
-              const _LegendItem(color: AppColors.textSecondary, label: '휴무'),
+              _LegendItem(color: context.appTextSecondary, label: '휴무'),
 
               const SizedBox(width: 13),
 
@@ -102,17 +103,17 @@ class ScheduleCalendarPanel extends StatelessWidget {
                       minWidth: 32,
                       minHeight: 32,
                     ),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.chevron_left_rounded,
                       size: 21,
-                      color: AppColors.textSecondary,
+                      color: context.appTextSecondary,
                     ),
                   ),
 
                   TextButton(
                     onPressed: onToday,
                     style: TextButton.styleFrom(
-                      foregroundColor: AppColors.textPrimary,
+                      foregroundColor: context.appTextPrimary,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
                         vertical: 4,
@@ -138,10 +139,10 @@ class ScheduleCalendarPanel extends StatelessWidget {
                       minWidth: 32,
                       minHeight: 32,
                     ),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.chevron_right_rounded,
                       size: 21,
-                      color: AppColors.textSecondary,
+                      color: context.appTextSecondary,
                     ),
                   ),
                 ],
@@ -156,7 +157,7 @@ class ScheduleCalendarPanel extends StatelessWidget {
                 onPressed: onCreateSchedule,
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.primaryBlue,
-                  backgroundColor: AppColors.surfaceSoft,
+                  backgroundColor: context.appSurfaceSoft,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 11,
                     vertical: 6,
@@ -230,7 +231,7 @@ class _WeekdayLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color color = AppColors.textSecondary;
+    Color color = context.appTextSecondary;
 
     if (isSunday) {
       color = AppColors.danger;
@@ -280,9 +281,9 @@ class _LegendItem extends StatelessWidget {
 
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 10.5,
-            color: AppColors.textSecondary,
+            color: context.appTextSecondary,
           ),
         ),
       ],

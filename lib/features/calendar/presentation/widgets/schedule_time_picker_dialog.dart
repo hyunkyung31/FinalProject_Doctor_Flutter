@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 
@@ -81,7 +82,7 @@ class _ScheduleTimePickerDialogState extends State<ScheduleTimePickerDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: AppColors.surface,
+      backgroundColor: context.appSurface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: SizedBox(
@@ -96,13 +97,13 @@ class _ScheduleTimePickerDialogState extends State<ScheduleTimePickerDialog> {
               // ==================================================
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       '시간 선택',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                       ),
                     ),
                   ),
@@ -116,10 +117,10 @@ class _ScheduleTimePickerDialogState extends State<ScheduleTimePickerDialog> {
                       onPressed: () {
                         Navigator.of(context).pop();
                       },
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.close_rounded,
                         size: 20,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   ),
@@ -135,16 +136,16 @@ class _ScheduleTimePickerDialogState extends State<ScheduleTimePickerDialog> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceSoft,
+                  color: context.appSurfaceSoft,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   _formatTime(_selectedHour, _selectedMinute),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.navy,
+                    color: context.appBrand,
                     letterSpacing: 1.5,
                   ),
                 ),
@@ -155,7 +156,7 @@ class _ScheduleTimePickerDialogState extends State<ScheduleTimePickerDialog> {
               // ==================================================
               // 시 / 분 Label
               // ==================================================
-              const Row(
+              Row(
                 children: [
                   Expanded(
                     child: Text(
@@ -164,7 +165,7 @@ class _ScheduleTimePickerDialogState extends State<ScheduleTimePickerDialog> {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   ),
@@ -178,7 +179,7 @@ class _ScheduleTimePickerDialogState extends State<ScheduleTimePickerDialog> {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   ),
@@ -213,7 +214,7 @@ class _ScheduleTimePickerDialogState extends State<ScheduleTimePickerDialog> {
                     // ============================================
                     // Colon
                     // ============================================
-                    const SizedBox(
+                    SizedBox(
                       width: 28,
                       child: Center(
                         child: Text(
@@ -221,7 +222,7 @@ class _ScheduleTimePickerDialogState extends State<ScheduleTimePickerDialog> {
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                            color: context.appTextPrimary,
                           ),
                         ),
                       ),
@@ -248,7 +249,7 @@ class _ScheduleTimePickerDialogState extends State<ScheduleTimePickerDialog> {
 
               const SizedBox(height: 14),
 
-              const Divider(height: 1, color: AppColors.border),
+              Divider(height: 1, color: context.appBorder),
 
               const SizedBox(height: 14),
 
@@ -263,7 +264,7 @@ class _ScheduleTimePickerDialogState extends State<ScheduleTimePickerDialog> {
                       Navigator.of(context).pop();
                     },
                     style: TextButton.styleFrom(
-                      foregroundColor: AppColors.textSecondary,
+                      foregroundColor: context.appTextSecondary,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 10,
@@ -352,7 +353,7 @@ class _TimeWheel extends StatelessWidget {
           child: Container(
             height: 44,
             decoration: BoxDecoration(
-              color: AppColors.surfaceSoft,
+              color: context.appSurfaceSoft,
               borderRadius: BorderRadius.circular(9),
               border: Border.all(
                 color: AppColors.primaryBlue.withValues(alpha: 0.18),
@@ -385,7 +386,7 @@ class _TimeWheel extends StatelessWidget {
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     color: isSelected
                         ? AppColors.navy
-                        : AppColors.textSecondary,
+                        : context.appTextSecondary,
                   ),
                 ),
               );

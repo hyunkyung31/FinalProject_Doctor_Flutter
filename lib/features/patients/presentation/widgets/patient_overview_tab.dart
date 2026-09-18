@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/auth/auth_provider.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -37,7 +38,7 @@ class PatientOverviewTab extends StatelessWidget {
 
           const SizedBox(height: 18),
 
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.appBorder),
 
           const SizedBox(height: 18),
 
@@ -45,7 +46,7 @@ class PatientOverviewTab extends StatelessWidget {
 
           const SizedBox(height: 18),
 
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.appBorder),
 
           const SizedBox(height: 18),
 
@@ -78,9 +79,9 @@ class _OverviewPatientInfoSection extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: context.appSurface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.appBorder),
           ),
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -286,9 +287,9 @@ class _OverviewClinicalSummarySectionState
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: context.appSurface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.appBorder),
           ),
           child: Column(
             children: [
@@ -300,14 +301,14 @@ class _OverviewClinicalSummarySectionState
                 ),
               ),
 
-              const Divider(height: 1, color: AppColors.border),
+              Divider(height: 1, color: context.appBorder),
 
               _OverviewClinicalRow(
                 label: '과거력',
                 value: _medicalHistorySummary(),
               ),
 
-              const Divider(height: 1, color: AppColors.border),
+              Divider(height: 1, color: context.appBorder),
 
               _OverviewClinicalRow(
                 label: '위험 요인',
@@ -317,7 +318,7 @@ class _OverviewClinicalSummarySectionState
                 ),
               ),
 
-              const Divider(height: 1, color: AppColors.border),
+              Divider(height: 1, color: context.appBorder),
 
               _OverviewClinicalRow(
                 label: '알레르기',
@@ -347,21 +348,23 @@ class _OverviewInfoItem extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
+            color: context.appTextSecondary,
           ),
         ),
+
         const SizedBox(height: 5),
+
         Text(
           value,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: context.appTextPrimary,
           ),
         ),
       ],
@@ -386,20 +389,21 @@ class _OverviewClinicalRow extends StatelessWidget {
             width: 92,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ),
+
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
           ),
@@ -647,10 +651,10 @@ class _RecentTimelineSectionState extends State<_RecentTimelineSection> {
 
       case 'CANCELED':
       case 'CANCELLED':
-        return AppColors.textSecondary;
+        return context.appTextSecondary;
 
       default:
-        return AppColors.primaryBlue;
+        return context.appPrimary;
     }
   }
 
@@ -856,10 +860,10 @@ class _RecentTimelineSectionState extends State<_RecentTimelineSection> {
                 widget.items.isNotEmpty)
               Text(
                 '전체 ${widget.items.length}건',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 9.5,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.primaryBlue,
+                  color: context.appPrimary,
                 ),
               ),
           ],
@@ -917,7 +921,7 @@ class _RecentTimelineSectionState extends State<_RecentTimelineSection> {
                 ),
 
                 if (index != visibleGroups.length - 1)
-                  const Divider(height: 1, color: AppColors.border),
+                  Divider(height: 1, color: context.appBorder),
               ],
 
               if (groupedItems.length > visibleGroups.length) ...[
@@ -925,9 +929,9 @@ class _RecentTimelineSectionState extends State<_RecentTimelineSection> {
 
                 Text(
                   '최근 ${visibleGroups.length}개 날짜의 기록을 표시하고 있습니다.',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9.5,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -972,10 +976,10 @@ class _TimelineDateGroup extends StatelessWidget {
                   width: 92,
                   child: Text(
                     date,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
                 ),
@@ -983,9 +987,9 @@ class _TimelineDateGroup extends StatelessWidget {
                 Expanded(
                   child: Text(
                     summary,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 9.5,
-                      color: AppColors.textSecondary,
+                      color: context.appTextSecondary,
                     ),
                   ),
                 ),
@@ -995,7 +999,7 @@ class _TimelineDateGroup extends StatelessWidget {
                       ? Icons.keyboard_arrow_up_rounded
                       : Icons.keyboard_arrow_down_rounded,
                   size: 20,
-                  color: AppColors.textSecondary,
+                  color: context.appTextSecondary,
                 ),
               ],
             ),
@@ -1046,10 +1050,10 @@ class _ClinicalRecordGroup extends StatelessWidget {
 
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
           ],
@@ -1065,7 +1069,7 @@ class _ClinicalRecordGroup extends StatelessWidget {
                 children[index],
 
                 if (index != children.length - 1)
-                  const Divider(height: 1, color: AppColors.border),
+                  Divider(height: 1, color: context.appBorder),
               ],
             ],
           ),
@@ -1107,10 +1111,10 @@ class _ClinicalRecordRow extends StatelessWidget {
               children: [
                 Text(
                   title.trim().isEmpty ? '제목 없음' : title.trim(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
 
@@ -1119,10 +1123,10 @@ class _ClinicalRecordRow extends StatelessWidget {
 
                   Text(
                     subtitle.trim(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 9.5,
                       height: 1.35,
-                      color: AppColors.textSecondary,
+                      color: context.appTextSecondary,
                     ),
                   ),
                 ],
@@ -1159,10 +1163,10 @@ class _SectionHeader extends StatelessWidget {
           width: 28,
           height: 28,
           decoration: BoxDecoration(
-            color: AppColors.surfaceSoft,
+            color: context.appSurfaceSoft,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, size: 15, color: AppColors.navy),
+          child: Icon(icon, size: 15, color: context.appBrand),
         ),
 
         const SizedBox(width: 9),
@@ -1170,10 +1174,10 @@ class _SectionHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: context.appTextPrimary,
             ),
           ),
         ),
@@ -1230,7 +1234,7 @@ class _OverviewMessage extends StatelessWidget {
       alignment: Alignment.center,
       child: Text(
         text,
-        style: const TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
+        style: TextStyle(fontSize: 10.5, color: context.appTextSecondary),
       ),
     );
   }

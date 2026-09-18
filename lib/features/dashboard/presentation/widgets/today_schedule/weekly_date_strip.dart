@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../../core/theme/app_theme.dart';
 import 'today_schedule_models.dart';
@@ -26,7 +27,7 @@ class WeeklyDateStrip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
 
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: context.appSelection,
 
         borderRadius: BorderRadius.circular(AppRadius.medium),
       ),
@@ -84,11 +85,11 @@ class _WeeklyDateItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 3),
 
           decoration: BoxDecoration(
-            color: selected ? AppColors.surface : Colors.transparent,
+            color: selected ? context.appSurface : Colors.transparent,
 
             borderRadius: BorderRadius.circular(AppRadius.medium),
 
-            border: selected ? Border.all(color: AppColors.border) : null,
+            border: selected ? Border.all(color: context.appBorder) : null,
           ),
 
           child: Column(
@@ -103,10 +104,10 @@ class _WeeklyDateItem extends StatelessWidget {
 
                 style: TextStyle(
                   color: data.isWeekend
-                      ? AppColors.textSecondary
+                      ? context.appTextSecondary
                       : selected
-                      ? AppColors.navy
-                      : AppColors.textSecondary,
+                      ? context.appBrand
+                      : context.appTextSecondary,
 
                   fontSize: 9,
 
@@ -123,7 +124,7 @@ class _WeeklyDateItem extends StatelessWidget {
                 '${data.day}',
 
                 style: TextStyle(
-                  color: selected ? AppColors.navy : AppColors.textPrimary,
+                  color: selected ? context.appBrand : context.appTextPrimary,
 
                   fontSize: 12,
 
@@ -144,8 +145,8 @@ class _WeeklyDateItem extends StatelessWidget {
                         width: 5,
                         height: 5,
 
-                        decoration: const BoxDecoration(
-                          color: AppColors.primaryBlue,
+                        decoration: BoxDecoration(
+                          color: context.appPrimary,
                           shape: BoxShape.circle,
                         ),
                       )
@@ -177,20 +178,20 @@ class EmptyDaySchedule extends StatelessWidget {
       alignment: Alignment.center,
 
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFBFC),
+        color: context.appPanelMuted,
 
         borderRadius: BorderRadius.circular(AppRadius.medium),
 
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
 
       child: Column(
         mainAxisSize: MainAxisSize.min,
 
         children: [
-          const Icon(
+          Icon(
             Icons.event_available_outlined,
-            color: AppColors.textDisabled,
+            color: context.appTextDisabled,
             size: 26,
           ),
 
@@ -199,8 +200,8 @@ class EmptyDaySchedule extends StatelessWidget {
           Text(
             '${data.weekDay}요일 ${data.day}일',
 
-            style: const TextStyle(
-              color: AppColors.textPrimary,
+            style: TextStyle(
+              color: context.appTextPrimary,
               fontSize: 11.5,
               fontWeight: FontWeight.w700,
             ),
@@ -208,10 +209,10 @@ class EmptyDaySchedule extends StatelessWidget {
 
           const SizedBox(height: 4),
 
-          const Text(
+          Text(
             '등록된 일정이 없습니다.',
 
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 10),
+            style: TextStyle(color: context.appTextSecondary, fontSize: 10),
           ),
         ],
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../data/models/staff_schedule.dart';
@@ -45,23 +46,23 @@ class ScheduleDayCell extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.fromLTRB(7, 6, 7, 5),
             decoration: BoxDecoration(
-              color: isSelected ? AppColors.surfaceSoft : AppColors.surface,
+              color: isSelected ? context.appSurfaceSoft : context.appSurface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: isSelected
                     ? AppColors.primaryBlue
-                    : AppColors.border.withValues(alpha: 0.65),
+                    : context.appBorder.withValues(alpha: 0.65),
                 width: isSelected ? 1.2 : 1,
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildDate(),
+                _buildDate(context),
 
                 const SizedBox(height: 4),
 
-                Expanded(child: _buildSchedules()),
+                Expanded(child: _buildSchedules(context)),
               ],
             ),
           ),
@@ -74,7 +75,7 @@ class ScheduleDayCell extends StatelessWidget {
   // STEP 2. 날짜
   // ============================================================
 
-  Widget _buildDate() {
+  Widget _buildDate(BuildContext context) {
     if (isToday || isSelected) {
       return Container(
         width: 25,
@@ -104,7 +105,7 @@ class ScheduleDayCell extends StatelessWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: _dateColor(),
+            color: _dateColor(context),
           ),
         ),
       ),
@@ -116,7 +117,7 @@ class ScheduleDayCell extends StatelessWidget {
   // 최대 2개 표시 + 추가 일정은 가운데 +n
   // ============================================================
 
-  Widget _buildSchedules() {
+  Widget _buildSchedules(BuildContext context) {
     if (schedules.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -151,10 +152,10 @@ class ScheduleDayCell extends StatelessWidget {
             child: Text(
               '+$hiddenCount',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ),
@@ -167,9 +168,9 @@ class ScheduleDayCell extends StatelessWidget {
   // STEP 4. 날짜 색상
   // ============================================================
 
-  Color _dateColor() {
+  Color _dateColor(BuildContext context) {
     if (!isCurrentMonth) {
-      return AppColors.textDisabled;
+      return context.appTextDisabled;
     }
 
     if (date.weekday == DateTime.sunday) {
@@ -180,7 +181,7 @@ class ScheduleDayCell extends StatelessWidget {
       return AppColors.primaryBlue;
     }
 
-    return AppColors.textPrimary;
+    return context.appTextPrimary;
   }
 }
 

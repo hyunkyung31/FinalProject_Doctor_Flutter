@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/auth/access_control.dart';
 import '../../../../core/auth/auth_provider.dart';
@@ -53,7 +54,7 @@ class ContinueWorkSection extends StatelessWidget {
         // ======================================================
         // Header
         // ======================================================
-        const Padding(
+        Padding(
           padding: EdgeInsets.symmetric(horizontal: 2),
 
           child: Column(
@@ -64,7 +65,7 @@ class ContinueWorkSection extends StatelessWidget {
                 'CONTINUE WORK',
 
                 style: TextStyle(
-                  color: AppColors.textPrimary,
+                  color: context.appTextPrimary,
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.4,
@@ -162,7 +163,7 @@ class _ContinueWorkCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surface,
+      color: context.appSurface,
 
       borderRadius: BorderRadius.circular(AppRadius.medium),
 
@@ -179,7 +180,7 @@ class _ContinueWorkCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
 
           decoration: BoxDecoration(
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.appBorder),
 
             borderRadius: BorderRadius.circular(AppRadius.medium),
           ),
@@ -196,12 +197,12 @@ class _ContinueWorkCard extends StatelessWidget {
                 alignment: Alignment.center,
 
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceSoft,
+                  color: context.appSurfaceSoft,
 
                   borderRadius: BorderRadius.circular(AppRadius.small),
                 ),
 
-                child: Icon(icon, size: 18, color: AppColors.navy),
+                child: Icon(icon, size: 18, color: context.appBrand),
               ),
 
               const SizedBox(width: 11),
@@ -220,8 +221,8 @@ class _ContinueWorkCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
 
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
+                      style: TextStyle(
+                        color: context.appTextPrimary,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
@@ -235,8 +236,8 @@ class _ContinueWorkCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
 
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
+                      style: TextStyle(
+                        color: context.appTextSecondary,
                         fontSize: 9.5,
                         height: 1.35,
                       ),
@@ -249,10 +250,10 @@ class _ContinueWorkCard extends StatelessWidget {
                     // ==============================================
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.schedule_rounded,
                           size: 11,
-                          color: AppColors.textDisabled,
+                          color: context.appTextDisabled,
                         ),
 
                         const SizedBox(width: 4),
@@ -264,8 +265,8 @@ class _ContinueWorkCard extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
 
-                            style: const TextStyle(
-                              color: AppColors.textDisabled,
+                            style: TextStyle(
+                              color: context.appTextDisabled,
                               fontSize: 8.5,
                               fontWeight: FontWeight.w500,
                             ),
@@ -279,9 +280,9 @@ class _ContinueWorkCard extends StatelessWidget {
 
               const SizedBox(width: 8),
 
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
                 size: 17,
               ),
             ],

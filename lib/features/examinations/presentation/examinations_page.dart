@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/auth/access_control.dart';
 import '../../../core/auth/auth_provider.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_shell.dart';
 import '../../patients/data/services/patient_service.dart';
 import '../data/services/examination_service.dart';
@@ -578,9 +578,9 @@ class _ExaminationsPageState extends State<ExaminationsPage> {
       pageTitle: '검사 관리',
       selectedIndex: 3,
       body: Material(
-        color: AppColors.background,
+        color: context.appBackground,
         child: Container(
-          color: AppColors.background,
+          color: context.appBackground,
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
           child: _isInitialDataLoading
               ? const Center(child: CircularProgressIndicator())
@@ -598,16 +598,16 @@ class _ExaminationsPageState extends State<ExaminationsPage> {
                           vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceSoft,
+                          color: context.appSurfaceSoft,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(color: context.appBorder),
                         ),
                         child: Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.person_outline_rounded,
                               size: 18,
-                              color: AppColors.navy,
+                              color: context.appBrand,
                             ),
 
                             const SizedBox(width: 9),
@@ -618,20 +618,20 @@ class _ExaminationsPageState extends State<ExaminationsPage> {
                                 children: [
                                   Text(
                                     '${_contextPatient!.name} 환자의 검사 관리',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 12.5,
                                       fontWeight: FontWeight.w700,
-                                      color: AppColors.textPrimary,
+                                      color: context.appTextPrimary,
                                     ),
                                   ),
 
                                   const SizedBox(height: 2),
 
-                                  const Text(
+                                  Text(
                                     '환자 상세의 검사 이력에서 이동했습니다.',
                                     style: TextStyle(
                                       fontSize: 10.5,
-                                      color: AppColors.textSecondary,
+                                      color: context.appTextSecondary,
                                     ),
                                   ),
                                 ],
@@ -640,9 +640,9 @@ class _ExaminationsPageState extends State<ExaminationsPage> {
 
                             Text(
                               _contextPatient!.id.toString(),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 10.5,
-                                color: AppColors.textSecondary,
+                                color: context.appTextSecondary,
                               ),
                             ),
                           ],

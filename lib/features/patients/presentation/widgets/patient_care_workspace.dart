@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../examinations/presentation/examination_ui_models.dart';
@@ -55,9 +56,9 @@ class PatientCareWorkspace extends StatelessWidget {
             );
 
           case 3:
-            return const Padding(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: Divider(height: 1, color: AppColors.border),
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Divider(height: 1, color: context.appBorder),
             );
 
           case 4:
@@ -85,9 +86,9 @@ class _DiagnosisPrescriptionHeader extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.surfaceSoft,
+          color: context.appSurfaceSoft,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.appBorder),
         ),
         child: Row(
           children: [
@@ -108,7 +109,7 @@ class _DiagnosisPrescriptionHeader extends StatelessWidget {
 
             const SizedBox(width: 10),
 
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -117,7 +118,7 @@ class _DiagnosisPrescriptionHeader extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
                   SizedBox(height: 3),
@@ -125,7 +126,7 @@ class _DiagnosisPrescriptionHeader extends StatelessWidget {
                     '검사 오더와 약물 처방을 확인하고 DUR 점검을 진행합니다.',
                     style: TextStyle(
                       fontSize: 9.5,
-                      color: AppColors.textSecondary,
+                      color: context.appTextSecondary,
                     ),
                   ),
                 ],

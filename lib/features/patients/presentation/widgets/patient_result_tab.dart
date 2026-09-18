@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/auth/auth_provider.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -174,12 +175,12 @@ class _PatientResultTabState extends State<PatientResultTab> {
               color: AppColors.danger,
             ),
             const SizedBox(height: 10),
-            const Text(
+            Text(
               '혈액검사 결과를 불러오지 못했습니다.',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
             const SizedBox(height: 10),
@@ -198,18 +199,18 @@ class _PatientResultTabState extends State<PatientResultTab> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.science_outlined,
               size: 30,
-              color: AppColors.textDisabled,
+              color: context.appTextDisabled,
             ),
             const SizedBox(height: 10),
-            const Text(
+            Text(
               '확인할 수 있는 혈액검사 결과가 없습니다.',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
             const SizedBox(height: 10),
@@ -233,7 +234,7 @@ class _PatientResultTabState extends State<PatientResultTab> {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -242,15 +243,15 @@ class _PatientResultTabState extends State<PatientResultTab> {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                       ),
                     ),
-                    SizedBox(height: 3),
+                    const SizedBox(height: 3),
                     Text(
                       '확정된 검사 수치와 검사 이력을 확인합니다.',
                       style: TextStyle(
                         fontSize: 10.5,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   ],
@@ -259,10 +260,10 @@ class _PatientResultTabState extends State<PatientResultTab> {
               IconButton(
                 onPressed: _loadResults,
                 tooltip: '새로고침',
-                icon: const Icon(
+                icon: Icon(
                   Icons.refresh_rounded,
                   size: 19,
-                  color: AppColors.navy,
+                  color: context.appBrand,
                 ),
               ),
             ],
@@ -274,12 +275,12 @@ class _PatientResultTabState extends State<PatientResultTab> {
 
           const SizedBox(height: 20),
 
-          const Text(
+          Text(
             '최근 혈액검사 수치',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: context.appTextPrimary,
             ),
           ),
 
@@ -317,12 +318,12 @@ class _PatientResultTabState extends State<PatientResultTab> {
 
           const SizedBox(height: 20),
 
-          const Text(
+          Text(
             '검사 이력',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: context.appTextPrimary,
             ),
           ),
 
@@ -354,9 +355,9 @@ class _LatestResultSummary extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
+        color: context.appSurfaceSoft,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Row(
         children: [
@@ -380,29 +381,29 @@ class _LatestResultSummary extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   '최근 혈액검사',
                   style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   _formatDateTime(result.collectedAt),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   '총 ${result.measurements.length}개 항목 · 이상 수치 $abnormalCount개',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10.5,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -430,12 +431,12 @@ class _MeasurementGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (measurements.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 18),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 18),
         child: Center(
           child: Text(
             '표시할 혈액검사 측정값이 없습니다.',
-            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 11, color: context.appTextSecondary),
           ),
         ),
       );
@@ -479,15 +480,15 @@ class _MeasurementTable extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.border),
+        color: context.appSurface,
+        border: Border.all(color: context.appBorder),
         borderRadius: BorderRadius.circular(8),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
           Container(
-            color: AppColors.surfaceSoft,
+            color: context.appSurfaceSoft,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: const Row(
               children: [
@@ -549,7 +550,7 @@ class _MeasurementTable extends StatelessWidget {
               },
             ),
             if (index != measurements.length - 1)
-              const Divider(height: 1, color: AppColors.border),
+              Divider(height: 1, color: context.appBorder),
           ],
         ],
       ),
@@ -571,10 +572,10 @@ class _ResultTableHeaderText extends StatelessWidget {
     return Text(
       text,
       textAlign: textAlign,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 9.5,
         fontWeight: FontWeight.w600,
-        color: AppColors.textSecondary,
+        color: context.appTextSecondary,
       ),
     );
   }
@@ -593,7 +594,7 @@ class _MeasurementTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final abnormalColor = _abnormalColor(measurement.abnormalFlag);
+    final abnormalColor = _abnormalColor(context, measurement.abnormalFlag);
 
     final referenceText = _formatReferenceText(
       measurement.referenceText?.trim() ?? '',
@@ -615,10 +616,10 @@ class _MeasurementTableRow extends StatelessWidget {
                 child: Text(
                   measurement.code.trim().isEmpty ? '-' : measurement.code,
                   textAlign: TextAlign.left,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.navy,
+                    color: context.appBrand,
                   ),
                 ),
               ),
@@ -631,9 +632,9 @@ class _MeasurementTableRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.left,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10.5,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
                 ),
@@ -643,9 +644,9 @@ class _MeasurementTableRow extends StatelessWidget {
                 child: Text(
                   referenceText.isEmpty ? '-' : referenceText,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ),
@@ -659,7 +660,7 @@ class _MeasurementTableRow extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: measurement.isAbnormal
                         ? abnormalColor
-                        : AppColors.textPrimary,
+                        : context.appTextPrimary,
                   ),
                 ),
               ),
@@ -670,9 +671,9 @@ class _MeasurementTableRow extends StatelessWidget {
                       ? '-'
                       : measurement.unit!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ),
@@ -691,7 +692,7 @@ class _MeasurementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _abnormalColor(measurement.abnormalFlag);
+    final color = _abnormalColor(context, measurement.abnormalFlag);
 
     final referenceText = _formatReferenceText(
       measurement.referenceText?.trim() ?? '',
@@ -700,9 +701,9 @@ class _MeasurementCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -714,15 +715,18 @@ class _MeasurementCard extends StatelessWidget {
                   measurement.displayLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              _AbnormalBadge(label: measurement.abnormalLabel, color: color),
+              _AbnormalBadge(
+                label: measurement.abnormalLabel,
+                color: measurement.isAbnormal ? color : context.appTextPrimary,
+              ),
             ],
           ),
 
@@ -736,7 +740,9 @@ class _MeasurementCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  color: measurement.isAbnormal ? color : AppColors.textPrimary,
+                  color: measurement.isAbnormal
+                      ? color
+                      : context.appTextPrimary,
                 ),
               ),
               if ((measurement.unit ?? '').trim().isNotEmpty) ...[
@@ -745,9 +751,9 @@ class _MeasurementCard extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 2),
                   child: Text(
                     measurement.unit!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 9.5,
-                      color: AppColors.textSecondary,
+                      color: context.appTextSecondary,
                     ),
                   ),
                 ),
@@ -761,10 +767,7 @@ class _MeasurementCard extends StatelessWidget {
             referenceText.isEmpty ? '정상범위 정보 없음' : '정상범위 $referenceText',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 9.5,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 9.5, color: context.appTextSecondary),
           ),
         ],
       ),
@@ -786,9 +789,9 @@ class _ResultHistoryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Row(
         children: [
@@ -796,13 +799,13 @@ class _ResultHistoryCard extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.surfaceSoft,
+              color: context.appSurfaceSoft,
               borderRadius: BorderRadius.circular(9),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.science_outlined,
               size: 18,
-              color: AppColors.navy,
+              color: context.appBrand,
             ),
           ),
 
@@ -814,10 +817,10 @@ class _ResultHistoryCard extends StatelessWidget {
               children: [
                 Text(
                   _formatDateTime(result.collectedAt),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -825,9 +828,9 @@ class _ResultHistoryCard extends StatelessWidget {
                   '검사 #${result.examinationId} · '
                   '측정 ${result.measurements.length}개 · '
                   '이상 ${abnormalMeasurements.length}개',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -862,8 +865,8 @@ class _ResultStatusBadge extends StatelessWidget {
     final color = switch (normalized) {
       'FINAL' => AppColors.success,
       'PRELIMINARY' => AppColors.warning,
-      'DRAFT' => AppColors.textSecondary,
-      _ => AppColors.textSecondary,
+      'DRAFT' => context.appTextSecondary,
+      _ => context.appTextSecondary,
     };
 
     return Container(
@@ -910,7 +913,7 @@ class _AbnormalBadge extends StatelessWidget {
   }
 }
 
-Color _abnormalColor(String? flag) {
+Color _abnormalColor(BuildContext context, String? flag) {
   switch (flag?.trim().toUpperCase()) {
     case 'HIGH':
       return AppColors.danger;
@@ -922,7 +925,7 @@ Color _abnormalColor(String? flag) {
       return AppColors.success;
 
     default:
-      return AppColors.textSecondary;
+      return context.appTextSecondary;
   }
 }
 

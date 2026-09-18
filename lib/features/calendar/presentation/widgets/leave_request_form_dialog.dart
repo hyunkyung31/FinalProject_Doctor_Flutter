@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import 'schedule_date_picker_dialog.dart';
@@ -214,7 +215,7 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: AppColors.surface,
+      backgroundColor: context.appSurface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: SizedBox(
         width: 500,
@@ -229,13 +230,13 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
               // ==================================================
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       '휴무 신청',
                       style: TextStyle(
                         fontSize: 19,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                       ),
                     ),
                   ),
@@ -248,10 +249,10 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
                       onPressed: () {
                         Navigator.of(context).pop();
                       },
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.close_rounded,
                         size: 20,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   ),
@@ -337,13 +338,13 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
                   hintText: '휴무 신청 사유를 입력해 주세요.',
                   errorText: _reasonError,
                   filled: true,
-                  fillColor: AppColors.surface,
+                  fillColor: context.appSurface,
                   contentPadding: const EdgeInsets.all(12),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(9),
                     borderSide: BorderSide(
                       color: _reasonError == null
-                          ? AppColors.border
+                          ? context.appBorder
                           : AppColors.danger,
                     ),
                   ),
@@ -369,10 +370,10 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceSoft,
+                  color: context.appSurfaceSoft,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
                     Icon(
                       Icons.info_outline_rounded,
@@ -387,7 +388,7 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
                         '휴무 신청은 승인 후 내 스케줄에 반영됩니다.',
                         style: TextStyle(
                           fontSize: 10.5,
-                          color: AppColors.textSecondary,
+                          color: context.appTextSecondary,
                         ),
                       ),
                     ),
@@ -513,10 +514,10 @@ class _FieldLabel extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
+            color: context.appTextPrimary,
           ),
         ),
 
@@ -558,10 +559,10 @@ class _LeaveTypeButton extends StatelessWidget {
         height: 40,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.surfaceSoft : AppColors.surface,
+          color: isSelected ? context.appSurfaceSoft : context.appSurface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? AppColors.primaryBlue : AppColors.border,
+            color: isSelected ? AppColors.primaryBlue : context.appBorder,
             width: isSelected ? 1.2 : 1,
           ),
         ),
@@ -570,7 +571,7 @@ class _LeaveTypeButton extends StatelessWidget {
           style: TextStyle(
             fontSize: 11.5,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? AppColors.navy : AppColors.textSecondary,
+            color: isSelected ? AppColors.navy : context.appTextSecondary,
           ),
         ),
       ),
@@ -607,10 +608,10 @@ class _DateField extends StatelessWidget {
             height: 44,
             padding: const EdgeInsets.symmetric(horizontal: 13),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: context.appSurface,
               borderRadius: BorderRadius.circular(9),
               border: Border.all(
-                color: errorText == null ? AppColors.border : AppColors.danger,
+                color: errorText == null ? context.appBorder : AppColors.danger,
               ),
             ),
             child: Row(
@@ -621,8 +622,8 @@ class _DateField extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       color: value == null
-                          ? AppColors.textDisabled
-                          : AppColors.textPrimary,
+                          ? context.appTextDisabled
+                          : context.appTextPrimary,
                     ),
                   ),
                 ),

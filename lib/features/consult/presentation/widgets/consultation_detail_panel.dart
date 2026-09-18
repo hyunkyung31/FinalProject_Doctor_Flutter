@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../consultation_ui_models.dart';
@@ -111,9 +112,9 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -121,7 +122,7 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
           _buildHeader(),
           _buildContextToolbar(),
 
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.appBorder),
 
           Expanded(child: _buildConversation()),
 
@@ -140,20 +141,20 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
 
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 13, 18, 12),
-      color: AppColors.surface,
+      color: context.appSurface,
       child: Row(
         children: [
           Container(
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: AppColors.surfaceSoft,
+              color: context.appSurfaceSoft,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.groups_2_outlined,
               size: 20,
-              color: AppColors.navy,
+              color: context.appBrand,
             ),
           ),
 
@@ -170,10 +171,10 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
                         item.subject,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: context.appTextPrimary,
                         ),
                       ),
                     ),
@@ -188,9 +189,9 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
 
                 Text(
                   '${item.patientName} · ${item.patientMeta}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -215,7 +216,7 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
     return Container(
       height: 49,
       padding: const EdgeInsets.symmetric(horizontal: 14),
-      color: AppColors.background,
+      color: context.appBackground,
       child: Row(
         children: [
           _ContextInfo(
@@ -273,7 +274,7 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
     final item = widget.consultation;
 
     return Container(
-      color: AppColors.background,
+      color: context.appBackground,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
         children: [
@@ -374,10 +375,10 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
                 requester == null
                     ? '협진 요청'
                     : '${requester.doctorName} · ${requester.department}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 9.5,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
+                  color: context.appTextSecondary,
                 ),
               ),
             ),
@@ -387,14 +388,14 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
             Container(
               padding: const EdgeInsets.fromLTRB(13, 11, 13, 10),
               decoration: BoxDecoration(
-                color: isMine ? AppColors.navy : AppColors.surface,
+                color: isMine ? AppColors.navy : context.appSurface,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(12),
                   topRight: const Radius.circular(12),
                   bottomLeft: Radius.circular(isMine ? 12 : 3),
                   bottomRight: Radius.circular(isMine ? 3 : 12),
                 ),
-                border: isMine ? null : Border.all(color: AppColors.border),
+                border: isMine ? null : Border.all(color: context.appBorder),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -404,7 +405,7 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: isMine ? Colors.white : AppColors.textPrimary,
+                      color: isMine ? Colors.white : context.appTextPrimary,
                     ),
                   ),
 
@@ -415,7 +416,7 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
                     style: TextStyle(
                       fontSize: 10.5,
                       height: 1.55,
-                      color: isMine ? Colors.white : AppColors.textPrimary,
+                      color: isMine ? Colors.white : context.appTextPrimary,
                     ),
                   ),
 
@@ -425,7 +426,7 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
                     _formatTime(item.createdAt),
                     style: TextStyle(
                       fontSize: 8.5,
-                      color: isMine ? Colors.white70 : AppColors.textSecondary,
+                      color: isMine ? Colors.white70 : context.appTextSecondary,
                     ),
                   ),
                 ],
@@ -462,24 +463,24 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
   Widget _buildRequestedFooter() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        border: Border(top: BorderSide(color: context.appBorder)),
       ),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.mark_chat_unread_outlined,
             size: 16,
-            color: AppColors.textSecondary,
+            color: context.appTextSecondary,
           ),
 
           const SizedBox(width: 8),
 
-          const Expanded(
+          Expanded(
             child: Text(
               '협진을 수락하면 담당 의료진과 의견을 주고받을 수 있습니다.',
-              style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+              style: TextStyle(fontSize: 10, color: context.appTextSecondary),
             ),
           ),
 
@@ -508,9 +509,9 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
   Widget _buildComposer() {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 9, 14, 10),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        border: Border(top: BorderSide(color: context.appBorder)),
       ),
       child: Column(
         children: [
@@ -531,23 +532,23 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
                     maxHeight: 88,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.background,
+                    color: context.appBackground,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: context.appBorder),
                   ),
                   child: TextField(
                     controller: _messageController,
                     minLines: 1,
                     maxLines: 3,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10.5,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: '협진 의견을 입력해 주세요.',
                       hintStyle: TextStyle(
                         fontSize: 10,
-                        color: AppColors.textDisabled,
+                        color: context.appTextDisabled,
                       ),
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.symmetric(
@@ -621,7 +622,7 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
                               : FontWeight.w500,
                           color: _isFinalOpinion
                               ? AppColors.navy
-                              : AppColors.textSecondary,
+                              : context.appTextSecondary,
                         ),
                       ),
                     ],
@@ -653,16 +654,16 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        border: Border(top: BorderSide(color: context.appBorder)),
       ),
       child: Row(
         children: [
           Icon(
             completed ? Icons.task_alt_rounded : Icons.block_outlined,
             size: 15,
-            color: AppColors.textSecondary,
+            color: context.appTextSecondary,
           ),
 
           const SizedBox(width: 7),
@@ -671,9 +672,9 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
             completed
                 ? '완료된 협진입니다. 대화 내역은 조회만 가능합니다.'
                 : '철회된 협진입니다. 대화 내역은 조회만 가능합니다.',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
-              color: AppColors.textSecondary,
+              color: context.appTextSecondary,
             ),
           ),
         ],
@@ -734,7 +735,7 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
             width: 430,
             constraints: const BoxConstraints(maxHeight: 520),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: context.appSurface,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Column(
@@ -804,7 +805,7 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
             width: 450,
             constraints: const BoxConstraints(maxHeight: 520),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: context.appSurface,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Column(
@@ -820,13 +821,13 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
                 ),
 
                 if (references.isEmpty)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.all(30),
                     child: Text(
                       '등록된 참조 자료가 없습니다.',
                       style: TextStyle(
                         fontSize: 10.5,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   )
@@ -893,7 +894,7 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
             width: 430,
             padding: const EdgeInsets.only(bottom: 14),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: context.appSurface,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Column(
@@ -996,10 +997,10 @@ class _OpinionBubble extends StatelessWidget {
 
                 Text(
                   '${opinion.doctorName} · ${opinion.department}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -1014,7 +1015,7 @@ class _OpinionBubble extends StatelessWidget {
                     ? AppColors.successBackground
                     : isMine
                     ? AppColors.navy
-                    : AppColors.surface,
+                    : context.appSurface,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(12),
                   topRight: const Radius.circular(12),
@@ -1026,7 +1027,7 @@ class _OpinionBubble extends StatelessWidget {
                       ? AppColors.success
                       : isMine
                       ? AppColors.navy
-                      : AppColors.border,
+                      : context.appBorder,
                 ),
               ),
               child: Text(
@@ -1035,10 +1036,10 @@ class _OpinionBubble extends StatelessWidget {
                   fontSize: 10.5,
                   height: 1.55,
                   color: opinion.isFinal
-                      ? AppColors.textPrimary
+                      ? context.appTextPrimary
                       : isMine
                       ? Colors.white
-                      : AppColors.textPrimary,
+                      : context.appTextPrimary,
                 ),
               ),
             ),
@@ -1047,9 +1048,9 @@ class _OpinionBubble extends StatelessWidget {
 
             Text(
               _formatTime(opinion.createdAt),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 8.5,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ],
@@ -1082,9 +1083,9 @@ class _ReferenceAttachmentCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: context.appSurface,
             borderRadius: BorderRadius.circular(9),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.appBorder),
           ),
           child: Row(
             children: [
@@ -1092,13 +1093,13 @@ class _ReferenceAttachmentCard extends StatelessWidget {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceSoft,
+                  color: context.appSurfaceSoft,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.link_rounded,
                   size: 16,
-                  color: AppColors.navy,
+                  color: context.appBrand,
                 ),
               ),
 
@@ -1110,10 +1111,10 @@ class _ReferenceAttachmentCard extends StatelessWidget {
                   children: [
                     Text(
                       reference.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                       ),
                     ),
 
@@ -1121,9 +1122,9 @@ class _ReferenceAttachmentCard extends StatelessWidget {
 
                     Text(
                       reference.description,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 9,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   ],
@@ -1133,7 +1134,7 @@ class _ReferenceAttachmentCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceSoft,
+                  color: context.appSurfaceSoft,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -1148,10 +1149,10 @@ class _ReferenceAttachmentCard extends StatelessWidget {
 
               const SizedBox(width: 5),
 
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
                 size: 16,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ],
           ),
@@ -1176,13 +1177,13 @@ class _ContextInfo extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 13, color: AppColors.textSecondary),
+        Icon(icon, size: 13, color: context.appTextSecondary),
 
         const SizedBox(width: 5),
 
         Text(
           text,
-          style: const TextStyle(fontSize: 9.5, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 9.5, color: context.appTextSecondary),
         ),
       ],
     );
@@ -1209,22 +1210,22 @@ class _ToolbarButton extends StatelessWidget {
         height: 30,
         padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: context.appSurface,
           borderRadius: BorderRadius.circular(7),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.appBorder),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 13, color: AppColors.navy),
+            Icon(icon, size: 13, color: context.appBrand),
 
             const SizedBox(width: 4),
 
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
           ],
@@ -1247,20 +1248,20 @@ class _DateDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Expanded(child: Divider(color: AppColors.border)),
+        Expanded(child: Divider(color: context.appBorder)),
 
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 8.5,
-              color: AppColors.textSecondary,
+              color: context.appTextSecondary,
             ),
           ),
         ),
 
-        const Expanded(child: Divider(color: AppColors.border)),
+        Expanded(child: Divider(color: context.appBorder)),
       ],
     );
   }
@@ -1277,13 +1278,13 @@ class _SystemMessage extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: AppColors.surfaceSoft,
+          color: context.appSurfaceSoft,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
           text,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 8.8, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 8.8, color: context.appTextSecondary),
         ),
       ),
     );
@@ -1300,16 +1301,16 @@ class _ConversationSectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 13, color: AppColors.textSecondary),
+        Icon(icon, size: 13, color: context.appTextSecondary),
 
         const SizedBox(width: 5),
 
         Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 9.5,
             fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
+            color: context.appTextSecondary,
           ),
         ),
       ],
@@ -1343,10 +1344,10 @@ class _ComposerIconButton extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: AppColors.surfaceSoft,
+            color: context.appSurfaceSoft,
             borderRadius: BorderRadius.circular(9),
           ),
-          child: Icon(icon, size: 17, color: AppColors.navy),
+          child: Icon(icon, size: 17, color: context.appBrand),
         ),
       ),
     );
@@ -1374,8 +1375,8 @@ class _DialogHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 13, 10, 12),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.border)),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: context.appBorder)),
       ),
       child: Row(
         children: [
@@ -1383,10 +1384,10 @@ class _DialogHeader extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: AppColors.surfaceSoft,
+              color: context.appSurfaceSoft,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, size: 17, color: AppColors.navy),
+            child: Icon(icon, size: 17, color: context.appBrand),
           ),
 
           const SizedBox(width: 9),
@@ -1397,10 +1398,10 @@ class _DialogHeader extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
 
@@ -1408,9 +1409,9 @@ class _DialogHeader extends StatelessWidget {
 
                 Text(
                   subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -1437,19 +1438,19 @@ class _ParticipantDialogCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: context.appBackground,
         borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Row(
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 17,
-            backgroundColor: AppColors.surfaceSoft,
+            backgroundColor: context.appSurfaceSoft,
             child: Icon(
               Icons.person_outline_rounded,
               size: 16,
-              color: AppColors.navy,
+              color: context.appBrand,
             ),
           ),
 
@@ -1461,10 +1462,10 @@ class _ParticipantDialogCard extends StatelessWidget {
               children: [
                 Text(
                   participant.doctorName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
 
@@ -1472,9 +1473,9 @@ class _ParticipantDialogCard extends StatelessWidget {
 
                 Text(
                   participant.department,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -1512,9 +1513,9 @@ class _DialogInfoRow extends StatelessWidget {
             width: 90,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9.5,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ),
@@ -1522,10 +1523,10 @@ class _DialogInfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
           ),
@@ -1557,7 +1558,7 @@ class _StatusBadge extends StatelessWidget {
 
       case ConsultationUiStatus.inProgress:
         color = AppColors.primaryBlue;
-        background = AppColors.surfaceSoft;
+        background = context.appSurfaceSoft;
         break;
 
       case ConsultationUiStatus.completed:

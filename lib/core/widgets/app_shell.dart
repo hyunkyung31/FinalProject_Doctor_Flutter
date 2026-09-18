@@ -7,6 +7,8 @@ import '../auth/access_control.dart';
 import '../auth/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../settings/text_scale_provider.dart';
+import '../settings/theme_mode_provider.dart';
+import '../../features/chat/presentation/chat_top_bar_button.dart';
 
 // ============================================================
 // STEP 1. Navigation Item Model
@@ -31,9 +33,7 @@ class AppNavigationItem {
 
 class AppShell extends StatelessWidget {
   final Widget body;
-
   final String pageTitle;
-
   final int selectedIndex;
 
   const AppShell({
@@ -45,9 +45,10 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    final theme = Theme.of(context);
 
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Row(
         children: [
           _SideNavigation(selectedIndex: selectedIndex),
@@ -133,6 +134,9 @@ class _SideNavigation extends StatelessWidget {
     return Container(
       width: 88,
 
+      // ========================================================
+      // 브랜드 Navigation 색상은 라이트 / 다크 공통 유지
+      // ========================================================
       color: AppColors.navy,
 
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
@@ -154,24 +158,42 @@ class _SideNavigation extends StatelessWidget {
               child: ListView.separated(
                 padding: EdgeInsets.zero,
 
-                itemCount: items.length,
+                // ========================================================
+                // 메뉴 + 설정 버튼
+                // ========================================================
+                itemCount: items.length + 1,
 
                 separatorBuilder: (_, _) {
                   return const SizedBox(height: 5);
                 },
 
                 itemBuilder: (context, index) {
+                  // ======================================================
+                  // 마지막 항목 = 설정
+                  // 일정 바로 아래에 표시
+                  // ======================================================
+
+                  if (index == items.length) {
+                    return _BottomButton(
+                      icon: Icons.settings_outlined,
+                      label: '설정',
+                      selected:
+                          GoRouterState.of(context).uri.path ==
+                          AppRoutes.settings,
+                      onTap: () {
+                        context.go(AppRoutes.settings);
+                      },
+                    );
+                  }
+
                   final item = items[index];
 
                   final hasPermission = auth.hasPermission(item.permission);
 
                   return _NavigationButton(
                     item: item,
-
                     selected: selectedIndex == index,
-
                     enabled: hasPermission,
-
                     onTap: () {
                       _handleNavigation(context, item, hasPermission);
                     },
@@ -180,18 +202,22 @@ class _SideNavigation extends StatelessWidget {
               ),
             ),
 
-            // ==================================================
-            // Settings
-            // ==================================================
-            _BottomButton(
-              icon: Icons.settings_outlined,
-              label: '설정',
-              selected:
-                  GoRouterState.of(context).uri.path == AppRoutes.settings,
-              onTap: () {
-                context.go(AppRoutes.settings);
-              },
-            ),
+            // ============================================================
+            // Sidebar Footer
+            // React 의료진 Web 구조 참고
+            // Theme Toggle + Account Profile
+            // ============================================================
+            const SizedBox(height: 8),
+
+            const Divider(color: Colors.white12, height: 1),
+
+            const SizedBox(height: 10),
+
+            const _ThemeToggleButton(),
+
+            const SizedBox(height: 10),
+
+            const _ProfileButton(),
           ],
         ),
       ),
@@ -258,10 +284,6 @@ class _SideNavigation extends StatelessWidget {
         return null;
     }
   }
-
-  // ============================================================
-  // _SideNavigation 끝
-  // ============================================================
 }
 
 // ============================================================
@@ -278,13 +300,10 @@ class _AppLogo extends StatelessWidget {
         Container(
           width: 42,
           height: 42,
-
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.12),
-
             borderRadius: BorderRadius.circular(AppRadius.medium),
           ),
-
           child: const Icon(
             Icons.favorite_rounded,
             color: Colors.white,
@@ -309,7 +328,6 @@ class _AppLogo extends StatelessWidget {
 
 // ============================================================
 // STEP 6. Navigation Button
-// 이전 방식: 아이콘 위 / 텍스트 아래
 // ============================================================
 
 class _NavigationButton extends StatelessWidget {
@@ -459,6 +477,10 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
 
+    final theme = Theme.of(context);
+
+    final colorScheme = theme.colorScheme;
+
     final canUseChat = auth.hasPermission(AppPermission.chatView);
 
     return Container(
@@ -469,10 +491,12 @@ class _TopBar extends StatelessWidget {
         vertical: 6,
       ),
 
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-
-        border: Border(bottom: BorderSide(color: AppColors.border)),
+      // ========================================================
+      // Theme에 따라 라이트 / 다크 자동 적용
+      // ========================================================
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(bottom: BorderSide(color: theme.dividerColor)),
       ),
 
       child: Row(
@@ -482,8 +506,8 @@ class _TopBar extends StatelessWidget {
           // ====================================================
           Text(
             pageTitle,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
+            style: TextStyle(
+              color: colorScheme.onSurface,
               fontSize: 20,
               fontWeight: FontWeight.w700,
             ),
@@ -496,17 +520,14 @@ class _TopBar extends StatelessWidget {
           // ====================================================
           Text(
             _todayText(),
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
           ),
 
           const SizedBox(width: 18),
 
-          // ============================================================
+          // ====================================================
           // 글자 크기 설정
-          // ============================================================
+          // ====================================================
           const SizedBox(width: 10),
 
           const _TextScaleButton(),
@@ -518,19 +539,16 @@ class _TopBar extends StatelessWidget {
           // ====================================================
           IconButton(
             tooltip: '알림',
-
             onPressed: () {
               ScaffoldMessenger.of(
                 context,
               ).showSnackBar(const SnackBar(content: Text('알림 화면은 추후 연결합니다.')));
             },
-
-            icon: const Badge(
-              label: Text('5'),
-
+            icon: Badge(
+              label: const Text('5'),
               child: Icon(
                 Icons.notifications_none_rounded,
-                color: AppColors.navy,
+                color: colorScheme.primary,
               ),
             ),
           ),
@@ -539,38 +557,21 @@ class _TopBar extends StatelessWidget {
 
           // ====================================================
           // Chat
-          // 추후 /staff/chat-rooms 연결
+          // 실제 unread badge + 우측 Chat Panel
           // ====================================================
-          IconButton(
-            tooltip: '채팅',
-            onPressed: canUseChat
-                ? () {
-                    context.go(AppRoutes.chat);
-                  }
-                : null,
-            icon: Badge(
-              label: const Text('3'),
-              isLabelVisible: canUseChat,
-              child: Icon(
-                Icons.chat_bubble_outline_rounded,
-                color: canUseChat ? AppColors.navy : AppColors.textDisabled,
-              ),
-            ),
-          ),
+          ChatTopBarButton(enabled: canUseChat),
 
           const SizedBox(width: 14),
 
           // ====================================================
           // Profile
           // ====================================================
-          const CircleAvatar(
+          CircleAvatar(
             radius: 18,
-
-            backgroundColor: AppColors.surfaceSoft,
-
+            backgroundColor: colorScheme.surfaceContainerHighest,
             child: Icon(
               Icons.person_outline_rounded,
-              color: AppColors.navy,
+              color: colorScheme.primary,
               size: 21,
             ),
           ),
@@ -579,14 +580,12 @@ class _TopBar extends StatelessWidget {
 
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
-
             crossAxisAlignment: CrossAxisAlignment.start,
-
             children: [
               Text(
                 '${auth.userName} ${auth.position}',
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
+                style: TextStyle(
+                  color: colorScheme.onSurface,
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
                 ),
@@ -596,8 +595,8 @@ class _TopBar extends StatelessWidget {
 
               Text(
                 auth.department,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
                   fontSize: 11,
                 ),
               ),
@@ -612,13 +611,13 @@ class _TopBar extends StatelessWidget {
 
   // ============================================================
   // 오늘 날짜
-  // intl 패키지 없이 기본 Dart로 처리
   // ============================================================
 
   String _todayText() {
     final now = DateTime.now().toUtc().add(const Duration(hours: 9));
 
     final month = now.month.toString().padLeft(2, '0');
+
     final day = now.day.toString().padLeft(2, '0');
 
     return '${now.year}.$month.$day';
@@ -626,8 +625,7 @@ class _TopBar extends StatelessWidget {
 }
 
 // ============================================================
-// STEP 10. 글자 크기 순환 버튼
-// 아이콘 방식 + 터치 효과 제거
+// STEP 9. 글자 크기 순환 버튼
 // ============================================================
 
 class _TextScaleButton extends StatelessWidget {
@@ -637,36 +635,31 @@ class _TextScaleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final textScale = context.watch<TextScaleProvider>();
 
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Tooltip(
       message: '글자 크기: ${textScale.mode.label}',
-
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-
         onTap: () {
           textScale.cycleMode();
         },
-
         child: SizedBox(
           width: 52,
           height: 52,
-
           child: Center(
             child: Container(
               width: 42,
               height: 42,
-
               alignment: Alignment.center,
-
               decoration: BoxDecoration(
-                color: AppColors.surfaceSoft,
-
+                color: colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(AppRadius.medium),
               ),
-
               child: Icon(
                 Icons.format_size_rounded,
-                color: AppColors.navy,
+                color: colorScheme.primary,
                 size: _getIconSize(textScale.mode),
               ),
             ),
@@ -694,5 +687,98 @@ class _TextScaleButton extends StatelessWidget {
       case AppTextScaleMode.extraLarge:
         return 26;
     }
+  }
+}
+
+// ============================================================
+// STEP 10. Sidebar Theme Toggle
+// Light ↔ Dark 즉시 전환
+// ============================================================
+
+class _ThemeToggleButton extends StatelessWidget {
+  const _ThemeToggleButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Tooltip(
+      message: isDark ? '라이트 모드로 변경' : '다크 모드로 변경',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.medium),
+          onTap: () {
+            context.read<ThemeModeProvider>().setMode(
+              isDark ? AppThemeMode.light : AppThemeMode.dark,
+            );
+          },
+          child: Container(
+            width: 48,
+            height: 48,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(AppRadius.medium),
+            ),
+            child: Icon(
+              isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+              color: Colors.white70,
+              size: 21,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// STEP 11. Sidebar Account Profile
+// ============================================================
+
+class _ProfileButton extends StatelessWidget {
+  const _ProfileButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+
+    final userName = auth.userName.trim();
+
+    final initial = userName.isNotEmpty
+        ? userName.substring(0, 1).toUpperCase()
+        : '의';
+
+    return Tooltip(
+      message: '${auth.userName} ${auth.position}\n${auth.department}',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.round),
+          onTap: () {
+            context.go(AppRoutes.settings);
+          },
+          child: Container(
+            width: 42,
+            height: 42,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.10),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+            ),
+            child: Text(
+              initial,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

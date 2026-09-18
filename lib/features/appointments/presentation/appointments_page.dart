@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/auth/access_control.dart';
 import '../../../core/auth/auth_provider.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_shell.dart';
+import '../../patients/data/services/patient_service.dart';
+import '../../patients/presentation/widgets/patient_detail_tabs.dart';
 
 import 'appointment_ui_model.dart';
 import '../data/services/appointment_service.dart';
-import 'widgets/appointment_detail_panel.dart';
-import 'widgets/appointment_list_panel.dart';
+import 'widgets/appointment_calendar_panel.dart';
+import 'widgets/appointment_day_timeline_panel.dart';
 import 'widgets/appointment_status_filter.dart';
 
 // ============================================================
@@ -26,15 +28,19 @@ class AppointmentsPage extends StatefulWidget {
 
 class _AppointmentsPageState extends State<AppointmentsPage> {
   // ============================================================
-  // STEP 2. Mock 예약 Data
+  // 예약 Data
   // 실제 /api/staff/reservations/ 응답 구조 기준
   // ============================================================
 
   List<AppointmentUiModel> _appointments = [];
 
+  Map<int, PatientUiModel> _patientMap = {};
+
   AppointmentStatusFilter _selectedFilter = AppointmentStatusFilter.all;
 
   int? _selectedAppointmentId;
+
+  DateTime _selectedDate = DateTime.now();
 
   // ============================================================
   // STEP 3. Init
@@ -62,33 +68,79 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
         apiClient: auth.authService.apiClient,
       );
 
-      final appointments = await appointmentService.fetchAppointments();
+      final patientService = PatientService(
+        apiClient: auth.authService.apiClient,
+      );
 
-      // 예약 시간 기준 정렬
+      // 예약과 실제 환자 목록 조회를 동시에 시작
+      final appointmentsFuture = appointmentService.fetchAppointments();
+      final patientsFuture = _fetchAllPatients(patientService);
+
+      final appointments = await appointmentsFuture;
+
       appointments.sort((a, b) => a.reservedAt.compareTo(b.reservedAt));
 
       if (!mounted) {
         return;
       }
 
+      // 예약 데이터는 먼저 화면에 표시
       setState(() {
         _appointments = appointments;
 
-        if (_appointments.isEmpty) {
+        final filtered = _getFilteredAppointments(_selectedFilter);
+
+        if (filtered.isEmpty) {
           _selectedAppointmentId = null;
           return;
         }
 
-        final selectedExists = _appointments.any(
-          (item) => item.id == _selectedAppointmentId,
+        _selectedDate = _resolveDateForAppointments(
+          _appointments,
+          _selectedDate,
         );
 
-        if (!selectedExists) {
-          _selectedAppointmentId = _appointments.first.id;
-        }
+        final appointmentsOnDate = _appointmentsOnDate(
+          _appointments,
+          _selectedDate,
+        );
+
+        final filteredAppointments = _filterAppointments(
+          appointmentsOnDate,
+          _selectedFilter,
+        );
+
+        _selectedAppointmentId = _resolveSelectedAppointmentId(
+          filteredAppointments,
+        );
       });
 
-      debugPrint('[APPOINTMENTS] 예약 목록 조회 완료: ${appointments.length}건');
+      debugPrint(
+        '[APPOINTMENTS] 예약 목록 조회 완료: '
+        '${appointments.length}건',
+      );
+
+      // 실제 환자 정보 연결
+      try {
+        final patients = await patientsFuture;
+
+        if (!mounted) {
+          return;
+        }
+
+        setState(() {
+          _patientMap = {
+            for (final patient in patients) patient.patientId: patient,
+          };
+        });
+
+        debugPrint(
+          '[APPOINTMENTS] 실제 환자 정보 연결 완료: '
+          '${patients.length}명',
+        );
+      } catch (error) {
+        debugPrint('[APPOINTMENTS] 환자 정보 조회 실패: $error');
+      }
     } catch (error) {
       debugPrint('[APPOINTMENTS] 예약 목록 조회 실패: $error');
 
@@ -107,48 +159,61 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
     }
   }
 
+  Future<List<PatientUiModel>> _fetchAllPatients(
+    PatientService patientService,
+  ) async {
+    final patients = <PatientUiModel>[];
+
+    var page = 1;
+    var hasNext = true;
+
+    while (hasNext) {
+      final result = await patientService.fetchPatientPage(page: page);
+
+      patients.addAll(result.patients);
+
+      hasNext = result.hasNext;
+      page++;
+    }
+
+    return patients;
+  }
+
   // ============================================================
   // STEP 4. Filtered Appointments
   // ============================================================
 
+  List<AppointmentUiModel> get _selectedDateAppointments {
+    return _appointmentsOnDate(_appointments, _selectedDate);
+  }
+
   List<AppointmentUiModel> get _filteredAppointments {
-    switch (_selectedFilter) {
+    return _filterAppointments(_selectedDateAppointments, _selectedFilter);
+  }
+
+  List<AppointmentUiModel> _filterAppointments(
+    List<AppointmentUiModel> source,
+    AppointmentStatusFilter filter,
+  ) {
+    switch (filter) {
       case AppointmentStatusFilter.all:
-        return _appointments;
+        return source;
 
       case AppointmentStatusFilter.requested:
-        return _appointments
+        return source
             .where((item) => item.status == AppointmentStatus.requested)
             .toList();
 
       case AppointmentStatusFilter.accepted:
-        return _appointments
+        return source
             .where((item) => item.status == AppointmentStatus.accepted)
             .toList();
 
       case AppointmentStatusFilter.canceled:
-        return _appointments
+        return source
             .where((item) => item.status == AppointmentStatus.canceled)
             .toList();
     }
-  }
-
-  // ============================================================
-  // STEP 5. 선택된 예약
-  // ============================================================
-
-  AppointmentUiModel? get _selectedAppointment {
-    if (_selectedAppointmentId == null) {
-      return null;
-    }
-
-    for (final appointment in _appointments) {
-      if (appointment.id == _selectedAppointmentId) {
-        return appointment;
-      }
-    }
-
-    return null;
   }
 
   // ============================================================
@@ -161,27 +226,137 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
     });
   }
 
+  void _changeDate(DateTime date) {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+
+    final appointmentsOnDate = _appointmentsOnDate(
+      _appointments,
+      normalizedDate,
+    );
+
+    final filteredAppointments = _filterAppointments(
+      appointmentsOnDate,
+      _selectedFilter,
+    );
+
+    final nextSelectedAppointmentId = _resolveSelectedAppointmentId(
+      filteredAppointments,
+    );
+
+    setState(() {
+      _selectedDate = normalizedDate;
+      _selectedAppointmentId = nextSelectedAppointmentId;
+    });
+
+    debugPrint(
+      '[APPOINTMENTS] 날짜 변경: '
+      '${normalizedDate.year}-'
+      '${normalizedDate.month.toString().padLeft(2, '0')}-'
+      '${normalizedDate.day.toString().padLeft(2, '0')} '
+      '/ count=${appointmentsOnDate.length}',
+    );
+  }
+
+  List<AppointmentUiModel> _appointmentsOnDate(
+    List<AppointmentUiModel> appointments,
+    DateTime date,
+  ) {
+    return appointments.where((appointment) {
+      final reservedDate = appointment.reservedAt.toLocal();
+
+      return reservedDate.year == date.year &&
+          reservedDate.month == date.month &&
+          reservedDate.day == date.day;
+    }).toList();
+  }
+
+  int? _resolveSelectedAppointmentId(
+    List<AppointmentUiModel> appointmentsOnDate,
+  ) {
+    final currentId = _selectedAppointmentId;
+
+    if (currentId != null) {
+      final currentExists = appointmentsOnDate.any(
+        (appointment) => appointment.id == currentId,
+      );
+
+      if (currentExists) {
+        return currentId;
+      }
+    }
+
+    // 해당 날짜 예약이 1건일 때만 자동 선택
+    if (appointmentsOnDate.length == 1) {
+      return appointmentsOnDate.single.id;
+    }
+
+    // 0건 또는 2건 이상이면 사용자가 직접 선택
+    return null;
+  }
+
+  DateTime _resolveDateForAppointments(
+    List<AppointmentUiModel> appointments,
+    DateTime preferredDate,
+  ) {
+    final preferred = DateTime(
+      preferredDate.year,
+      preferredDate.month,
+      preferredDate.day,
+    );
+
+    if (appointments.isEmpty) {
+      return preferred;
+    }
+
+    final dates =
+        appointments
+            .map((appointment) {
+              final local = appointment.reservedAt.toLocal();
+
+              return DateTime(local.year, local.month, local.day);
+            })
+            .toSet()
+            .toList()
+          ..sort();
+
+    if (dates.any((date) => _isSameDate(date, preferred))) {
+      return preferred;
+    }
+
+    for (final date in dates) {
+      if (!date.isBefore(preferred)) {
+        return date;
+      }
+    }
+
+    return dates.last;
+  }
+
+  bool _isSameDate(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
   // ============================================================
   // STEP 7. Filter 변경
   // ============================================================
 
   void _changeFilter(AppointmentStatusFilter filter) {
+    final appointmentsOnDate = _appointmentsOnDate(
+      _appointments,
+      _selectedDate,
+    );
+
+    final filteredAppointments = _filterAppointments(
+      appointmentsOnDate,
+      filter,
+    );
+
     setState(() {
       _selectedFilter = filter;
 
-      final filtered = _getFilteredAppointments(filter);
-
-      if (filtered.isEmpty) {
-        _selectedAppointmentId = null;
-      } else {
-        final currentExists = filtered.any(
-          (item) => item.id == _selectedAppointmentId,
-        );
-
-        if (!currentExists) {
-          _selectedAppointmentId = filtered.first.id;
-        }
-      }
+      _selectedAppointmentId = _resolveSelectedAppointmentId(
+        filteredAppointments,
+      );
     });
   }
 
@@ -333,7 +508,9 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
   // ============================================================
 
   int _countStatus(AppointmentStatus status) {
-    return _appointments.where((item) => item.status == status).length;
+    return _selectedDateAppointments
+        .where((item) => item.status == status)
+        .length;
   }
 
   // ============================================================
@@ -356,28 +533,13 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
       pageTitle: '예약',
       selectedIndex: 2,
       body: Material(
-        color: AppColors.background,
+        color: context.appBackground,
         child: Container(
-          color: AppColors.background,
+          color: context.appBackground,
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ==================================================
-              // Filter
-              // ==================================================
-              AppointmentStatusFilterBar(
-                selectedFilter: _selectedFilter,
-                totalCount: _appointments.length,
-                requestedCount: _countStatus(AppointmentStatus.requested),
-                acceptedCount: _countStatus(AppointmentStatus.accepted),
-                canceledCount: _countStatus(AppointmentStatus.canceled),
-                canManage: canManage,
-                onChanged: _changeFilter,
-              ),
-
-              const SizedBox(height: 10),
-
               // ==================================================
               // Main Content
               // ==================================================
@@ -385,29 +547,48 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // ==============================================
-                    // 예약 목록
-                    // ==============================================
                     Expanded(
-                      flex: 4,
-                      child: AppointmentListPanel(
-                        appointments: _filteredAppointments,
-                        selectedAppointmentId: _selectedAppointmentId,
-                        onAppointmentSelected: _selectAppointment,
+                      flex: 3,
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: AppointmentCalendarPanel(
+                            appointments: _appointments,
+                            selectedDate: _selectedDate,
+                            onDateChanged: _changeDate,
+                          ),
+                        ),
                       ),
                     ),
 
                     const SizedBox(width: 14),
 
-                    // ==============================================
-                    // 예약 상세
-                    // ==============================================
                     Expanded(
-                      flex: 6,
-                      child: AppointmentDetailPanel(
-                        appointment: _selectedAppointment,
+                      flex: 7,
+                      child: AppointmentDayTimelinePanel(
+                        appointments: _filteredAppointments,
+                        selectedDate: _selectedDate,
+                        patientMap: _patientMap,
+                        selectedAppointmentId: _selectedAppointmentId,
+                        onAppointmentSelected: _selectAppointment,
                         canManage: canManage,
                         onAccept: _acceptAppointment,
+                        filterBar: AppointmentStatusFilterBar(
+                          selectedFilter: _selectedFilter,
+                          totalCount: _selectedDateAppointments.length,
+                          requestedCount: _countStatus(
+                            AppointmentStatus.requested,
+                          ),
+                          acceptedCount: _countStatus(
+                            AppointmentStatus.accepted,
+                          ),
+                          canceledCount: _countStatus(
+                            AppointmentStatus.canceled,
+                          ),
+                          canManage: canManage,
+                          onChanged: _changeFilter,
+                        ),
                       ),
                     ),
                   ],

@@ -105,11 +105,11 @@ class AppointmentUiModel {
       applicantBirthDate: json['applicant_birth_date']?.toString() ?? '',
       applicantContact: json['applicant_contact']?.toString() ?? '',
       applicantGender: json['applicant_gender']?.toString(),
-      reservedAt: DateTime.parse(json['reserved_at'].toString()),
+      reservedAt: _parseApiDateTime(json['reserved_at']),
       status: _parseStatus(json['status']?.toString() ?? ''),
       acceptedAt: _parseNullableDateTime(json['accepted_at']),
-      createdAt: DateTime.parse(json['created_at'].toString()),
-      updatedAt: DateTime.parse(json['updated_at'].toString()),
+      createdAt: _parseApiDateTime(json['created_at']),
+      updatedAt: _parseApiDateTime(json['updated_at']),
       canceledAt: _parseNullableDateTime(json['canceled_at']),
       cancelReason: json['cancel_reason']?.toString(),
       patientAccount: (json['patient_account'] as num?)?.toInt(),
@@ -151,13 +151,13 @@ class AppointmentUiModel {
       return null;
     }
 
-    final text = value.toString();
+    final raw = value.toString().trim();
 
-    if (text.isEmpty) {
+    if (raw.isEmpty) {
       return null;
     }
 
-    return DateTime.parse(text);
+    return _parseApiDateTime(raw);
   }
 
   // ============================================================
@@ -190,6 +190,38 @@ class AppointmentUiModel {
       department: department,
       acceptedBy: acceptedBy ?? this.acceptedBy,
       canceledBy: canceledBy,
+    );
+  }
+
+  static DateTime _parseApiDateTime(dynamic value) {
+    final raw = value?.toString().trim() ?? '';
+
+    if (raw.isEmpty) {
+      throw const FormatException('예약 시간 값이 비어 있습니다.');
+    }
+
+    final hasTimezone =
+        raw.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(raw);
+
+    // timezone이 없으면 Backend 값은 UTC 기준으로 해석
+    final normalized = hasTimezone ? raw : '${raw}Z';
+
+    final utc = DateTime.parse(normalized).toUtc();
+
+    // 기기 시간대와 무관하게 한국시간(KST, UTC+9) 적용
+    final kst = utc.add(const Duration(hours: 9));
+
+    // 이후 .toLocal()을 호출해도 시간이 다시 변하지 않도록
+    // KST의 wall-clock 값을 local DateTime으로 생성
+    return DateTime(
+      kst.year,
+      kst.month,
+      kst.day,
+      kst.hour,
+      kst.minute,
+      kst.second,
+      kst.millisecond,
+      kst.microsecond,
     );
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../examinations/presentation/examination_ui_models.dart';
@@ -103,9 +104,9 @@ class _PatientDetailPanelState extends State<PatientDetailPanel> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -233,7 +234,7 @@ class _AiTab extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.surfaceSoft,
+            color: context.appSurfaceSoft,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -242,12 +243,12 @@ class _AiTab extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AppColors.primaryBlue.withValues(alpha: 0.10),
+                  color: context.appPrimary.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.auto_awesome_outlined,
-                  color: AppColors.primaryBlue,
+                  color: context.appPrimary,
                   size: 20,
                 ),
               ),
@@ -258,12 +259,12 @@ class _AiTab extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       '최근 AI 분석',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
 
@@ -271,10 +272,10 @@ class _AiTab extends StatelessWidget {
 
                     Text(
                       patient.aiSummary,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                       ),
                     ),
                   ],
@@ -314,7 +315,7 @@ class _AiTab extends StatelessWidget {
           title: 'XAI 결과',
           subtitle: 'Grad-CAM 및 관심 영역 시각화',
           status: '생성 완료',
-          statusColor: AppColors.primaryBlue,
+          statusColor: context.appPrimary,
           actionText: '결과 보기',
           onTap: () {
             _showMessage(context, 'XAI 상세 결과 연결 예정');
@@ -356,9 +357,9 @@ class _RecordCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Row(
         children: [
@@ -366,10 +367,10 @@ class _RecordCard extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: AppColors.surfaceSoft,
+              color: context.appSurfaceSoft,
               borderRadius: BorderRadius.circular(9),
             ),
-            child: Icon(icon, size: 18, color: AppColors.navy),
+            child: Icon(icon, size: 18, color: context.appBrand),
           ),
 
           const SizedBox(width: 12),
@@ -380,10 +381,10 @@ class _RecordCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
 
@@ -393,9 +394,9 @@ class _RecordCard extends StatelessWidget {
                   subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -411,7 +412,7 @@ class _RecordCard extends StatelessWidget {
           TextButton(
             onPressed: onTap,
             style: TextButton.styleFrom(
-              foregroundColor: AppColors.primaryBlue,
+              foregroundColor: context.appPrimary,
               padding: const EdgeInsets.symmetric(horizontal: 8),
             ),
             child: Text(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/auth/access_control.dart';
 import '../../../../core/auth/auth_provider.dart';
@@ -225,17 +226,19 @@ class _PatientExaminationOrderSectionState
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: AppColors.surfaceSoft,
+                color: context.appSurfaceSoft,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.assignment_add,
                 size: 15,
-                color: AppColors.navy,
+                color: context.appBrand,
               ),
             ),
+
             const SizedBox(width: 9),
-            const Expanded(
+
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -244,15 +247,17 @@ class _PatientExaminationOrderSectionState
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
-                  SizedBox(height: 2),
+
+                  const SizedBox(height: 2),
+
                   Text(
                     '환자에게 처방된 검사와 진행 상태를 확인합니다.',
                     style: TextStyle(
                       fontSize: 9.5,
-                      color: AppColors.textSecondary,
+                      color: context.appTextSecondary,
                     ),
                   ),
                 ],
@@ -294,8 +299,8 @@ class _PatientExaminationOrderSectionState
         else
           Container(
             decoration: BoxDecoration(
-              color: AppColors.surface,
-              border: Border.all(color: AppColors.border),
+              color: context.appSurface,
+              border: Border.all(color: context.appBorder),
               borderRadius: BorderRadius.circular(8),
             ),
             clipBehavior: Clip.antiAlias,
@@ -303,15 +308,16 @@ class _PatientExaminationOrderSectionState
               children: [
                 const _OrderTableHeader(),
 
-                const Divider(height: 1, color: AppColors.border),
+                Divider(height: 1, color: context.appBorder),
 
                 for (var index = 0; index < _orders.length; index++) ...[
                   _OrderCard(
                     order: _orders[index],
                     type: _findType(_orders[index].examinationTypeId),
                   ),
+
                   if (index != _orders.length - 1)
-                    const Divider(height: 1, color: AppColors.border),
+                    Divider(height: 1, color: context.appBorder),
                 ],
               ],
             ),
@@ -320,6 +326,10 @@ class _PatientExaminationOrderSectionState
     );
   }
 }
+
+// ============================================================
+// 검사 오더 Table Header
+// ============================================================
 
 class _OrderTableHeader extends StatelessWidget {
   const _OrderTableHeader();
@@ -332,23 +342,23 @@ class _OrderTableHeader extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        const headerStyle = TextStyle(
+        final headerStyle = TextStyle(
           fontSize: 8.5,
           fontWeight: FontWeight.w600,
-          color: AppColors.textSecondary,
+          color: context.appTextSecondary,
         );
 
         return Container(
           height: 30,
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          color: AppColors.surfaceSoft,
+          color: context.appSurfaceSoft,
           child: Row(
             children: [
-              const Expanded(flex: 46, child: Text('검사명', style: headerStyle)),
+              Expanded(flex: 46, child: Text('검사명', style: headerStyle)),
 
               const SizedBox(width: 12),
 
-              const Expanded(
+              Expanded(
                 flex: 24,
                 child: Text(
                   '오더일시',
@@ -359,7 +369,7 @@ class _OrderTableHeader extends StatelessWidget {
 
               const SizedBox(width: 10),
 
-              const SizedBox(
+              SizedBox(
                 width: 50,
                 child: Text(
                   '우선순위',
@@ -370,7 +380,7 @@ class _OrderTableHeader extends StatelessWidget {
 
               const SizedBox(width: 7),
 
-              const SizedBox(
+              SizedBox(
                 width: 52,
                 child: Text(
                   '상태',
@@ -407,10 +417,10 @@ class _OrderCard extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               if (constraints.maxWidth < 620) {
-                return _buildCompactLayout(clinicalNote);
+                return _buildCompactLayout(context, clinicalNote);
               }
 
-              return _buildWideLayout();
+              return _buildWideLayout(context);
             },
           ),
         ),
@@ -418,7 +428,11 @@ class _OrderCard extends StatelessWidget {
     );
   }
 
-  Widget _buildWideLayout() {
+  // ============================================================
+  // Wide Layout
+  // ============================================================
+
+  Widget _buildWideLayout(BuildContext context) {
     return SizedBox(
       height: 34,
       child: Row(
@@ -434,20 +448,22 @@ class _OrderCard extends StatelessWidget {
                   type == null ? '검사' : _typeDisplayName(type!),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
+
                 const SizedBox(height: 1),
+
                 Text(
                   '오더 #${order.id} · 진료 #${order.encounterId}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 8,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -463,10 +479,7 @@ class _OrderCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 8.5,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 8.5, color: context.appTextSecondary),
             ),
           ),
 
@@ -486,12 +499,12 @@ class _OrderCard extends StatelessWidget {
 
           const SizedBox(width: 3),
 
-          const SizedBox(
+          SizedBox(
             width: 16,
             child: Icon(
               Icons.chevron_right_rounded,
               size: 15,
-              color: AppColors.textSecondary,
+              color: context.appTextSecondary,
             ),
           ),
         ],
@@ -499,7 +512,11 @@ class _OrderCard extends StatelessWidget {
     );
   }
 
-  Widget _buildCompactLayout(String clinicalNote) {
+  // ============================================================
+  // Compact Layout
+  // ============================================================
+
+  Widget _buildCompactLayout(BuildContext context, String clinicalNote) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -509,10 +526,10 @@ class _OrderCard extends StatelessWidget {
               width: 30,
               height: 30,
               decoration: BoxDecoration(
-                color: AppColors.surfaceSoft,
+                color: context.appSurfaceSoft,
                 borderRadius: BorderRadius.circular(7),
               ),
-              child: Icon(_typeIcon(type), size: 15, color: AppColors.navy),
+              child: Icon(_typeIcon(type), size: 15, color: context.appBrand),
             ),
 
             const SizedBox(width: 9),
@@ -525,18 +542,20 @@ class _OrderCard extends StatelessWidget {
                     type == null ? '검사' : _typeDisplayName(type!),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
+
                   const SizedBox(height: 2),
+
                   Text(
                     _formatDateTime(order.orderedAt),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 9,
-                      color: AppColors.textSecondary,
+                      color: context.appTextSecondary,
                     ),
                   ),
                 ],
@@ -553,14 +572,15 @@ class _OrderCard extends StatelessWidget {
 
         if (clinicalNote.isNotEmpty) ...[
           const SizedBox(height: 8),
+
           Text(
             clinicalNote,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 9.5,
               height: 1.4,
-              color: AppColors.textSecondary,
+              color: context.appTextSecondary,
             ),
           ),
         ],
@@ -578,7 +598,7 @@ class _PriorityBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final isUrgent = priority.trim().toUpperCase() == 'URGENT';
 
-    final color = isUrgent ? AppColors.danger : AppColors.textSecondary;
+    final color = isUrgent ? AppColors.danger : context.appTextSecondary;
 
     return Container(
       constraints: const BoxConstraints(minWidth: 42),
@@ -625,7 +645,7 @@ class _OrderStatusBadge extends StatelessWidget {
 
       case 'IN_PROGRESS':
         label = '진행 중';
-        color = AppColors.navy;
+        color = context.appPrimary;
         break;
 
       case 'COMPLETED':
@@ -640,7 +660,7 @@ class _OrderStatusBadge extends StatelessWidget {
 
       default:
         label = status.isEmpty ? '-' : status;
-        color = AppColors.textSecondary;
+        color = context.appTextSecondary;
     }
 
     return Container(
@@ -681,7 +701,7 @@ class _OrderMessage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
+        color: context.appSurfaceSoft,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -692,18 +712,19 @@ class _OrderMessage extends StatelessWidget {
               height: 20,
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
+
             const SizedBox(height: 10),
           ],
+
           Text(
             text,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 10,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 10, color: context.appTextSecondary),
           ),
+
           if (onRetry != null) ...[
             const SizedBox(height: 8),
+
             TextButton(onPressed: onRetry, child: const Text('다시 시도')),
           ],
         ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/auth/auth_provider.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -374,12 +375,12 @@ class _PatientPrescriptionTabState extends State<PatientPrescriptionTab> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 '처방 정보를 불러오지 못했습니다.',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
+                  color: context.appTextSecondary,
                 ),
               ),
               const SizedBox(height: 10),
@@ -425,13 +426,13 @@ class _PatientPrescriptionTabState extends State<PatientPrescriptionTab> {
 
     final header = Row(
       children: [
-        const Expanded(
+        Expanded(
           child: Text(
             '약물 처방',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: context.appTextPrimary,
             ),
           ),
         ),
@@ -475,14 +476,14 @@ class _PatientPrescriptionTabState extends State<PatientPrescriptionTab> {
             const SizedBox(height: 12),
 
             if (_prescriptions.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
                 child: Center(
                   child: Text(
                     '등록된 처방이 없습니다.',
                     style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.textSecondary,
+                      color: context.appTextSecondary,
                     ),
                   ),
                 ),
@@ -506,12 +507,12 @@ class _PatientPrescriptionTabState extends State<PatientPrescriptionTab> {
         ),
         Expanded(
           child: _prescriptions.isEmpty
-              ? const Center(
+              ? Center(
                   child: Text(
                     '등록된 처방이 없습니다.',
                     style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.textSecondary,
+                      color: context.appTextSecondary,
                     ),
                   ),
                 )
@@ -566,9 +567,9 @@ class _PrescriptionCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -583,10 +584,10 @@ class _PrescriptionCard extends StatelessWidget {
                     children: [
                       Text(
                         _formatDate(prescription.prescribedAt),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: context.appTextPrimary,
                         ),
                       ),
 
@@ -679,18 +680,18 @@ class _PrescriptionCard extends StatelessWidget {
           ),
 
           if (prescription.notes.trim().isNotEmpty) ...[
-            const Divider(height: 1, color: AppColors.border),
+            Divider(height: 1, color: context.appBorder),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     '처방 메모',
                     style: TextStyle(
                       fontSize: 8.5,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
+                      color: context.appTextSecondary,
                     ),
                   ),
 
@@ -701,10 +702,10 @@ class _PrescriptionCard extends StatelessWidget {
                       prescription.notes,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w500,
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                       ),
                     ),
                   ),
@@ -713,15 +714,15 @@ class _PrescriptionCard extends StatelessWidget {
             ),
           ],
 
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.appBorder),
 
           if (detail.items.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 18),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
               child: Text(
                 '등록된 처방 약물이 없습니다.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 10, color: context.appTextSecondary),
               ),
             )
           else
@@ -733,7 +734,8 @@ class _PrescriptionCard extends StatelessWidget {
                   children: [
                     if (showTable) ...[
                       const _PrescriptionTableHeader(),
-                      const Divider(height: 1, color: AppColors.border),
+
+                      Divider(height: 1, color: context.appBorder),
                     ],
 
                     for (
@@ -744,7 +746,7 @@ class _PrescriptionCard extends StatelessWidget {
                       _PrescriptionItemCard(item: detail.items[index]),
 
                       if (index != detail.items.length - 1)
-                        const Divider(height: 1, color: AppColors.border),
+                        Divider(height: 1, color: context.appBorder),
                     ],
                   ],
                 );
@@ -1015,7 +1017,7 @@ class _MedicationAddDialogState extends State<_MedicationAddDialog> {
                 Container(
                   constraints: const BoxConstraints(maxHeight: 180),
                   decoration: BoxDecoration(
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: context.appBorder),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: ListView.separated(
@@ -1072,24 +1074,26 @@ class _MedicationAddDialogState extends State<_MedicationAddDialog> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceSoft,
+                    color: context.appSurfaceSoft,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.medication_outlined,
                         size: 18,
-                        color: AppColors.navy,
+                        color: context.appBrand,
                       ),
+
                       const SizedBox(width: 8),
+
                       Expanded(
                         child: Text(
                           _selectedMedication!.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                            color: context.appTextPrimary,
                           ),
                         ),
                       ),
@@ -1237,36 +1241,44 @@ class _MedicationAddDialogState extends State<_MedicationAddDialog> {
   }
 }
 
+// ============================================================
+// Prescription Table Header
+// ============================================================
+
 class _PrescriptionTableHeader extends StatelessWidget {
   const _PrescriptionTableHeader();
 
   @override
   Widget build(BuildContext context) {
-    const style = TextStyle(
+    final style = TextStyle(
       fontSize: 8.5,
       fontWeight: FontWeight.w600,
-      color: AppColors.textSecondary,
+      color: context.appTextSecondary,
     );
 
     return Container(
       height: 30,
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      color: AppColors.surfaceSoft,
-      child: const Row(
+      color: context.appSurfaceSoft,
+      child: Row(
         children: [
           Expanded(flex: 38, child: Text('약품명', style: style)),
+
           Expanded(
             flex: 18,
             child: Text('용량', textAlign: TextAlign.center, style: style),
           ),
+
           Expanded(
             flex: 14,
             child: Text('횟수', textAlign: TextAlign.center, style: style),
           ),
+
           Expanded(
             flex: 14,
             child: Text('기간', textAlign: TextAlign.center, style: style),
           ),
+
           Expanded(
             flex: 16,
             child: Text('경로', textAlign: TextAlign.center, style: style),
@@ -1298,27 +1310,27 @@ class _PrescriptionItemCard extends StatelessWidget {
               children: [
                 Text(
                   medicationName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   _buildDoseSummary(item),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
                 if (item.instructions.trim().isNotEmpty) ...[
                   const SizedBox(height: 3),
                   Text(
                     item.instructions,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 9,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
                 ],
@@ -1359,10 +1371,10 @@ class _PrescriptionItemCard extends StatelessWidget {
                       medicationName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                       ),
                     ),
                     if (item.instructions.trim().isNotEmpty) ...[
@@ -1371,9 +1383,9 @@ class _PrescriptionItemCard extends StatelessWidget {
                         item.instructions,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 8,
-                          color: AppColors.textSecondary,
+                          color: context.appTextSecondary,
                         ),
                       ),
                     ],
@@ -1386,9 +1398,9 @@ class _PrescriptionItemCard extends StatelessWidget {
                 child: Text(
                   doseText,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 8.5,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ),
@@ -1398,9 +1410,9 @@ class _PrescriptionItemCard extends StatelessWidget {
                 child: Text(
                   frequencyText,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 8.5,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ),
@@ -1410,9 +1422,9 @@ class _PrescriptionItemCard extends StatelessWidget {
                 child: Text(
                   durationText,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 8.5,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ),
@@ -1424,9 +1436,9 @@ class _PrescriptionItemCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 8.5,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ),
@@ -1517,7 +1529,7 @@ class _DurStatusRow extends StatelessWidget {
       'PASSED' => AppColors.success,
       'WARNING' => AppColors.warning,
       'FAILED' => AppColors.danger,
-      _ => AppColors.textSecondary,
+      _ => context.appTextSecondary,
     };
 
     return Container(
@@ -1559,7 +1571,7 @@ class _PrescriptionStatusBadge extends StatelessWidget {
       'SIGNED' => AppColors.success,
       'DRAFT' => AppColors.warning,
       'CANCELED' || 'CANCELLED' => AppColors.danger,
-      _ => AppColors.textSecondary,
+      _ => context.appTextSecondary,
     };
 
     return Container(

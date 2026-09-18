@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_shell.dart';
 
 import 'widgets/continue_work_section.dart';
@@ -25,7 +25,7 @@ class DashboardPage extends StatelessWidget {
       selectedIndex: 0,
 
       body: Container(
-        color: AppColors.background,
+        color: context.appBackground,
 
         child: const SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(18, 16, 18, 20),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 
@@ -392,13 +393,18 @@ class PatientDetailTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 44,
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
+
+      // ========================================================
+      // Light / Dark Theme 대응
+      // ========================================================
+      decoration: BoxDecoration(
+        color: context.appSurface,
         border: Border(
-          top: BorderSide(color: AppColors.border),
-          bottom: BorderSide(color: AppColors.border),
+          top: BorderSide(color: context.appBorder),
+          bottom: BorderSide(color: context.appBorder),
         ),
       ),
+
       child: Row(
         children: [
           Expanded(
@@ -409,6 +415,7 @@ class PatientDetailTabs extends StatelessWidget {
               onChanged: onChanged,
             ),
           ),
+
           Expanded(
             child: _PatientTabButton(
               label: '진료',
@@ -417,6 +424,7 @@ class PatientDetailTabs extends StatelessWidget {
               onChanged: onChanged,
             ),
           ),
+
           Expanded(
             child: _PatientTabButton(
               label: 'AI 분석',
@@ -425,6 +433,7 @@ class PatientDetailTabs extends StatelessWidget {
               onChanged: onChanged,
             ),
           ),
+
           Expanded(
             child: _PatientTabButton(
               label: '결과',
@@ -461,28 +470,38 @@ class _PatientTabButton extends StatelessWidget {
     final selected = selectedTab == tab;
 
     return Material(
-      color: selected ? AppColors.primaryBlue : AppColors.surface,
+      // ========================================================
+      // 선택 탭은 기존 CardioAI Blue 유지
+      // 비선택 탭은 현재 Theme Surface 사용
+      // ========================================================
+      color: selected ? AppColors.primaryBlue : context.appSurface,
+
       child: InkWell(
         onTap: () {
           onChanged(tab);
         },
+
         child: Container(
           height: 44,
           alignment: Alignment.center,
+
           decoration: BoxDecoration(
             border: Border(
               right: BorderSide(
-                color: AppColors.border,
+                color: context.appBorder,
                 width: tab == PatientDetailTab.results ? 0 : 1,
               ),
             ),
           ),
+
           child: Text(
             label,
             style: TextStyle(
               fontSize: 11,
+
               fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-              color: selected ? Colors.white : AppColors.textSecondary,
+
+              color: selected ? Colors.white : context.appTextSecondary,
             ),
           ),
         ),

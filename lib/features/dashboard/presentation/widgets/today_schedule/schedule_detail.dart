@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../../core/auth/access_control.dart';
 import '../../../../../core/auth/auth_provider.dart';
@@ -37,23 +38,23 @@ class ScheduleDetail extends StatelessWidget {
         ? AppColors.danger
         : data.completed
         ? AppColors.success
-        : AppColors.primaryBlue;
+        : context.appPrimary;
 
     final statusBackground = data.current
-        ? AppColors.dangerBackground
+        ? context.appDangerBackground
         : data.completed
-        ? AppColors.successBackground
-        : AppColors.surfaceSoft;
+        ? context.appSuccessBackground
+        : context.appSurfaceSoft;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 13, 14, 11),
 
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
 
         borderRadius: BorderRadius.circular(AppRadius.large),
 
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
 
       child: Column(
@@ -97,8 +98,8 @@ class ScheduleDetail extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
 
-            style: const TextStyle(
-              color: AppColors.textPrimary,
+            style: TextStyle(
+              color: context.appTextPrimary,
               fontSize: 17,
               fontWeight: FontWeight.w800,
             ),
@@ -109,8 +110,8 @@ class ScheduleDetail extends StatelessWidget {
           Text(
             data.patientId,
 
-            style: const TextStyle(
-              color: AppColors.textSecondary,
+            style: TextStyle(
+              color: context.appTextSecondary,
               fontSize: 9.5,
               fontWeight: FontWeight.w500,
             ),
@@ -121,11 +122,11 @@ class ScheduleDetail extends StatelessWidget {
           // ====================================================
           // Schedule
           // ====================================================
-          const Text(
+          Text(
             '진료 일정',
 
             style: TextStyle(
-              color: AppColors.textSecondary,
+              color: context.appTextSecondary,
               fontSize: 9,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.1,
@@ -140,8 +141,8 @@ class ScheduleDetail extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
 
-            style: const TextStyle(
-              color: AppColors.textPrimary,
+            style: TextStyle(
+              color: context.appTextPrimary,
               fontSize: 12,
               fontWeight: FontWeight.w700,
               height: 1.35,
@@ -240,10 +241,10 @@ class _ScheduleDetailTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final background = danger
-        ? AppColors.dangerBackground
-        : AppColors.surfaceSoft;
+        ? context.appDangerBackground
+        : context.appSurfaceSoft;
 
-    final foreground = danger ? AppColors.danger : AppColors.textSecondary;
+    final foreground = danger ? AppColors.danger : context.appTextSecondary;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),

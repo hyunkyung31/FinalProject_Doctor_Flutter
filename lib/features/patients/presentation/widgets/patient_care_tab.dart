@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/auth/auth_provider.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -351,9 +352,9 @@ class _PatientCareTabState extends State<PatientCareTab> {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: context.appSurface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.appBorder),
         ),
         child: const _EmptyMessage(text: '등록된 진료 정보가 없습니다.'),
       );
@@ -398,30 +399,30 @@ class _PatientCareTabState extends State<PatientCareTab> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: context.appSurfaceSoft,
           borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.appBorder),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: AppColors.navy),
+            Icon(icon, size: 14, color: context.appBrand),
             const SizedBox(width: 7),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9.5,
                 fontWeight: FontWeight.w500,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
             const SizedBox(width: 5),
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
           ],
@@ -474,9 +475,9 @@ class _PatientCareTabState extends State<PatientCareTab> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.primaryBlue.withValues(alpha: 0.035),
+        color: context.appPanelMuted,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -490,10 +491,10 @@ class _PatientCareTabState extends State<PatientCareTab> {
                   color: AppColors.primaryBlue.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.calendar_today_rounded,
                   size: 16,
-                  color: AppColors.navy,
+                  color: context.appBrand,
                 ),
               ),
               const SizedBox(width: 10),
@@ -503,19 +504,19 @@ class _PatientCareTabState extends State<PatientCareTab> {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       visitDateText,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                       ),
                     ),
                   ],
@@ -785,10 +786,10 @@ class _PatientCareTabState extends State<PatientCareTab> {
             Text(
               label,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
             if (unit.isNotEmpty) ...[
@@ -796,9 +797,9 @@ class _PatientCareTabState extends State<PatientCareTab> {
               Text(
                 unit,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 7.5,
-                  color: AppColors.textSecondary,
+                  color: context.appTextSecondary,
                 ),
               ),
             ],
@@ -815,10 +816,10 @@ class _PatientCareTabState extends State<PatientCareTab> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: context.appTextPrimary,
           ),
         ),
       );
@@ -840,8 +841,8 @@ class _PatientCareTabState extends State<PatientCareTab> {
           ? const _EmptyMessage(text: '등록된 활력징후가 없습니다.')
           : Container(
               decoration: BoxDecoration(
-                color: AppColors.surface,
-                border: Border.all(color: AppColors.border),
+                color: context.appSurface,
+                border: Border.all(color: context.appBorder),
                 borderRadius: BorderRadius.circular(8),
               ),
               clipBehavior: Clip.antiAlias,
@@ -850,7 +851,7 @@ class _PatientCareTabState extends State<PatientCareTab> {
                   Container(
                     height: 38,
                     padding: const EdgeInsets.symmetric(horizontal: 10),
-                    color: AppColors.surfaceSoft,
+                    color: context.appSurfaceSoft,
                     child: Row(
                       children: [
                         headerCell('측정일시', '', flex: 22),
@@ -865,7 +866,7 @@ class _PatientCareTabState extends State<PatientCareTab> {
                     ),
                   ),
 
-                  const Divider(height: 1, color: AppColors.border),
+                  Divider(height: 1, color: context.appBorder),
 
                   SizedBox(
                     height: 42,
@@ -947,7 +948,7 @@ class _PatientCareTabState extends State<PatientCareTab> {
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceSoft,
+                    color: context.appSurfaceSoft,
                     borderRadius: BorderRadius.circular(9),
                   ),
                   child: Column(
@@ -959,9 +960,9 @@ class _PatientCareTabState extends State<PatientCareTab> {
                             Expanded(
                               child: Text(
                                 _formatDateTime(date),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 9.5,
-                                  color: AppColors.textSecondary,
+                                  color: context.appTextSecondary,
                                 ),
                               ),
                             )
@@ -979,10 +980,10 @@ class _PatientCareTabState extends State<PatientCareTab> {
 
                       Text(
                         note.noteText,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           height: 1.5,
-                          color: AppColors.textPrimary,
+                          color: context.appTextPrimary,
                         ),
                       ),
 
@@ -1015,11 +1016,11 @@ class _PatientCareTabState extends State<PatientCareTab> {
                                   : () {
                                       _confirmNote(note);
                                     },
-                              child: const Text(
+                              child: Text(
                                 '확정',
                                 style: TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w700,
+                                  fontSize: 9,
+                                  color: context.appTextSecondary,
                                 ),
                               ),
                             ),
@@ -1032,9 +1033,9 @@ class _PatientCareTabState extends State<PatientCareTab> {
 
                         Text(
                           '확정 ${_formatDateTime(note.confirmedAt!)}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 9,
-                            color: AppColors.textSecondary,
+                            color: context.appTextSecondary,
                           ),
                         ),
                       ],
@@ -1642,7 +1643,7 @@ class _PatientCareTabState extends State<PatientCareTab> {
       case 'DRAFT':
         return AppColors.warning;
       default:
-        return AppColors.textSecondary;
+        return context.appTextSecondary;
     }
   }
 
@@ -1687,21 +1688,21 @@ class _PatientCareTabState extends State<PatientCareTab> {
               width: 76,
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondary,
+                  color: context.appTextSecondary,
                 ),
               ),
             ),
             Expanded(
               child: Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   height: 1.45,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: context.appTextPrimary,
                 ),
               ),
             ),
@@ -2239,7 +2240,7 @@ class _PatientCareTabState extends State<PatientCareTab> {
 
       case 'CANCELED':
       case 'CANCELLED':
-        return AppColors.textSecondary;
+        return context.appTextSecondary;
 
       default:
         return AppColors.warning;
@@ -2258,30 +2259,30 @@ class _PatientCareTabState extends State<PatientCareTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Divider(height: 14, color: AppColors.border),
+        Divider(height: 14, color: context.appBorder),
 
         Padding(
           padding: const EdgeInsets.only(bottom: 6),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(
+              SizedBox(
                 width: 68,
                 child: Text(
                   '검사 이력',
                   style: TextStyle(
                     fontSize: 9.5,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ),
               Expanded(
                 child: Text(
                   '${items.length}건',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
               ),
@@ -2299,10 +2300,10 @@ class _PatientCareTabState extends State<PatientCareTab> {
                     _examinationDisplayName(item),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
                 ),
@@ -2359,20 +2360,20 @@ class _PatientCareTabState extends State<PatientCareTab> {
               width: 68,
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 9.5,
-                  color: AppColors.textSecondary,
+                  color: context.appTextSecondary,
                 ),
               ),
             ),
             Expanded(
               child: Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10.5,
                   height: 1.4,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: context.appTextPrimary,
                 ),
               ),
             ),
@@ -2414,7 +2415,7 @@ class _PatientCareTabState extends State<PatientCareTab> {
                     shape: Border(
                       bottom: index == encounters.length - 1
                           ? BorderSide.none
-                          : const BorderSide(color: AppColors.border),
+                          : BorderSide(color: context.appBorder),
                     ),
                     child: Theme(
                       data: Theme.of(
@@ -2431,10 +2432,10 @@ class _PatientCareTabState extends State<PatientCareTab> {
                           children: [
                             Text(
                               visitDateText(encounters[index].visitDate),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
+                                color: context.appTextPrimary,
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -2442,9 +2443,9 @@ class _PatientCareTabState extends State<PatientCareTab> {
                               _encounterTypeLabel(
                                 encounters[index].encounterType,
                               ),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 9.5,
-                                color: AppColors.textSecondary,
+                                color: context.appTextSecondary,
                               ),
                             ),
                             const Spacer(),
@@ -2543,7 +2544,7 @@ class _PatientCareTabState extends State<PatientCareTab> {
         return AppColors.success;
       case 'CANCELED':
       case 'CANCELLED':
-        return AppColors.textSecondary;
+        return context.appTextSecondary;
       default:
         return AppColors.warning;
     }
@@ -2605,32 +2606,39 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(14),
+
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
+
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 17, color: AppColors.navy),
+              Icon(icon, size: 17, color: context.appBrand),
+
               const SizedBox(width: 7),
+
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
               ),
+
               ?action,
             ],
           ),
+
           SizedBox(height: contentSpacing),
+
           child,
         ],
       ),
@@ -2679,7 +2687,7 @@ class _EmptyMessage extends StatelessWidget {
       child: Center(
         child: Text(
           text,
-          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 11, color: context.appTextSecondary),
         ),
       ),
     );
@@ -2697,17 +2705,21 @@ class _ErrorView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             Icons.error_outline_rounded,
             size: 28,
-            color: AppColors.textSecondary,
+            color: context.appTextSecondary,
           ),
+
           const SizedBox(height: 8),
-          const Text(
+
+          Text(
             '진료 정보를 불러오지 못했습니다.',
-            style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 11.5, color: context.appTextSecondary),
           ),
+
           const SizedBox(height: 10),
+
           OutlinedButton(onPressed: onRetry, child: const Text('다시 시도')),
         ],
       ),

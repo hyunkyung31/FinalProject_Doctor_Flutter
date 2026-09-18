@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../appointment_ui_model.dart';
@@ -98,7 +99,7 @@ class AppointmentStatusFilterBar extends StatelessWidget {
           decoration: BoxDecoration(
             color: canManage
                 ? AppColors.successBackground
-                : AppColors.surfaceSoft,
+                : context.appSurfaceSoft,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
@@ -109,7 +110,7 @@ class AppointmentStatusFilterBar extends StatelessWidget {
                     ? Icons.verified_user_outlined
                     : Icons.visibility_outlined,
                 size: 14,
-                color: canManage ? AppColors.success : AppColors.textSecondary,
+                color: canManage ? AppColors.success : context.appTextSecondary,
               ),
 
               const SizedBox(width: 5),
@@ -121,7 +122,7 @@ class AppointmentStatusFilterBar extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                   color: canManage
                       ? AppColors.success
-                      : AppColors.textSecondary,
+                      : context.appTextSecondary,
                 ),
               ),
             ],
@@ -155,7 +156,7 @@ class _FilterButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _statusColor();
+    final color = _statusColor(context);
 
     return Material(
       color: Colors.transparent,
@@ -166,10 +167,10 @@ class _FilterButton extends StatelessWidget {
           height: 34,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: selected ? AppColors.navy : AppColors.surface,
+            color: selected ? AppColors.navy : context.appSurface,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: selected ? AppColors.navy : AppColors.border,
+              color: selected ? AppColors.navy : context.appBorder,
             ),
           ),
           child: Row(
@@ -193,7 +194,7 @@ class _FilterButton extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w600,
-                  color: selected ? Colors.white : AppColors.textPrimary,
+                  color: selected ? Colors.white : context.appTextPrimary,
                 ),
               ),
 
@@ -204,7 +205,7 @@ class _FilterButton extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 9.5,
                   fontWeight: FontWeight.w600,
-                  color: selected ? Colors.white70 : AppColors.textSecondary,
+                  color: selected ? Colors.white70 : context.appTextSecondary,
                 ),
               ),
             ],
@@ -214,7 +215,7 @@ class _FilterButton extends StatelessWidget {
     );
   }
 
-  Color _statusColor() {
+  Color _statusColor(BuildContext context) {
     switch (status) {
       case AppointmentStatus.requested:
         return AppColors.warning;
@@ -226,7 +227,7 @@ class _FilterButton extends StatelessWidget {
         return AppColors.danger;
 
       case null:
-        return AppColors.textSecondary;
+        return context.appTextSecondary;
     }
   }
 }

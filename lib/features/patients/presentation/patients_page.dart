@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/router/app_routes.dart';
@@ -491,7 +492,7 @@ class _PatientsPageState extends State<PatientsPage> {
                   height: 42,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: context.appBorder),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -509,7 +510,7 @@ class _PatientsPageState extends State<PatientsPage> {
                             fontSize: 11,
                             color: date == null
                                 ? AppColors.textSecondary
-                                : AppColors.textPrimary,
+                                : context.appTextPrimary,
                           ),
                         ),
                       ),
@@ -545,12 +546,12 @@ class _PatientsPageState extends State<PatientsPage> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         '생년월일',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                          color: context.appTextPrimary,
                         ),
                       ),
                       const SizedBox(height: 7),
@@ -569,12 +570,12 @@ class _PatientsPageState extends State<PatientsPage> {
 
                       const SizedBox(height: 18),
 
-                      const Text(
+                      Text(
                         '검사일',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                          color: context.appTextPrimary,
                         ),
                       ),
                       const SizedBox(height: 7),
@@ -630,12 +631,12 @@ class _PatientsPageState extends State<PatientsPage> {
 
                       const SizedBox(height: 18),
 
-                      const Text(
+                      Text(
                         '검사 종류',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                          color: context.appTextPrimary,
                         ),
                       ),
                       const SizedBox(height: 7),
@@ -672,12 +673,12 @@ class _PatientsPageState extends State<PatientsPage> {
 
                       const SizedBox(height: 18),
 
-                      const Text(
+                      Text(
                         '검사 상태',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                          color: context.appTextPrimary,
                         ),
                       ),
                       const SizedBox(height: 7),
@@ -711,12 +712,12 @@ class _PatientsPageState extends State<PatientsPage> {
 
                       const SizedBox(height: 18),
 
-                      const Text(
+                      Text(
                         'AI 분석 상태',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                          color: context.appTextPrimary,
                         ),
                       ),
                       const SizedBox(height: 7),
@@ -1450,17 +1451,13 @@ class _PatientsPageState extends State<PatientsPage> {
   // STEP 21. Patient Detail 상태
   // ============================================================
 
-  // ============================================================
-  // STEP 21. Patient Detail 상태
-  // ============================================================
-
   Widget _buildPatientDetail() {
     if (_isLoading) {
       return Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: context.appSurface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.appBorder),
         ),
         child: const Center(child: CircularProgressIndicator()),
       );
@@ -1469,14 +1466,14 @@ class _PatientsPageState extends State<PatientsPage> {
     if (_loadError != null) {
       return Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: context.appSurface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.appBorder),
         ),
-        child: const Center(
+        child: Center(
           child: Text(
             '환자 정보를 불러오지 못했습니다.',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 12, color: context.appTextSecondary),
           ),
         ),
       );
@@ -1487,14 +1484,14 @@ class _PatientsPageState extends State<PatientsPage> {
     if (selectedPatient == null) {
       return Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: context.appSurface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.appBorder),
         ),
         alignment: Alignment.center,
-        child: const Text(
+        child: Text(
           '환자를 검색하거나 목록에서 선택해주세요.',
-          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 12, color: context.appTextSecondary),
         ),
       );
     }
@@ -1533,13 +1530,13 @@ class _PatientsPageState extends State<PatientsPage> {
       pageTitle: '환자',
       selectedIndex: 1,
       body: Material(
-        color: AppColors.background,
+        color: context.appBackground,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isCompact = constraints.maxWidth < 900;
 
             return Container(
-              color: AppColors.background,
+              color: context.appBackground,
               padding: isCompact
                   ? const EdgeInsets.fromLTRB(12, 8, 12, 12)
                   : const EdgeInsets.fromLTRB(20, 12, 20, 20),

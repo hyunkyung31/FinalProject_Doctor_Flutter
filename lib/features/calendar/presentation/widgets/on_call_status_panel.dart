@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 
@@ -251,9 +252,9 @@ class _OnCallStatusPanelState extends State<OnCallStatusPanel> {
         Container(
           height: 36,
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: context.appSurface,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.appBorder),
           ),
           child: Row(
             children: [
@@ -273,10 +274,10 @@ class _OnCallStatusPanelState extends State<OnCallStatusPanel> {
                 alignment: Alignment.center,
                 child: Text(
                   '${_selectedDate.year}년 ${_selectedDate.month}월',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
               ),
@@ -307,7 +308,7 @@ class _OnCallStatusPanelState extends State<OnCallStatusPanel> {
               });
             },
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.border),
+              side: BorderSide(color: context.appBorder),
             ),
             icon: const Icon(Icons.today_outlined, size: 15),
             label: const Text('오늘', style: TextStyle(fontSize: 10.5)),
@@ -319,19 +320,19 @@ class _OnCallStatusPanelState extends State<OnCallStatusPanel> {
         // ======================================================
         // 안내
         // ======================================================
-        const Row(
+        Row(
           children: [
             Icon(
               Icons.nights_stay_outlined,
               size: 14,
-              color: AppColors.textSecondary,
+              color: context.appTextSecondary,
             ),
 
             SizedBox(width: 5),
 
             Text(
               '의료진 당직 현황',
-              style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+              style: TextStyle(fontSize: 10, color: context.appTextSecondary),
             ),
           ],
         ),
@@ -346,19 +347,19 @@ class _OnCallStatusPanelState extends State<OnCallStatusPanel> {
           height: 36,
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: context.appSurface,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.appBorder),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: _selectedDepartment,
               isExpanded: true,
               icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
               items: _departments.map((department) {
                 return DropdownMenuItem<String>(
@@ -391,9 +392,9 @@ class _OnCallStatusPanelState extends State<OnCallStatusPanel> {
       height: 66,
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Row(
         children: [
@@ -431,9 +432,9 @@ class _OnCallStatusPanelState extends State<OnCallStatusPanel> {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -447,13 +448,13 @@ class _OnCallStatusPanelState extends State<OnCallStatusPanel> {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceSoft,
+                  color: context.appSurfaceSoft,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.nightlight_outlined,
                   size: 17,
-                  color: AppColors.navy,
+                  color: context.appBrand,
                 ),
               ),
 
@@ -467,10 +468,10 @@ class _OnCallStatusPanelState extends State<OnCallStatusPanel> {
                       children: [
                         Text(
                           _formatSelectedDayTitle(_selectedDate),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                            color: context.appTextPrimary,
                           ),
                         ),
 
@@ -482,15 +483,15 @@ class _OnCallStatusPanelState extends State<OnCallStatusPanel> {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.surfaceSoft,
+                            color: context.appSurfaceSoft,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
                             '${items.length}명',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.navy,
+                              color: context.appBrand,
                             ),
                           ),
                         ),
@@ -503,9 +504,9 @@ class _OnCallStatusPanelState extends State<OnCallStatusPanel> {
                       _selectedDepartment == '전체'
                           ? '전체 진료과 당직 의료진'
                           : '$_selectedDepartment 당직 의료진',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 9.5,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   ],
@@ -556,9 +557,9 @@ class _OnCallStatusPanelState extends State<OnCallStatusPanel> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -571,12 +572,12 @@ class _OnCallStatusPanelState extends State<OnCallStatusPanel> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 11),
             child: Row(
               children: [
-                const Text(
+                Text(
                   '이번 주 당직',
                   style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
 
@@ -584,9 +585,9 @@ class _OnCallStatusPanelState extends State<OnCallStatusPanel> {
 
                 Text(
                   '${items.length}건',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9.5,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
 
@@ -595,10 +596,10 @@ class _OnCallStatusPanelState extends State<OnCallStatusPanel> {
                 Text(
                   '${_formatShortDate(_weekStart)} ~ '
                   '${_formatShortDate(_weekStart.add(const Duration(days: 6)))}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -611,27 +612,27 @@ class _OnCallStatusPanelState extends State<OnCallStatusPanel> {
           Container(
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: 18),
-            color: AppColors.surfaceSoft,
-            child: const Row(
+            color: context.appSurfaceSoft,
+            child: Row(
               children: [
-                Expanded(flex: 16, child: Text('날짜', style: _tableHeaderStyle)),
+                Expanded(flex: 16, child: Text('날짜', style: _tableHeaderStyle(context))),
 
                 Expanded(
                   flex: 19,
-                  child: Text('의료진', style: _tableHeaderStyle),
+                  child: Text('의료진', style: _tableHeaderStyle(context)),
                 ),
 
                 Expanded(
                   flex: 27,
-                  child: Text('진료과', style: _tableHeaderStyle),
+                  child: Text('진료과', style: _tableHeaderStyle(context)),
                 ),
 
                 Expanded(
                   flex: 18,
-                  child: Text('당직 구분', style: _tableHeaderStyle),
+                  child: Text('당직 구분', style: _tableHeaderStyle(context)),
                 ),
 
-                Expanded(flex: 20, child: Text('시간', style: _tableHeaderStyle)),
+                Expanded(flex: 20, child: Text('시간', style: _tableHeaderStyle(context))),
               ],
             ),
           ),
@@ -651,7 +652,7 @@ class _OnCallStatusPanelState extends State<OnCallStatusPanel> {
               ),
 
               if (index != items.length - 1)
-                const Divider(height: 1, thickness: 1, color: AppColors.border),
+                Divider(height: 1, thickness: 1, color: context.appBorder),
             ],
         ],
       ),
@@ -680,7 +681,7 @@ class _WeekDateButton extends StatelessWidget {
 
     final isSaturday = date.weekday == DateTime.saturday;
 
-    Color dayColor = AppColors.textSecondary;
+    Color dayColor = context.appTextSecondary;
 
     if (isSunday) {
       dayColor = AppColors.danger;
@@ -717,7 +718,7 @@ class _WeekDateButton extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
-                  color: selected ? Colors.white : AppColors.textPrimary,
+                  color: selected ? Colors.white : context.appTextPrimary,
                 ),
               ),
             ],
@@ -743,12 +744,12 @@ class _OnCallDoctorCard extends StatelessWidget {
       height: 82,
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
       decoration: BoxDecoration(
-        color: item.isMine ? AppColors.surfaceSoft : AppColors.background,
+        color: item.isMine ? context.appSurfaceSoft : context.appBackground,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: item.isMine
               ? AppColors.primaryBlue.withValues(alpha: 0.4)
-              : AppColors.border,
+              : context.appBorder,
         ),
       ),
       child: Row(
@@ -760,14 +761,14 @@ class _OnCallDoctorCard extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: context.appSurface,
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: context.appBorder),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.person_outline_rounded,
               size: 18,
-              color: AppColors.navy,
+              color: context.appBrand,
             ),
           ),
 
@@ -788,10 +789,10 @@ class _OnCallDoctorCard extends StatelessWidget {
                         item.doctorName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: context.appTextPrimary,
                         ),
                       ),
                     ),
@@ -809,9 +810,9 @@ class _OnCallDoctorCard extends StatelessWidget {
                   item.department,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9.5,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -840,10 +841,10 @@ class _OnCallDoctorCard extends StatelessWidget {
 
               Text(
                 '${item.startTime} ~ ${item.endTime}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: context.appTextPrimary,
                 ),
               ),
             ],
@@ -872,12 +873,12 @@ class _WeekScheduleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color rowColor = AppColors.surface;
+    Color rowColor = context.appSurface;
 
     if (item.isMine) {
-      rowColor = AppColors.surfaceSoft;
+      rowColor = context.appSurfaceSoft;
     } else if (selected) {
-      rowColor = AppColors.background;
+      rowColor = context.appBackground;
     }
 
     return Material(
@@ -899,7 +900,7 @@ class _WeekScheduleRow extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                    color: selected ? AppColors.navy : AppColors.textPrimary,
+                    color: selected ? AppColors.navy : context.appTextPrimary,
                   ),
                 ),
               ),
@@ -915,10 +916,10 @@ class _WeekScheduleRow extends StatelessWidget {
                       child: Text(
                         item.doctorName,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                          color: context.appTextPrimary,
                         ),
                       ),
                     ),
@@ -940,9 +941,9 @@ class _WeekScheduleRow extends StatelessWidget {
                   item.department,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ),
@@ -954,10 +955,10 @@ class _WeekScheduleRow extends StatelessWidget {
                 flex: 18,
                 child: Text(
                   item.dutyType,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
               ),
@@ -969,10 +970,10 @@ class _WeekScheduleRow extends StatelessWidget {
                 flex: 20,
                 child: Text(
                   '${item.startTime} ~ ${item.endTime}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
               ),
@@ -1003,7 +1004,7 @@ class _DateNavigationButton extends StatelessWidget {
         onPressed: onPressed,
         padding: EdgeInsets.zero,
         visualDensity: VisualDensity.compact,
-        icon: Icon(icon, size: 18, color: AppColors.navy),
+        icon: Icon(icon, size: 18, color: context.appBrand),
       ),
     );
   }
@@ -1045,7 +1046,7 @@ class _EmptyDayState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -1059,7 +1060,7 @@ class _EmptyDayState extends StatelessWidget {
 
           Text(
             '선택한 날짜에 등록된 당직 의료진이 없습니다.',
-            style: TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 10.5, color: context.appTextSecondary),
           ),
         ],
       ),
@@ -1072,7 +1073,7 @@ class _EmptyWeekState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1089,7 +1090,7 @@ class _EmptyWeekState extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: context.appTextPrimary,
             ),
           ),
 
@@ -1097,7 +1098,7 @@ class _EmptyWeekState extends StatelessWidget {
 
           Text(
             '다른 주 또는 진료과를 선택해 보세요.',
-            style: TextStyle(fontSize: 9.5, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 9.5, color: context.appTextSecondary),
           ),
         ],
       ),
@@ -1109,10 +1110,10 @@ class _EmptyWeekState extends StatelessWidget {
 // STEP 18. Table Style
 // ============================================================
 
-const TextStyle _tableHeaderStyle = TextStyle(
+TextStyle _tableHeaderStyle(BuildContext context) => TextStyle(
   fontSize: 10,
   fontWeight: FontWeight.w600,
-  color: AppColors.textSecondary,
+  color: context.appTextSecondary,
 );
 
 // ============================================================

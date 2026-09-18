@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 
@@ -401,7 +402,7 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
                 onPressed: widget.onCreateRequest,
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.navy,
-                  backgroundColor: AppColors.surfaceSoft,
+                  backgroundColor: context.appSurfaceSoft,
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -445,9 +446,9 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -459,23 +460,23 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
           Container(
             height: 44,
             padding: const EdgeInsets.symmetric(horizontal: 18),
-            color: AppColors.surfaceSoft,
-            child: const Row(
+            color: context.appSurfaceSoft,
+            child: Row(
               children: [
-                Expanded(flex: 18, child: Text('휴무일', style: _headerStyle)),
+                Expanded(flex: 18, child: Text('휴무일', style: _headerStyle(context))),
 
-                Expanded(flex: 15, child: Text('구분', style: _headerStyle)),
+                Expanded(flex: 15, child: Text('구분', style: _headerStyle(context))),
 
-                Expanded(flex: 32, child: Text('신청 사유', style: _headerStyle)),
+                Expanded(flex: 32, child: Text('신청 사유', style: _headerStyle(context))),
 
-                Expanded(flex: 20, child: Text('신청일', style: _headerStyle)),
+                Expanded(flex: 20, child: Text('신청일', style: _headerStyle(context))),
 
                 Expanded(
                   flex: 15,
                   child: Text(
                     '상태',
                     textAlign: TextAlign.center,
-                    style: _headerStyle,
+                    style: _headerStyle(context),
                   ),
                 ),
               ],
@@ -490,7 +491,7 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
               _LeaveRequestRow(request: requests[index]),
 
               if (index != requests.length - 1)
-                const Divider(height: 1, thickness: 1, color: AppColors.border),
+                Divider(height: 1, thickness: 1, color: context.appBorder),
             ],
         ],
       ),
@@ -554,12 +555,12 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
 
             const Spacer(),
 
-            const Row(
+            Row(
               children: [
                 Icon(
                   Icons.shield_outlined,
                   size: 14,
-                  color: AppColors.textSecondary,
+                  color: context.appTextSecondary,
                 ),
 
                 SizedBox(width: 5),
@@ -568,7 +569,7 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
                   '같은 진료과 의료진 요청',
                   style: TextStyle(
                     fontSize: 10,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -598,9 +599,9 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -612,25 +613,25 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
           Container(
             height: 44,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            color: AppColors.surfaceSoft,
-            child: const Row(
+            color: context.appSurfaceSoft,
+            child: Row(
               children: [
-                Expanded(flex: 18, child: Text('신청자', style: _headerStyle)),
+                Expanded(flex: 18, child: Text('신청자', style: _headerStyle(context))),
 
-                Expanded(flex: 16, child: Text('휴무일', style: _headerStyle)),
+                Expanded(flex: 16, child: Text('휴무일', style: _headerStyle(context))),
 
-                Expanded(flex: 14, child: Text('구분', style: _headerStyle)),
+                Expanded(flex: 14, child: Text('구분', style: _headerStyle(context))),
 
-                Expanded(flex: 23, child: Text('신청 사유', style: _headerStyle)),
+                Expanded(flex: 23, child: Text('신청 사유', style: _headerStyle(context))),
 
-                Expanded(flex: 15, child: Text('신청일', style: _headerStyle)),
+                Expanded(flex: 15, child: Text('신청일', style: _headerStyle(context))),
 
                 Expanded(
                   flex: 14,
                   child: Text(
                     '상태',
                     textAlign: TextAlign.center,
-                    style: _headerStyle,
+                    style: _headerStyle(context),
                   ),
                 ),
 
@@ -639,7 +640,7 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
                   child: Text(
                     '처리',
                     textAlign: TextAlign.center,
-                    style: _headerStyle,
+                    style: _headerStyle(context),
                   ),
                 ),
               ],
@@ -662,7 +663,7 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
               ),
 
               if (index != requests.length - 1)
-                const Divider(height: 1, thickness: 1, color: AppColors.border),
+                Divider(height: 1, thickness: 1, color: context.appBorder),
             ],
         ],
       ),
@@ -764,10 +765,10 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
 // STEP 20. Header Text Style
 // ============================================================
 
-const TextStyle _headerStyle = TextStyle(
+TextStyle _headerStyle(BuildContext context) => TextStyle(
   fontSize: 11,
   fontWeight: FontWeight.w600,
-  color: AppColors.textSecondary,
+  color: context.appTextSecondary,
 );
 
 // ============================================================
@@ -799,12 +800,12 @@ class _ViewTabButton extends StatelessWidget {
           height: 36,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.surfaceSoft : Colors.transparent,
+            color: isSelected ? context.appSurfaceSoft : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: isSelected
                   ? AppColors.primaryBlue.withValues(alpha: 0.22)
-                  : AppColors.border,
+                  : context.appBorder,
             ),
           ),
           child: Row(
@@ -815,7 +816,7 @@ class _ViewTabButton extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? AppColors.navy : AppColors.textSecondary,
+                  color: isSelected ? AppColors.navy : context.appTextSecondary,
                 ),
               ),
 
@@ -880,10 +881,10 @@ class _StatusFilterButton extends StatelessWidget {
           height: 32,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.navy : AppColors.surface,
+            color: isSelected ? AppColors.navy : context.appSurface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isSelected ? AppColors.navy : AppColors.border,
+              color: isSelected ? AppColors.navy : context.appBorder,
             ),
           ),
           child: Row(
@@ -894,7 +895,7 @@ class _StatusFilterButton extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : AppColors.textSecondary,
+                  color: isSelected ? Colors.white : context.appTextSecondary,
                 ),
               ),
 
@@ -907,7 +908,7 @@ class _StatusFilterButton extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                   color: isSelected
                       ? Colors.white.withValues(alpha: 0.8)
-                      : AppColors.textDisabled,
+                      : context.appTextDisabled,
                 ),
               ),
             ],
@@ -938,10 +939,10 @@ class _LeaveRequestRow extends StatelessWidget {
             flex: 18,
             child: Text(
               request.date,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
           ),
@@ -950,9 +951,9 @@ class _LeaveRequestRow extends StatelessWidget {
             flex: 15,
             child: Text(
               request.type,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
           ),
@@ -963,9 +964,9 @@ class _LeaveRequestRow extends StatelessWidget {
               request.reason,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ),
@@ -974,9 +975,9 @@ class _LeaveRequestRow extends StatelessWidget {
             flex: 20,
             child: Text(
               request.requestedAt,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11.5,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ),
@@ -1032,10 +1033,10 @@ class _LeaveApprovalRow extends StatelessWidget {
                   request.requesterName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
 
@@ -1045,9 +1046,9 @@ class _LeaveApprovalRow extends StatelessWidget {
                   request.department,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -1061,10 +1062,10 @@ class _LeaveApprovalRow extends StatelessWidget {
             flex: 16,
             child: Text(
               request.date,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
           ),
@@ -1076,9 +1077,9 @@ class _LeaveApprovalRow extends StatelessWidget {
             flex: 14,
             child: Text(
               request.type,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
           ),
@@ -1092,9 +1093,9 @@ class _LeaveApprovalRow extends StatelessWidget {
               request.reason,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ),
@@ -1106,9 +1107,9 @@ class _LeaveApprovalRow extends StatelessWidget {
             flex: 15,
             child: Text(
               request.requestedAt,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10.5,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ),
@@ -1144,12 +1145,12 @@ class _LeaveApprovalRow extends StatelessWidget {
                       _ApprovalActionButton(label: '승인', onPressed: onApprove),
                     ],
                   )
-                : const Center(
+                : Center(
                     child: Text(
                       '-',
                       style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textDisabled,
+                        color: context.appTextDisabled,
                       ),
                     ),
                   ),
@@ -1233,7 +1234,7 @@ class _LeaveStatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: _background,
+        color: _background(context),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -1241,7 +1242,7 @@ class _LeaveStatusBadge extends StatelessWidget {
         style: TextStyle(
           fontSize: 10.5,
           fontWeight: FontWeight.w700,
-          color: _foreground,
+          color: _foreground(context),
         ),
       ),
     );
@@ -1263,7 +1264,7 @@ class _LeaveStatusBadge extends StatelessWidget {
     }
   }
 
-  Color get _foreground {
+  Color _foreground(BuildContext context) {
     switch (status) {
       case 'PENDING':
         return AppColors.warning;
@@ -1275,11 +1276,11 @@ class _LeaveStatusBadge extends StatelessWidget {
         return AppColors.danger;
 
       default:
-        return AppColors.textSecondary;
+        return context.appTextSecondary;
     }
   }
 
-  Color get _background {
+  Color _background(BuildContext context) {
     switch (status) {
       case 'PENDING':
         return AppColors.warningBackground;
@@ -1291,7 +1292,7 @@ class _LeaveStatusBadge extends StatelessWidget {
         return AppColors.dangerBackground;
 
       default:
-        return AppColors.surfaceSoft;
+        return context.appSurfaceSoft;
     }
   }
 }
@@ -1305,7 +1306,7 @@ class _LeaveEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1322,7 +1323,7 @@ class _LeaveEmptyState extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: context.appTextPrimary,
             ),
           ),
         ],
@@ -1340,7 +1341,7 @@ class _ApprovalEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1357,7 +1358,7 @@ class _ApprovalEmptyState extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: context.appTextPrimary,
             ),
           ),
 
@@ -1365,7 +1366,7 @@ class _ApprovalEmptyState extends StatelessWidget {
 
           Text(
             '같은 진료과 의료진의 휴무 요청이 표시됩니다.',
-            style: TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 10.5, color: context.appTextSecondary),
           ),
         ],
       ),

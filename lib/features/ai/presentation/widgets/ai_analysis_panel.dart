@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../ai_ui_models.dart';
@@ -148,9 +149,9 @@ class _AiAnalysisPanelState extends State<AiAnalysisPanel> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         children: [
@@ -158,13 +159,13 @@ class _AiAnalysisPanelState extends State<AiAnalysisPanel> {
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     'AI 분석',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
                 ),
@@ -198,10 +199,10 @@ class _AiAnalysisPanelState extends State<AiAnalysisPanel> {
                   hintText: '환자 · 분석 종류 · 분석번호 검색',
                   prefixIcon: const Icon(Icons.search_rounded, size: 17),
                   filled: true,
-                  fillColor: AppColors.background,
+                  fillColor: context.appBackground,
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.border),
+                    borderSide: BorderSide(color: context.appBorder),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -269,16 +270,16 @@ class _AiAnalysisPanelState extends State<AiAnalysisPanel> {
 
           const SizedBox(height: 10),
 
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.appBorder),
 
           Expanded(
             child: analyses.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       '조건에 맞는 AI 분석이 없습니다.',
                       style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   )
@@ -332,10 +333,10 @@ class _AnalysisListItem extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(11),
         decoration: BoxDecoration(
-          color: selected ? AppColors.surfaceSoft : AppColors.surface,
+          color: selected ? context.appSurfaceSoft : context.appSurface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: selected ? AppColors.primaryBlue : AppColors.border,
+            color: selected ? AppColors.primaryBlue : context.appBorder,
             width: selected ? 1.4 : 1,
           ),
         ),
@@ -347,10 +348,10 @@ class _AnalysisListItem extends StatelessWidget {
                 Expanded(
                   child: Text(
                     analysis.patientName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
                 ),
@@ -368,10 +369,10 @@ class _AnalysisListItem extends StatelessWidget {
 
             Text(
               _analysisTypeLabel(analysis.analysisType),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
 
@@ -379,9 +380,9 @@ class _AnalysisListItem extends StatelessWidget {
 
             Text(
               '#${analysis.id} · 검사 #${analysis.examinationId}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9.5,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ],
@@ -413,9 +414,9 @@ class _AnalysisDetailPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -428,7 +429,7 @@ class _AnalysisDetailPanel extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceSoft,
+                    color: context.appSurfaceSoft,
                     borderRadius: BorderRadius.circular(11),
                   ),
                   child: const Icon(
@@ -449,10 +450,10 @@ class _AnalysisDetailPanel extends StatelessWidget {
                           Flexible(
                             child: Text(
                               _analysisTypeLabel(analysis.analysisType),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
+                                color: context.appTextPrimary,
                               ),
                             ),
                           ),
@@ -472,9 +473,9 @@ class _AnalysisDetailPanel extends StatelessWidget {
 
                       Text(
                         '${analysis.patientName} · ${analysis.patientMeta}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10.5,
-                          color: AppColors.textSecondary,
+                          color: context.appTextSecondary,
                         ),
                       ),
                     ],
@@ -484,7 +485,7 @@ class _AnalysisDetailPanel extends StatelessWidget {
             ),
           ),
 
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.appBorder),
 
           Expanded(
             child: SingleChildScrollView(
@@ -567,10 +568,10 @@ class _AnalysisDetailPanel extends StatelessWidget {
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceSoft,
+                        color: context.appSurfaceSoft,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Row(
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(
@@ -587,7 +588,7 @@ class _AnalysisDetailPanel extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 9.5,
                                 height: 1.5,
-                                color: AppColors.textSecondary,
+                                color: context.appTextSecondary,
                               ),
                             ),
                           ),
@@ -646,18 +647,18 @@ class _ActionFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        border: Border(top: BorderSide(color: context.appBorder)),
       ),
       child: Row(
         children: [
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10.5,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ),
@@ -753,9 +754,9 @@ class _InfoCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -768,10 +769,10 @@ class _InfoCard extends StatelessWidget {
 
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: context.appTextPrimary,
                 ),
               ),
             ],
@@ -804,9 +805,9 @@ class _InfoRow extends StatelessWidget {
             width: 100,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ),
@@ -816,10 +817,10 @@ class _InfoRow extends StatelessWidget {
                 ? Align(alignment: Alignment.centerLeft, child: valueWidget!)
                 : Text(
                     value ?? '-',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
           ),
@@ -850,7 +851,7 @@ class _FilterButton extends StatelessWidget {
           height: 30,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? AppColors.navy : AppColors.surfaceSoft,
+            color: selected ? AppColors.navy : context.appSurfaceSoft,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
@@ -858,7 +859,7 @@ class _FilterButton extends StatelessWidget {
             style: TextStyle(
               fontSize: 9.5,
               fontWeight: FontWeight.w600,
-              color: selected ? Colors.white : AppColors.textSecondary,
+              color: selected ? Colors.white : context.appTextSecondary,
             ),
           ),
         ),
@@ -874,14 +875,14 @@ class _EmptyDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
-      child: const Center(
+      child: Center(
         child: Text(
           'AI 분석 항목을 선택해 주세요.',
-          style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 11.5, color: context.appTextSecondary),
         ),
       ),
     );
