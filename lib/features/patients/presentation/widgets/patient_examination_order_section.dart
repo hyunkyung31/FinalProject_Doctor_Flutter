@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/auth/access_control.dart';
 import '../../../../core/auth/auth_provider.dart';
@@ -117,7 +118,7 @@ class _PatientExaminationOrderSectionState
     }
 
     if (_types.isEmpty) {
-      _showMessage('사용 가능한 검사 종류가 없습니다.');
+      _showMessage('사용 가능한 검사 항목이 없습니다.');
       return;
     }
 
@@ -130,99 +131,62 @@ class _PatientExaminationOrderSectionState
 
     final initialEncounterId = _patientEncounters.first.id;
 
-    await showGeneralDialog<void>(
+    await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      barrierLabel: '검사 오더 생성',
-      barrierColor: Colors.black.withValues(alpha: 0.22),
-      transitionDuration: const Duration(milliseconds: 220),
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        final slideAnimation =
-            Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(
-              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-            );
+      builder: (dialogContext) {
+        return ExaminationOrderComposer(
+          patients: [examinationPatient],
+          encounters: _patientEncounters,
+          types: _types,
+          initialPatientId: widget.patient.patientId,
+          initialEncounterId: initialEncounterId,
+          lockPatientSelection: true,
+          dialogMode: true,
+          onSubmit:
+              ({
+                required int encounterId,
+                required int examinationTypeId,
+                required String priority,
+                required String clinicalNote,
+              }) async {
+                try {
+                  return await _service().createExaminationOrder(
+                    encounterId: encounterId,
+                    examinationTypeId: examinationTypeId,
+                    priority: priority,
+                    clinicalNote: clinicalNote,
+                  );
+                } catch (error) {
+                  debugPrint(
+                    '[PatientExaminationOrderSection] '
+                    '검사 오더 생성 실패: $error',
+                  );
 
-        return SlideTransition(position: slideAnimation, child: child);
-      },
-      pageBuilder: (sheetContext, animation, secondaryAnimation) {
-        return Align(
-          alignment: Alignment.centerRight,
-          child: SafeArea(
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                width: 560,
-                margin: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
-                      blurRadius: 24,
-                      offset: const Offset(-4, 4),
-                    ),
-                  ],
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: ExaminationOrderComposer(
-                  patients: [examinationPatient],
-                  encounters: _patientEncounters,
-                  types: _types,
-                  initialPatientId: widget.patient.patientId,
-                  initialEncounterId: initialEncounterId,
-                  lockPatientSelection: true,
-                  onSubmit:
-                      ({
-                        required int encounterId,
-                        required int examinationTypeId,
-                        required String priority,
-                        required String clinicalNote,
-                      }) async {
-                        try {
-                          return await _service().createExaminationOrder(
-                            encounterId: encounterId,
-                            examinationTypeId: examinationTypeId,
-                            priority: priority,
-                            clinicalNote: clinicalNote,
-                          );
-                        } catch (error) {
-                          debugPrint(
-                            '[PatientExaminationOrderSection] '
-                            '검사 오더 생성 실패: $error',
-                          );
+                  return null;
+                }
+              },
+          onCreated: (createdOrder) {
+            if (mounted) {
+              setState(() {
+                _orders = [
+                  createdOrder,
+                  ..._orders.where((order) => order.id != createdOrder.id),
+                ];
+              });
+            }
 
-                          return null;
-                        }
-                      },
-                  onCreated: (createdOrder) {
-                    if (mounted) {
-                      setState(() {
-                        _orders = [
-                          createdOrder,
-                          ..._orders.where(
-                            (order) => order.id != createdOrder.id,
-                          ),
-                        ];
-                      });
-                    }
+            if (dialogContext.mounted) {
+              Navigator.of(dialogContext).pop();
+            }
 
-                    if (sheetContext.mounted) {
-                      Navigator.of(sheetContext).pop();
-                    }
-
-                    _showMessage('검사 오더 #${createdOrder.id}가 생성되었습니다.');
-                  },
-                  onCancel: () {
-                    if (sheetContext.mounted) {
-                      Navigator.of(sheetContext).pop();
-                    }
-                  },
-                ),
-              ),
-            ),
-          ),
+            _showMessage('검사 오더 #${createdOrder.id}가 생성되었습니다.');
+          },
+          onCancel: () {
+            if (dialogContext.mounted) {
+              Navigator.of(dialogContext).pop();
+            }
+          },
         );
       },
     );
@@ -262,17 +226,19 @@ class _PatientExaminationOrderSectionState
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: AppColors.surfaceSoft,
+                color: context.appSurfaceSoft,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.assignment_add,
                 size: 15,
-                color: AppColors.navy,
+                color: context.appBrand,
               ),
             ),
+
             const SizedBox(width: 9),
-            const Expanded(
+
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -281,35 +247,46 @@ class _PatientExaminationOrderSectionState
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
-                  SizedBox(height: 2),
+
+                  const SizedBox(height: 2),
+
                   Text(
                     '환자에게 처방된 검사와 진행 상태를 확인합니다.',
                     style: TextStyle(
                       fontSize: 9.5,
-                      color: AppColors.textSecondary,
+                      color: context.appTextSecondary,
                     ),
                   ),
                 ],
               ),
             ),
             if (isDoctor)
-              FilledButton.icon(
-                onPressed: _isLoading ? null : _showCreateOrderDialog,
-                icon: const Icon(Icons.add_rounded, size: 15),
-                label: const Text(
-                  '검사 오더',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+              SizedBox(
+                height: 34,
+                child: FilledButton.icon(
+                  onPressed: _isLoading ? null : _showCreateOrderDialog,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.navy,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  icon: const Icon(Icons.add_rounded, size: 14),
+                  label: const Text(
+                    '검사 오더',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
-            const SizedBox(width: 8),
-            IconButton(
-              tooltip: '새로고침',
-              onPressed: _isLoading ? null : _loadData,
-              icon: const Icon(Icons.refresh_rounded, size: 19),
-            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -320,18 +297,103 @@ class _PatientExaminationOrderSectionState
         else if (_orders.isEmpty)
           const _OrderMessage(text: '등록된 검사 오더가 없습니다.')
         else
-          Column(
-            children: [
-              for (var index = 0; index < _orders.length; index++) ...[
-                _OrderCard(
-                  order: _orders[index],
-                  type: _findType(_orders[index].examinationTypeId),
-                ),
-                if (index != _orders.length - 1) const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: context.appSurface,
+              border: Border.all(color: context.appBorder),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                const _OrderTableHeader(),
+
+                Divider(height: 1, color: context.appBorder),
+
+                for (var index = 0; index < _orders.length; index++) ...[
+                  _OrderCard(
+                    order: _orders[index],
+                    type: _findType(_orders[index].examinationTypeId),
+                  ),
+
+                  if (index != _orders.length - 1)
+                    Divider(height: 1, color: context.appBorder),
+                ],
               ],
-            ],
+            ),
           ),
       ],
+    );
+  }
+}
+
+// ============================================================
+// 검사 오더 Table Header
+// ============================================================
+
+class _OrderTableHeader extends StatelessWidget {
+  const _OrderTableHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 620) {
+          return const SizedBox.shrink();
+        }
+
+        final headerStyle = TextStyle(
+          fontSize: 8.5,
+          fontWeight: FontWeight.w600,
+          color: context.appTextSecondary,
+        );
+
+        return Container(
+          height: 30,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          color: context.appSurfaceSoft,
+          child: Row(
+            children: [
+              Expanded(flex: 46, child: Text('검사명', style: headerStyle)),
+
+              const SizedBox(width: 12),
+
+              Expanded(
+                flex: 24,
+                child: Text(
+                  '오더일시',
+                  textAlign: TextAlign.center,
+                  style: headerStyle,
+                ),
+              ),
+
+              const SizedBox(width: 10),
+
+              SizedBox(
+                width: 50,
+                child: Text(
+                  '우선순위',
+                  textAlign: TextAlign.center,
+                  style: headerStyle,
+                ),
+              ),
+
+              const SizedBox(width: 7),
+
+              SizedBox(
+                width: 52,
+                child: Text(
+                  '상태',
+                  textAlign: TextAlign.center,
+                  style: headerStyle,
+                ),
+              ),
+
+              const SizedBox(width: 19),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -344,81 +406,185 @@ class _OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final clinicalNote = order.clinicalNote?.trim() ?? '';
+    final clinicalNote = _displayClinicalNote(order.clinicalNote);
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceSoft,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(_typeIcon(type), size: 17, color: AppColors.navy),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth < 620) {
+                return _buildCompactLayout(context, clinicalNote);
+              }
+
+              return _buildWideLayout(context);
+            },
           ),
-          const SizedBox(width: 11),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // Wide Layout
+  // ============================================================
+
+  Widget _buildWideLayout(BuildContext context) {
+    return SizedBox(
+      height: 34,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
           Expanded(
-            flex: 3,
+            flex: 46,
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   type == null ? '검사' : _typeDisplayName(type!),
-                  style: const TextStyle(
-                    fontSize: 10.5,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
-                const SizedBox(height: 3),
+
+                const SizedBox(height: 1),
+
                 Text(
                   '오더 #${order.id} · 진료 #${order.encounterId}',
-                  style: const TextStyle(
-                    fontSize: 9,
-                    color: AppColors.textSecondary,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 8,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
             ),
           ),
+
+          const SizedBox(width: 12),
+
           Expanded(
-            flex: 2,
+            flex: 24,
             child: Text(
               _formatDateTime(order.orderedAt),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 9.5,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              clinicalNote.isEmpty ? '-' : clinicalNote,
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 9.5,
-                color: AppColors.textSecondary,
-              ),
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 8.5, color: context.appTextSecondary),
             ),
           ),
-          const SizedBox(width: 12),
-          _PriorityBadge(priority: order.priority),
-          const SizedBox(width: 8),
-          _OrderStatusBadge(status: order.status),
+
+          const SizedBox(width: 10),
+
+          SizedBox(
+            width: 50,
+            child: Center(child: _PriorityBadge(priority: order.priority)),
+          ),
+
+          const SizedBox(width: 7),
+
+          SizedBox(
+            width: 52,
+            child: Center(child: _OrderStatusBadge(status: order.status)),
+          ),
+
+          const SizedBox(width: 3),
+
+          SizedBox(
+            width: 16,
+            child: Icon(
+              Icons.chevron_right_rounded,
+              size: 15,
+              color: context.appTextSecondary,
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  // ============================================================
+  // Compact Layout
+  // ============================================================
+
+  Widget _buildCompactLayout(BuildContext context, String clinicalNote) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: context.appSurfaceSoft,
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Icon(_typeIcon(type), size: 15, color: context.appBrand),
+            ),
+
+            const SizedBox(width: 9),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    type == null ? '검사' : _typeDisplayName(type!),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: context.appTextPrimary,
+                    ),
+                  ),
+
+                  const SizedBox(height: 2),
+
+                  Text(
+                    _formatDateTime(order.orderedAt),
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: context.appTextSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            _PriorityBadge(priority: order.priority),
+
+            const SizedBox(width: 6),
+
+            _OrderStatusBadge(status: order.status),
+          ],
+        ),
+
+        if (clinicalNote.isNotEmpty) ...[
+          const SizedBox(height: 8),
+
+          Text(
+            clinicalNote,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 9.5,
+              height: 1.4,
+              color: context.appTextSecondary,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -432,7 +598,7 @@ class _PriorityBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final isUrgent = priority.trim().toUpperCase() == 'URGENT';
 
-    final color = isUrgent ? AppColors.danger : AppColors.textSecondary;
+    final color = isUrgent ? AppColors.danger : context.appTextSecondary;
 
     return Container(
       constraints: const BoxConstraints(minWidth: 42),
@@ -479,7 +645,7 @@ class _OrderStatusBadge extends StatelessWidget {
 
       case 'IN_PROGRESS':
         label = '진행 중';
-        color = AppColors.navy;
+        color = context.appPrimary;
         break;
 
       case 'COMPLETED':
@@ -494,7 +660,7 @@ class _OrderStatusBadge extends StatelessWidget {
 
       default:
         label = status.isEmpty ? '-' : status;
-        color = AppColors.textSecondary;
+        color = context.appTextSecondary;
     }
 
     return Container(
@@ -535,7 +701,7 @@ class _OrderMessage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
+        color: context.appSurfaceSoft,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -546,18 +712,19 @@ class _OrderMessage extends StatelessWidget {
               height: 20,
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
+
             const SizedBox(height: 10),
           ],
+
           Text(
             text,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 10,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 10, color: context.appTextSecondary),
           ),
+
           if (onRetry != null) ...[
             const SizedBox(height: 8),
+
             TextButton(onPressed: onRetry, child: const Text('다시 시도')),
           ],
         ],
@@ -569,22 +736,16 @@ class _OrderMessage extends StatelessWidget {
 String _typeDisplayName(ExaminationTypeUiModel type) {
   switch (type.code.trim().toUpperCase()) {
     case 'BLOOD':
+    case 'CARDIAC_LAB_PANEL':
       return '혈액검사';
 
-    case 'CARDIAC_LAB_PANEL':
-      return '심혈관 혈액검사';
-
     case 'ANGIO_2D':
-      return '2D 관상동맥 혈관조영술';
-
     case 'ANGIOGRAPHY':
       return '관상동맥조영술';
 
     case 'CCTA':
-      return '관상동맥 CT 검사';
-
     case 'CCTA_3D':
-      return '관상동맥 CT 검사 (3D)';
+      return '관상동맥 CT 검사';
 
     default:
       return type.name.trim().isEmpty ? type.code : type.name;
@@ -617,4 +778,14 @@ String _formatDateTime(DateTime value) {
       '${local.day.toString().padLeft(2, '0')} '
       '${local.hour.toString().padLeft(2, '0')}:'
       '${local.minute.toString().padLeft(2, '0')}';
+}
+
+String _displayClinicalNote(String? value) {
+  final text = value?.trim() ?? '';
+
+  if (text.isEmpty) {
+    return '';
+  }
+
+  return text.replaceFirst(RegExp(r'^\[SYNTHETIC:[^\]]+\]\s*'), '').trim();
 }

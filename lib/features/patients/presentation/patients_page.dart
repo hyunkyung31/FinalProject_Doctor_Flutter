@@ -3,11 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_shell.dart';
+
+import '../../examinations/data/services/examination_service.dart';
+import '../../examinations/presentation/examination_ui_models.dart';
 
 import '../data/services/patient_service.dart';
 
@@ -34,6 +38,8 @@ class _PatientsPageState extends State<PatientsPage> {
   // ============================================================
 
   List<PatientUiModel> _patients = [];
+  Future<List<ExaminationEncounterUiModel>>? _encountersFuture;
+  DateTime? _encountersFetchedAt;
 
   bool _isLoading = true;
 
@@ -50,10 +56,10 @@ class _PatientsPageState extends State<PatientsPage> {
   String? _timelineError;
 
   // ============================================================
-  // STEP. 상세 필터 상태
+  // 상세 필터 상태
   // ============================================================
 
-  String? _birthDateFilter;
+  PatientQueryFilter _patientFilter = const PatientQueryFilter();
 
   // ============================================================
   // STEP 3. 검색 상태
@@ -120,6 +126,70 @@ class _PatientsPageState extends State<PatientsPage> {
     return null;
   }
 
+  Future<List<ExaminationEncounterUiModel>> _fetchEncountersForCache() async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      final auth = context.read<AuthProvider>();
+
+      final service = ExaminationService(apiClient: auth.authService.apiClient);
+
+      final encounters = await service.fetchEncounters();
+
+      _encountersFetchedAt = DateTime.now();
+
+      stopwatch.stop();
+
+      debugPrint(
+        '[ENCOUNTERS PREFETCH] 완료: '
+        '${stopwatch.elapsedMilliseconds}ms, '
+        'count=${encounters.length}',
+      );
+
+      return encounters;
+    } catch (error) {
+      stopwatch.stop();
+
+      _encountersFuture = null;
+      _encountersFetchedAt = null;
+
+      debugPrint(
+        '[ENCOUNTERS PREFETCH] 실패: '
+        '${stopwatch.elapsedMilliseconds}ms, '
+        'error=$error',
+      );
+
+      rethrow;
+    }
+  }
+
+  Future<List<ExaminationEncounterUiModel>> _loadEncountersCached() {
+    final currentFuture = _encountersFuture;
+    final fetchedAt = _encountersFetchedAt;
+
+    final cacheIsFresh =
+        fetchedAt == null ||
+        DateTime.now().difference(fetchedAt) < const Duration(seconds: 30);
+
+    if (currentFuture != null && cacheIsFresh) {
+      debugPrint('[ENCOUNTERS CACHE] hit');
+      return currentFuture;
+    }
+
+    final future = _fetchEncountersForCache();
+    _encountersFuture = future;
+
+    return future;
+  }
+
+  Future<void> _warmEncountersCache() async {
+    try {
+      await _loadEncountersCached();
+    } catch (_) {
+      // 진료 화면 진입 시 기존 방식으로 다시 시도할 수 있도록 둡니다.
+    }
+  }
+
   // ============================================================
   // STEP 8. Init
   // ============================================================
@@ -129,6 +199,7 @@ class _PatientsPageState extends State<PatientsPage> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_warmEncountersCache());
       _loadPatients(page: 1);
     });
   }
@@ -189,11 +260,7 @@ class _PatientsPageState extends State<PatientsPage> {
 
         _selectedTab = PatientDetailTab.overview;
 
-        if (_patients.isEmpty) {
-          _selectedPatientId = null;
-        } else {
-          _selectedPatientId = _patients.first.id;
-        }
+        _selectedPatientId = null;
       });
 
       debugPrint(
@@ -202,10 +269,6 @@ class _PatientsPageState extends State<PatientsPage> {
         'pageCount=${result.patients.length}건, '
         'total=${result.count}건',
       );
-
-      if (_patients.isNotEmpty) {
-        await _loadPatientOverviewData(_patients.first);
-      }
     } catch (error) {
       debugPrint(
         '[PATIENTS] 전체 환자 목록 조회 실패: '
@@ -244,10 +307,9 @@ class _PatientsPageState extends State<PatientsPage> {
   // GET /patients/?birth_date=YYYY-MM-DD
   // ============================================================
 
-  Future<void> _loadPatientsByBirthDate({
-    required String birthDate,
-    required int page,
-  }) async {
+  Future<void> _loadFilteredPatients({required int page}) async {
+    final requestedFilter = _patientFilter;
+
     try {
       if (mounted) {
         setState(() {
@@ -261,16 +323,14 @@ class _PatientsPageState extends State<PatientsPage> {
         apiClient: auth.authService.apiClient,
       );
 
-      final result = await patientService.fetchPatientsByBirthDate(
-        birthDate: birthDate,
+      final result = await patientService.fetchPatientPage(
         page: page,
+        filter: requestedFilter,
       );
 
-      if (!mounted || _birthDateFilter != birthDate) {
-        return;
-      }
-
-      if (_birthDateFilter != birthDate) {
+      if (!mounted ||
+          _selectedScope != PatientListScope.all ||
+          _patientFilter != requestedFilter) {
         return;
       }
 
@@ -296,8 +356,7 @@ class _PatientsPageState extends State<PatientsPage> {
       });
 
       debugPrint(
-        '[PATIENTS] 생년월일 필터 완료: '
-        'birthDate=$birthDate, '
+        '[PATIENTS] 상세 필터 조회 완료: '
         'page=$page, '
         'pageCount=${result.patients.length}건, '
         'total=${result.count}건',
@@ -308,13 +367,12 @@ class _PatientsPageState extends State<PatientsPage> {
       }
     } catch (error) {
       debugPrint(
-        '[PATIENTS] 생년월일 필터 실패: '
-        'birthDate=$birthDate, '
+        '[PATIENTS] 상세 필터 조회 실패: '
         'page=$page, '
         'error=$error',
       );
 
-      if (!mounted) {
+      if (!mounted || _patientFilter != requestedFilter) {
         return;
       }
 
@@ -322,9 +380,9 @@ class _PatientsPageState extends State<PatientsPage> {
         _isPageLoading = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('생년월일 조건으로 환자를 불러오지 못했습니다.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('필터 조건으로 환자를 불러오지 못했습니다.')));
     }
   }
 
@@ -347,22 +405,134 @@ class _PatientsPageState extends State<PatientsPage> {
   // ============================================================
 
   Future<void> _openDetailFilter() async {
-    DateTime? selectedDate;
+    final auth = context.read<AuthProvider>();
 
-    if (_birthDateFilter != null) {
-      selectedDate = DateTime.tryParse(_birthDateFilter!);
+    final examinationService = ExaminationService(
+      apiClient: auth.authService.apiClient,
+    );
+
+    List<ExaminationTypeUiModel> examinationTypes = [];
+
+    try {
+      examinationTypes = await examinationService.fetchExaminationTypes();
+
+      examinationTypes =
+          examinationTypes.where((type) => type.isActive).toList()
+            ..sort((a, b) => a.name.compareTo(b.name));
+    } catch (error) {
+      debugPrint('[PATIENTS] 검사 종류 조회 실패: $error');
     }
 
-    final result = await showDialog<String?>(
+    if (!mounted) {
+      return;
+    }
+
+    DateTime? birthDate = _patientFilter.birthDate == null
+        ? null
+        : DateTime.tryParse(_patientFilter.birthDate!);
+
+    DateTime? examDateFrom = _patientFilter.examDateFrom == null
+        ? null
+        : DateTime.tryParse(_patientFilter.examDateFrom!);
+
+    DateTime? examDateTo = _patientFilter.examDateTo == null
+        ? null
+        : DateTime.tryParse(_patientFilter.examDateTo!);
+
+    int? examinationTypeId = _patientFilter.examinationTypeId;
+    String? examinationStatus = _patientFilter.examinationStatus;
+    String? aiStatus = _patientFilter.aiStatus;
+
+    final result = await showDialog<PatientQueryFilter>(
       context: context,
       builder: (dialogContext) {
-        DateTime? tempDate = selectedDate;
-
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final dateText = tempDate == null
-                ? '선택하지 않음'
-                : _formatApiDate(tempDate!);
+            final invalidExamDateRange =
+                examDateFrom != null &&
+                examDateTo != null &&
+                examDateFrom!.isAfter(examDateTo!);
+
+            String dateLabel(DateTime? date) {
+              if (date == null) {
+                return '선택하지 않음';
+              }
+
+              return _formatApiDate(date);
+            }
+
+            Future<void> selectDate({
+              required DateTime? currentDate,
+              required ValueChanged<DateTime> onSelected,
+            }) async {
+              final pickedDate = await showDatePicker(
+                context: dialogContext,
+                initialDate: currentDate ?? DateTime.now(),
+                firstDate: DateTime(1900, 1, 1),
+                lastDate: DateTime.now(),
+              );
+
+              if (pickedDate == null) {
+                return;
+              }
+
+              setDialogState(() {
+                onSelected(pickedDate);
+              });
+            }
+
+            Widget dateField({
+              required DateTime? date,
+              required VoidCallback onTap,
+            }) {
+              return InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  height: 42,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: context.appBorder),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.calendar_month_outlined,
+                        size: 16,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          dateLabel(date),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: date == null
+                                ? AppColors.textSecondary
+                                : context.appTextPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            const examinationStatusItems = <String, String>{
+              'ORDERED': '오더됨',
+              'SCHEDULED': '검사 예정',
+              'COMPLETED': '완료',
+              'CANCELED': '취소',
+            };
+
+            const aiStatusItems = <String, String>{
+              'PENDING': '분석 대기',
+              'PROCESSING': '분석 중',
+              'COMPLETED': '분석 완료',
+              'FAILED': '실패',
+            };
 
             return AlertDialog(
               title: const Text(
@@ -370,75 +540,222 @@ class _PatientsPageState extends State<PatientsPage> {
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
               ),
               content: SizedBox(
-                width: 360,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '생년월일',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    InkWell(
-                      borderRadius: BorderRadius.circular(8),
-                      onTap: () async {
-                        final pickedDate = await showDatePicker(
-                          context: context,
-                          initialDate: tempDate ?? DateTime(1970, 1, 1),
-                          firstDate: DateTime(1900, 1, 1),
-                          lastDate: DateTime.now(),
-                        );
-
-                        if (pickedDate == null) {
-                          return;
-                        }
-
-                        setDialogState(() {
-                          tempDate = pickedDate;
-                        });
-                      },
-                      child: Container(
-                        height: 44,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: AppColors.border),
-                          borderRadius: BorderRadius.circular(8),
+                width: 460,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '생년월일',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: context.appTextPrimary,
                         ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.calendar_month_outlined,
-                              size: 17,
-                              color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(height: 7),
+
+                      dateField(
+                        date: birthDate,
+                        onTap: () {
+                          selectDate(
+                            currentDate: birthDate,
+                            onSelected: (date) {
+                              birthDate = date;
+                            },
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      Text(
+                        '검사일',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: context.appTextPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: dateField(
+                              date: examDateFrom,
+                              onTap: () {
+                                selectDate(
+                                  currentDate: examDateFrom,
+                                  onSelected: (date) {
+                                    examDateFrom = date;
+                                  },
+                                );
+                              },
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              dateText,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: tempDate == null
-                                    ? AppColors.textSecondary
-                                    : AppColors.textPrimary,
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8),
+                            child: Text(
+                              '~',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                          ),
+                          Expanded(
+                            child: dateField(
+                              date: examDateTo,
+                              onTap: () {
+                                selectDate(
+                                  currentDate: examDateTo,
+                                  onSelected: (date) {
+                                    examDateTo = date;
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      if (invalidExamDateRange) ...[
+                        const SizedBox(height: 6),
+                        const Text(
+                          '검사 종료일은 시작일보다 빠를 수 없습니다.',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: AppColors.danger,
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 18),
+
+                      Text(
+                        '검사 종류',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: context.appTextPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+
+                      DropdownButtonFormField<int?>(
+                        key: ValueKey('examination-type-$examinationTypeId'),
+                        initialValue: examinationTypeId,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        items: [
+                          const DropdownMenuItem<int?>(
+                            value: null,
+                            child: Text('전체'),
+                          ),
+                          ...examinationTypes.map(
+                            (type) => DropdownMenuItem<int?>(
+                              value: type.id,
+                              child: Text(
+                                type.name,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          ],
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setDialogState(() {
+                            examinationTypeId = value;
+                          });
+                        },
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      Text(
+                        '검사 상태',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: context.appTextPrimary,
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 7),
+
+                      DropdownButtonFormField<String?>(
+                        key: ValueKey('examination-status-$examinationStatus'),
+                        initialValue: examinationStatus,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        items: [
+                          const DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text('전체'),
+                          ),
+                          ...examinationStatusItems.entries.map(
+                            (entry) => DropdownMenuItem<String?>(
+                              value: entry.key,
+                              child: Text(entry.value),
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setDialogState(() {
+                            examinationStatus = value;
+                          });
+                        },
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      Text(
+                        'AI 분석 상태',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: context.appTextPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+
+                      DropdownButtonFormField<String?>(
+                        key: ValueKey('ai-status-$aiStatus'),
+                        initialValue: aiStatus,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        items: [
+                          const DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text('전체'),
+                          ),
+                          ...aiStatusItems.entries.map(
+                            (entry) => DropdownMenuItem<String?>(
+                              value: entry.key,
+                              child: Text(entry.value),
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setDialogState(() {
+                            aiStatus = value;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
               actions: [
                 TextButton(
                   onPressed: () {
-                    Navigator.pop(dialogContext, '__RESET__');
+                    Navigator.pop(dialogContext, const PatientQueryFilter());
                   },
                   child: const Text('초기화'),
                 ),
@@ -449,12 +766,25 @@ class _PatientsPageState extends State<PatientsPage> {
                   child: const Text('취소'),
                 ),
                 FilledButton(
-                  onPressed: tempDate == null
+                  onPressed: invalidExamDateRange
                       ? null
                       : () {
                           Navigator.pop(
                             dialogContext,
-                            _formatApiDate(tempDate!),
+                            PatientQueryFilter(
+                              birthDate: birthDate == null
+                                  ? null
+                                  : _formatApiDate(birthDate!),
+                              examDateFrom: examDateFrom == null
+                                  ? null
+                                  : _formatApiDate(examDateFrom!),
+                              examDateTo: examDateTo == null
+                                  ? null
+                                  : _formatApiDate(examDateTo!),
+                              examinationTypeId: examinationTypeId,
+                              examinationStatus: examinationStatus,
+                              aiStatus: aiStatus,
+                            ),
                           );
                         },
                   child: const Text('적용'),
@@ -472,38 +802,20 @@ class _PatientsPageState extends State<PatientsPage> {
 
     _searchDebounce?.cancel();
 
-    // ==========================================================
-    // 필터 초기화
-    // ==========================================================
-
-    if (result == '__RESET__') {
-      setState(() {
-        _birthDateFilter = null;
-        _searchQuery = '';
-        _selectedScope = PatientListScope.all;
-        _listPanelResetVersion++;
-        _currentPage = 1;
-      });
-
-      await _loadPatients(page: 1);
-
-      return;
-    }
-
-    // ==========================================================
-    // 생년월일 필터 적용
-    // 상세 필터는 전체 환자를 기준으로 검색
-    // ==========================================================
-
     setState(() {
-      _birthDateFilter = result;
+      _patientFilter = result;
       _searchQuery = '';
       _selectedScope = PatientListScope.all;
       _listPanelResetVersion++;
       _currentPage = 1;
     });
 
-    await _loadPatientsByBirthDate(birthDate: result, page: 1);
+    if (result.isEmpty) {
+      await _loadPatients(page: 1);
+      return;
+    }
+
+    await _loadFilteredPatients(page: 1);
   }
 
   // ============================================================
@@ -551,11 +863,7 @@ class _PatientsPageState extends State<PatientsPage> {
 
         _selectedTab = PatientDetailTab.overview;
 
-        if (_patients.isEmpty) {
-          _selectedPatientId = null;
-        } else {
-          _selectedPatientId = _patients.first.id;
-        }
+        _selectedPatientId = null;
       });
 
       debugPrint(
@@ -564,10 +872,6 @@ class _PatientsPageState extends State<PatientsPage> {
         'pageCount=${result.patients.length}건, '
         'total=${result.count}건',
       );
-
-      if (_patients.isNotEmpty) {
-        await _loadPatientOverviewData(_patients.first);
-      }
     } catch (error) {
       debugPrint(
         '[PATIENTS] 최근 조회 환자 목록 실패: '
@@ -644,11 +948,7 @@ class _PatientsPageState extends State<PatientsPage> {
 
         _selectedTab = PatientDetailTab.overview;
 
-        if (_patients.isEmpty) {
-          _selectedPatientId = null;
-        } else {
-          _selectedPatientId = _patients.first.id;
-        }
+        _selectedPatientId = null;
       });
 
       debugPrint(
@@ -657,10 +957,6 @@ class _PatientsPageState extends State<PatientsPage> {
         'pageCount=${result.patients.length}건, '
         'total=${result.count}건',
       );
-
-      if (_patients.isNotEmpty) {
-        await _loadPatientOverviewData(_patients.first);
-      }
     } catch (error) {
       debugPrint(
         '[PATIENTS] 내 담당 환자 목록 조회 실패: '
@@ -712,7 +1008,7 @@ class _PatientsPageState extends State<PatientsPage> {
 
     setState(() {
       // Scope를 실제로 변경할 때만 상세 필터 해제
-      _birthDateFilter = null;
+      _patientFilter = const PatientQueryFilter();
 
       _selectedScope = scope;
 
@@ -760,7 +1056,7 @@ class _PatientsPageState extends State<PatientsPage> {
 
     if (query.isNotEmpty) {
       setState(() {
-        _birthDateFilter = null;
+        _patientFilter = const PatientQueryFilter();
 
         if (_selectedScope != PatientListScope.all) {
           _selectedScope = PatientListScope.all;
@@ -814,6 +1110,10 @@ class _PatientsPageState extends State<PatientsPage> {
         return;
       }
 
+      final singlePatient = result.count == 1 && result.patients.length == 1
+          ? result.patients.first
+          : null;
+
       setState(() {
         _patients = result.patients;
 
@@ -827,13 +1127,12 @@ class _PatientsPageState extends State<PatientsPage> {
         _loadError = null;
 
         _selectedTab = PatientDetailTab.overview;
-
-        if (_patients.isEmpty) {
-          _selectedPatientId = null;
-        } else {
-          _selectedPatientId = _patients.first.id;
-        }
+        _selectedPatientId = null;
       });
+
+      if (singlePatient != null) {
+        _selectPatient(singlePatient);
+      }
 
       debugPrint(
         '[PATIENTS] 환자 검색 완료: '
@@ -842,10 +1141,6 @@ class _PatientsPageState extends State<PatientsPage> {
         'pageCount=${result.patients.length}건, '
         'total=${result.count}건',
       );
-
-      if (_patients.isNotEmpty) {
-        await _loadPatientOverviewData(_patients.first);
-      }
     } catch (error) {
       debugPrint(
         '[PATIENTS] 환자 검색 실패: '
@@ -859,8 +1154,8 @@ class _PatientsPageState extends State<PatientsPage> {
       }
 
       if (_selectedScope != PatientListScope.all ||
-          _searchQuery.isNotEmpty ||
-          _birthDateFilter != null) {
+          _searchQuery != query ||
+          !_patientFilter.isEmpty) {
         return;
       }
 
@@ -885,11 +1180,8 @@ class _PatientsPageState extends State<PatientsPage> {
 
     final previousPage = _currentPage - 1;
 
-    if (_birthDateFilter != null) {
-      _loadPatientsByBirthDate(
-        birthDate: _birthDateFilter!,
-        page: previousPage,
-      );
+    if (!_patientFilter.isEmpty) {
+      _loadFilteredPatients(page: previousPage);
       return;
     }
 
@@ -922,8 +1214,8 @@ class _PatientsPageState extends State<PatientsPage> {
 
     final nextPage = _currentPage + 1;
 
-    if (_birthDateFilter != null) {
-      _loadPatientsByBirthDate(birthDate: _birthDateFilter!, page: nextPage);
+    if (!_patientFilter.isEmpty) {
+      _loadFilteredPatients(page: nextPage);
       return;
     }
 
@@ -1159,17 +1451,13 @@ class _PatientsPageState extends State<PatientsPage> {
   // STEP 21. Patient Detail 상태
   // ============================================================
 
-  // ============================================================
-  // STEP 21. Patient Detail 상태
-  // ============================================================
-
   Widget _buildPatientDetail() {
     if (_isLoading) {
       return Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: context.appSurface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.appBorder),
         ),
         child: const Center(child: CircularProgressIndicator()),
       );
@@ -1178,14 +1466,14 @@ class _PatientsPageState extends State<PatientsPage> {
     if (_loadError != null) {
       return Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: context.appSurface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.appBorder),
         ),
-        child: const Center(
+        child: Center(
           child: Text(
             '환자 정보를 불러오지 못했습니다.',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 12, color: context.appTextSecondary),
           ),
         ),
       );
@@ -1196,14 +1484,14 @@ class _PatientsPageState extends State<PatientsPage> {
     if (selectedPatient == null) {
       return Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: context.appSurface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.appBorder),
         ),
         alignment: Alignment.center,
-        child: const Text(
-          '선택된 환자가 없습니다.',
-          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        child: Text(
+          '환자를 검색하거나 목록에서 선택해주세요.',
+          style: TextStyle(fontSize: 12, color: context.appTextSecondary),
         ),
       );
     }
@@ -1224,6 +1512,7 @@ class _PatientsPageState extends State<PatientsPage> {
       isTimelineLoading: _isTimelineLoading,
       timelineError: _timelineError,
       canEditLabResults: canEditLabResults,
+      encounterLoader: _loadEncountersCached,
       onOpenExaminationManagement: () {
         _openExaminationManagement(selectedPatient);
       },
@@ -1241,13 +1530,13 @@ class _PatientsPageState extends State<PatientsPage> {
       pageTitle: '환자',
       selectedIndex: 1,
       body: Material(
-        color: AppColors.background,
+        color: context.appBackground,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isCompact = constraints.maxWidth < 900;
 
             return Container(
-              color: AppColors.background,
+              color: context.appBackground,
               padding: isCompact
                   ? const EdgeInsets.fromLTRB(12, 8, 12, 12)
                   : const EdgeInsets.fromLTRB(20, 12, 20, 20),

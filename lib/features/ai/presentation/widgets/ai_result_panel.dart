@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../ai_ui_models.dart';
@@ -57,9 +58,9 @@ class _AiResultPanelState extends State<AiResultPanel> {
           flex: 4,
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: context.appSurface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: context.appBorder),
             ),
             child: Column(
               children: [
@@ -67,13 +68,13 @@ class _AiResultPanelState extends State<AiResultPanel> {
                   padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
                   child: Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'AI 결과',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                            color: context.appTextPrimary,
                           ),
                         ),
                       ),
@@ -105,22 +106,22 @@ class _AiResultPanelState extends State<AiResultPanel> {
                   margin: const EdgeInsets.symmetric(horizontal: 14),
                   padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceSoft,
+                    color: context.appSurfaceSoft,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text(
+                  child: Text(
                     '실제 AI Result가 아직 생성되지 않아 결과값은 UI 시연 데이터입니다.',
                     style: TextStyle(
                       fontSize: 9,
                       height: 1.4,
-                      color: AppColors.textSecondary,
+                      color: context.appTextSecondary,
                     ),
                   ),
                 ),
 
                 const SizedBox(height: 10),
 
-                const Divider(height: 1, color: AppColors.border),
+                Divider(height: 1, color: context.appBorder),
 
                 Expanded(
                   child: ListView.separated(
@@ -192,10 +193,10 @@ class _ResultListItem extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(11),
         decoration: BoxDecoration(
-          color: selected ? AppColors.surfaceSoft : AppColors.surface,
+          color: selected ? context.appSurfaceSoft : context.appSurface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: selected ? AppColors.primaryBlue : AppColors.border,
+            color: selected ? AppColors.primaryBlue : context.appBorder,
           ),
         ),
         child: Column(
@@ -206,10 +207,10 @@ class _ResultListItem extends StatelessWidget {
                 Expanded(
                   child: Text(
                     result.patientName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
                 ),
@@ -226,10 +227,10 @@ class _ResultListItem extends StatelessWidget {
 
             Text(
               _resultTypeLabel(result.analysisType),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
 
@@ -239,9 +240,9 @@ class _ResultListItem extends StatelessWidget {
               result.summary,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9.5,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ],
@@ -266,9 +267,9 @@ class _ResultDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -284,13 +285,13 @@ class _ResultDetail extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceSoft,
+                    color: context.appSurfaceSoft,
                     borderRadius: BorderRadius.circular(11),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.auto_graph_rounded,
                     size: 21,
-                    color: AppColors.navy,
+                    color: context.appBrand,
                   ),
                 ),
 
@@ -305,10 +306,10 @@ class _ResultDetail extends StatelessWidget {
                           Flexible(
                             child: Text(
                               _resultTypeLabel(result.analysisType),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
+                                color: context.appTextPrimary,
                               ),
                             ),
                           ),
@@ -323,9 +324,9 @@ class _ResultDetail extends StatelessWidget {
 
                       Text(
                         '${result.patientName} · ${result.patientMeta}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10.5,
-                          color: AppColors.textSecondary,
+                          color: context.appTextSecondary,
                         ),
                       ),
                     ],
@@ -344,7 +345,7 @@ class _ResultDetail extends StatelessWidget {
             ),
           ),
 
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.appBorder),
 
           Expanded(
             child: SingleChildScrollView(
@@ -355,11 +356,12 @@ class _ResultDetail extends StatelessWidget {
 
                   const SizedBox(height: 12),
 
-                  if (result.analysisType == 'ANGIO_2D') _buildAngioResult(),
+                  if (result.analysisType == 'ANGIO_2D')
+                    _buildAngioResult(context),
 
-                  if (result.analysisType == 'CCTA') _buildCctaResult(),
+                  if (result.analysisType == 'CCTA') _buildCctaResult(context),
 
-                  if (result.analysisType == 'LAB') _buildLabResult(),
+                  if (result.analysisType == 'LAB') _buildLabResult(context),
                 ],
               ),
             ),
@@ -373,7 +375,7 @@ class _ResultDetail extends StatelessWidget {
   // STEP 4. 2D Angio
   // ============================================================
 
-  Widget _buildAngioResult() {
+  Widget _buildAngioResult(BuildContext context) {
     return Column(
       children: [
         _SectionCard(
@@ -427,10 +429,10 @@ class _ResultDetail extends StatelessWidget {
               Expanded(
                 child: Text(
                   result.explanation ?? '설명 정보가 없습니다.',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10.5,
                     height: 1.6,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ),
@@ -445,7 +447,7 @@ class _ResultDetail extends StatelessWidget {
   // STEP 5. CCTA
   // ============================================================
 
-  Widget _buildCctaResult() {
+  Widget _buildCctaResult(BuildContext context) {
     final cac = result.cacScore;
 
     return Column(
@@ -473,7 +475,7 @@ class _ResultDetail extends StatelessWidget {
                     _ValueRow(label: 'LAD', value: cac.lad.toStringAsFixed(0)),
                     _ValueRow(label: 'LCX', value: cac.lcx.toStringAsFixed(0)),
                     _ValueRow(label: 'RCA', value: cac.rca.toStringAsFixed(0)),
-                    const Divider(color: AppColors.border),
+                    Divider(color: context.appBorder),
                     _ValueRow(
                       label: 'Total',
                       value: cac.total.toStringAsFixed(0),
@@ -490,7 +492,7 @@ class _ResultDetail extends StatelessWidget {
   // STEP 6. LAB
   // ============================================================
 
-  Widget _buildLabResult() {
+  Widget _buildLabResult(BuildContext context) {
     return _SectionCard(
       title: '혈액·임상 AI 결과',
       icon: Icons.biotech_outlined,
@@ -499,21 +501,21 @@ class _ResultDetail extends StatelessWidget {
         children: [
           Text(
             result.summary,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: context.appTextPrimary,
             ),
           ),
 
           const SizedBox(height: 8),
 
-          const Text(
+          Text(
             '혈액 AI의 실제 Result Schema는 아직 확인되지 않았습니다. 현재 영역은 통합 판단 화면 구성을 위한 UI Preview입니다.',
             style: TextStyle(
               fontSize: 9.5,
               height: 1.5,
-              color: AppColors.textSecondary,
+              color: context.appTextSecondary,
             ),
           ),
         ],
@@ -537,15 +539,15 @@ class _SummaryCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
+        color: context.appSurfaceSoft,
         borderRadius: BorderRadius.circular(11),
       ),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.auto_awesome_outlined,
             size: 19,
-            color: AppColors.navy,
+            color: context.appBrand,
           ),
 
           const SizedBox(width: 10),
@@ -554,12 +556,12 @@ class _SummaryCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'AI 분석 요약',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.navy,
+                    color: context.appBrand,
                   ),
                 ),
 
@@ -567,10 +569,10 @@ class _SummaryCard extends StatelessWidget {
 
                 Text(
                   result.summary,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
 
@@ -578,9 +580,9 @@ class _SummaryCard extends StatelessWidget {
 
                 Text(
                   result.modelLabel,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -613,25 +615,25 @@ class _SectionCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 16, color: AppColors.navy),
+              Icon(icon, size: 16, color: context.appBrand),
 
               const SizedBox(width: 7),
 
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: context.appTextPrimary,
                 ),
               ),
             ],
@@ -664,19 +666,19 @@ class _DetectionRow extends StatelessWidget {
           Expanded(
             child: Text(
               '${detection.vessel} · ${detection.location}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
           ),
 
           Text(
             '${(detection.confidence * 100).round()}%',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
-              color: AppColors.textSecondary,
+              color: context.appTextSecondary,
             ),
           ),
 
@@ -704,10 +706,10 @@ class _LesionRow extends StatelessWidget {
             width: 120,
             child: Text(
               '${lesion.vessel} · ${lesion.segment}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
           ),
@@ -724,10 +726,10 @@ class _LesionRow extends StatelessWidget {
 
           Text(
             '${lesion.stenosisPercent.round()}%',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: context.appTextPrimary,
             ),
           ),
 
@@ -755,10 +757,10 @@ class _SimpleStatusRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
           ),
@@ -808,7 +810,7 @@ class _ValueRow extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
           ),
@@ -818,7 +820,7 @@ class _ValueRow extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: context.appTextPrimary,
             ),
           ),
         ],
@@ -881,7 +883,7 @@ class _ResultTypeBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
+        color: context.appSurfaceSoft,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -926,14 +928,14 @@ class _EmptyResult extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
-      child: const Center(
+      child: Center(
         child: Text(
           'AI 결과를 선택해 주세요.',
-          style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 11.5, color: context.appTextSecondary),
         ),
       ),
     );

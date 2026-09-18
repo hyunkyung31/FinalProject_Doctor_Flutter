@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/network/api_client.dart';
@@ -46,10 +47,10 @@ class _SmartQueueCardState extends State<SmartQueueCard> {
 
       case 'NORMAL':
       case 'MEDIUM':
-        return AppColors.primaryBlue;
+        return context.appPrimary;
 
       default:
-        return AppColors.textSecondary;
+        return context.appTextSecondary;
     }
   }
 
@@ -192,7 +193,7 @@ class _SmartQueueEmpty extends StatelessWidget {
               height: 38,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: AppColors.successBackground,
+                color: context.appSuccessBackground,
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -207,11 +208,11 @@ class _SmartQueueEmpty extends StatelessWidget {
             // ==================================================
             // Empty Title
             // ==================================================
-            const Text(
+            Text(
               '현재 처리할 업무가 없습니다.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
               ),
@@ -222,11 +223,11 @@ class _SmartQueueEmpty extends StatelessWidget {
             // ==================================================
             // Empty Description
             // ==================================================
-            const Text(
+            Text(
               '새로운 업무가 배정되면 여기에 표시됩니다.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
                 fontSize: 9.5,
                 fontWeight: FontWeight.w400,
               ),
@@ -247,7 +248,7 @@ class _SmartQueueLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
+    return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 34),
       child: Center(
         child: SizedBox(
@@ -255,7 +256,7 @@ class _SmartQueueLoading extends StatelessWidget {
           height: 20,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            color: AppColors.primaryBlue,
+            color: context.appPrimary,
           ),
         ),
       ),
@@ -288,11 +289,11 @@ class _SmartQueueError extends StatelessWidget {
 
             const SizedBox(height: 8),
 
-            const Text(
+            Text(
               '업무 목록을 불러오지 못했습니다.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
               ),
@@ -300,10 +301,10 @@ class _SmartQueueError extends StatelessWidget {
 
             const SizedBox(height: 4),
 
-            const Text(
+            Text(
               '잠시 후 다시 시도해주세요.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 9.5),
+              style: TextStyle(color: context.appTextSecondary, fontSize: 9.5),
             ),
 
             const SizedBox(height: 10),
@@ -410,8 +411,8 @@ class _QueueItem extends StatelessWidget {
                 data.title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
+                style: TextStyle(
+                  color: context.appTextPrimary,
                   fontSize: 10.5,
                   fontWeight: FontWeight.w600,
                 ),
@@ -434,9 +435,9 @@ class _QueueItem extends StatelessWidget {
 
             const SizedBox(width: 3),
 
-            const Text(
+            Text(
               '건',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 9),
+              style: TextStyle(color: context.appTextSecondary, fontSize: 9),
             ),
           ],
         ),

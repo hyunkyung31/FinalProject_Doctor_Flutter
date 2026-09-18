@@ -7,8 +7,15 @@ import '../../../examinations/presentation/examination_ui_models.dart';
 
 class PatientLabTrendChart extends StatefulWidget {
   final List<ExaminationResultUiModel> results;
+  final String? selectedCode;
+  final ValueChanged<String>? onSelectedCodeChanged;
 
-  const PatientLabTrendChart({super.key, required this.results});
+  const PatientLabTrendChart({
+    super.key,
+    required this.results,
+    this.selectedCode,
+    this.onSelectedCodeChanged,
+  });
 
   @override
   State<PatientLabTrendChart> createState() => _PatientLabTrendChartState();
@@ -20,19 +27,20 @@ class _PatientLabTrendChartState extends State<PatientLabTrendChart> {
   @override
   void initState() {
     super.initState();
-    _syncSelectedCode();
+    _syncSelectedCode(notifyParent: true);
   }
 
   @override
   void didUpdateWidget(covariant PatientLabTrendChart oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (!identical(oldWidget.results, widget.results)) {
-      _syncSelectedCode();
+    if (!identical(oldWidget.results, widget.results) ||
+        oldWidget.selectedCode != widget.selectedCode) {
+      _syncSelectedCode(notifyParent: true);
     }
   }
 
-  void _syncSelectedCode() {
+  void _syncSelectedCode({bool notifyParent = false}) {
     final series = _buildTrendSeries(widget.results);
 
     if (series.isEmpty) {
@@ -40,11 +48,59 @@ class _PatientLabTrendChartState extends State<PatientLabTrendChart> {
       return;
     }
 
-    final stillExists = series.any((item) => item.code == _selectedCode);
+    final externalCode = widget.selectedCode?.trim();
+
+    if (externalCode != null && externalCode.isNotEmpty) {
+      for (final item in series) {
+        if (item.code.trim().toUpperCase() == externalCode.toUpperCase()) {
+          _selectedCode = item.code;
+
+          if (notifyParent) {
+            _notifyParentIfNeeded();
+          }
+
+          return;
+        }
+      }
+    }
+
+    final stillExists = series.any(
+      (item) =>
+          item.code.trim().toUpperCase() ==
+          (_selectedCode ?? '').trim().toUpperCase(),
+    );
 
     if (!stillExists) {
       _selectedCode = series.first.code;
     }
+
+    if (notifyParent) {
+      _notifyParentIfNeeded();
+    }
+  }
+
+  void _notifyParentIfNeeded() {
+    final code = _selectedCode;
+    final callback = widget.onSelectedCodeChanged;
+
+    if (code == null || callback == null) {
+      return;
+    }
+
+    final externalCode = widget.selectedCode?.trim();
+
+    if (externalCode != null &&
+        externalCode.toUpperCase() == code.trim().toUpperCase()) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      widget.onSelectedCodeChanged?.call(code);
+    });
   }
 
   @override
@@ -168,6 +224,8 @@ class _PatientLabTrendChartState extends State<PatientLabTrendChart> {
             setState(() {
               _selectedCode = value;
             });
+
+            widget.onSelectedCodeChanged?.call(value);
           },
         ),
       ),

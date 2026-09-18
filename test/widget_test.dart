@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_doctor/core/settings/theme_mode_provider.dart';
 
 import 'package:flutter_doctor/core/auth/auth_provider.dart';
 import 'package:flutter_doctor/core/auth/auth_service.dart';
@@ -42,9 +43,12 @@ void main() {
     // App Build
     // ========================================================
 
+    final themeModeProvider = ThemeModeProvider();
+
     await tester.pumpWidget(
       CardioAiApp(
         textScaleProvider: textScaleProvider,
+        themeModeProvider: themeModeProvider,
         apiClient: apiClient,
         authProvider: authProvider,
       ),

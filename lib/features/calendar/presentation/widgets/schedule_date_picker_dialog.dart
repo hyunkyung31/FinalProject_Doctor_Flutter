@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 
@@ -138,7 +139,7 @@ class _ScheduleDatePickerDialogState extends State<ScheduleDatePickerDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: AppColors.surface,
+      backgroundColor: context.appSurface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: SizedBox(
@@ -153,13 +154,13 @@ class _ScheduleDatePickerDialogState extends State<ScheduleDatePickerDialog> {
               // ==================================================
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       '날짜 선택',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                       ),
                     ),
                   ),
@@ -173,10 +174,10 @@ class _ScheduleDatePickerDialogState extends State<ScheduleDatePickerDialog> {
                       onPressed: () {
                         Navigator.of(context).pop();
                       },
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.close_rounded,
                         size: 20,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   ),
@@ -200,10 +201,10 @@ class _ScheduleDatePickerDialogState extends State<ScheduleDatePickerDialog> {
                       '${_focusedMonth.year}년 '
                       '${_focusedMonth.month}월',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                       ),
                     ),
                   ),
@@ -238,7 +239,7 @@ class _ScheduleDatePickerDialogState extends State<ScheduleDatePickerDialog> {
               // ==================================================
               Row(
                 children: List.generate(_weekdays.length, (index) {
-                  Color color = AppColors.textSecondary;
+                  Color color = context.appTextSecondary;
 
                   if (index == 0) {
                     color = AppColors.danger;
@@ -272,7 +273,7 @@ class _ScheduleDatePickerDialogState extends State<ScheduleDatePickerDialog> {
 
               const SizedBox(height: 14),
 
-              const Divider(height: 1, color: AppColors.border),
+              Divider(height: 1, color: context.appBorder),
 
               const SizedBox(height: 14),
 
@@ -284,10 +285,10 @@ class _ScheduleDatePickerDialogState extends State<ScheduleDatePickerDialog> {
                   Expanded(
                     child: Text(
                       _formatSelectedDate(_selectedDate),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   ),
@@ -297,7 +298,7 @@ class _ScheduleDatePickerDialogState extends State<ScheduleDatePickerDialog> {
                       Navigator.of(context).pop();
                     },
                     style: TextButton.styleFrom(
-                      foregroundColor: AppColors.textSecondary,
+                      foregroundColor: context.appTextSecondary,
                     ),
                     child: const Text(
                       '취소',
@@ -384,10 +385,10 @@ class _ScheduleDatePickerDialogState extends State<ScheduleDatePickerDialog> {
 
     final isSelectable = _isSelectable(date);
 
-    Color textColor = AppColors.textPrimary;
+    Color textColor = context.appTextPrimary;
 
     if (!isCurrentMonth || !isSelectable) {
-      textColor = AppColors.textDisabled;
+      textColor = context.appTextDisabled;
     } else if (date.weekday == DateTime.sunday) {
       textColor = AppColors.danger;
     } else if (date.weekday == DateTime.saturday) {
@@ -508,7 +509,7 @@ class _NavigationButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surfaceSoft,
+      color: context.appSurfaceSoft,
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         onTap: onTap,
@@ -516,7 +517,7 @@ class _NavigationButton extends StatelessWidget {
         child: SizedBox(
           width: 32,
           height: 32,
-          child: Icon(icon, size: 19, color: AppColors.textSecondary),
+          child: Icon(icon, size: 19, color: context.appTextSecondary),
         ),
       ),
     );

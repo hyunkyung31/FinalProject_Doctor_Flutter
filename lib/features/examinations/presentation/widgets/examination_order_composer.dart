@@ -19,6 +19,7 @@ class ExaminationOrderComposer extends StatefulWidget {
   final int? initialPatientId;
   final int? initialEncounterId;
   final bool lockPatientSelection;
+  final bool dialogMode;
 
   final ExaminationOrderCreateCallback onSubmit;
   final ValueChanged<ExaminationOrderUiModel> onCreated;
@@ -35,6 +36,7 @@ class ExaminationOrderComposer extends StatefulWidget {
     required this.onSubmit,
     required this.onCreated,
     required this.onCancel,
+    this.dialogMode = false,
   });
 
   @override
@@ -226,11 +228,200 @@ class _ExaminationOrderComposerState extends State<ExaminationOrderComposer> {
     return '$year.$month.$day';
   }
 
-  @override
-  Widget build(BuildContext context) {
+  String _typeDisplayName(ExaminationTypeUiModel type) {
+    switch (type.code.trim().toUpperCase()) {
+      case 'BLOOD':
+      case 'CARDIAC_LAB_PANEL':
+        return '혈액검사';
+
+      case 'ANGIO_2D':
+      case 'ANGIOGRAPHY':
+        return '관상동맥조영술';
+
+      case 'CCTA':
+      case 'CCTA_3D':
+        return '관상동맥 CT 검사';
+
+      default:
+        return type.name.trim().isEmpty ? type.code : type.name;
+    }
+  }
+
+  Widget _buildFormContent({required bool showTypeCode}) {
     final patient = _selectedPatient;
     final encounter = _selectedEncounter;
     final availableTypes = _availableTypes;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionTitle('환자'),
+        const SizedBox(height: 7),
+
+        _PatientSelector(
+          patient: patient,
+          encounterText: encounter == null
+              ? null
+              : '최근 진료  '
+                    '${_formatDate(encounter.visitDate)}'
+                    ' · 진료 #${encounter.id}'
+                    ' · ${encounter.status}',
+          patients: _availablePatients,
+          enabled: !_isSubmitting,
+          locked: widget.lockPatientSelection,
+          onSelected: (selectedPatient) {
+            setState(() {
+              _selectedPatientId = selectedPatient.id;
+              _syncEncounter();
+              _submitError = null;
+            });
+          },
+        ),
+
+        const SizedBox(height: 18),
+
+        Row(
+          children: [
+            const _SectionTitle('우선순위'),
+            const Spacer(),
+
+            _PrioritySegment(
+              label: '일반',
+              selected: _selectedPriority == 'NORMAL',
+              urgent: false,
+              onTap: _isSubmitting
+                  ? null
+                  : () {
+                      setState(() {
+                        _selectedPriority = 'NORMAL';
+                      });
+                    },
+            ),
+
+            const SizedBox(width: 6),
+
+            _PrioritySegment(
+              label: '긴급',
+              selected: _selectedPriority == 'URGENT',
+              urgent: true,
+              onTap: _isSubmitting
+                  ? null
+                  : () {
+                      setState(() {
+                        _selectedPriority = 'URGENT';
+                      });
+                    },
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 18),
+
+        const _SectionTitle('검사 항목'),
+        const SizedBox(height: 7),
+
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              for (var index = 0; index < availableTypes.length; index++)
+                _ExaminationTypeRow(
+                  type: availableTypes[index],
+                  displayName: _typeDisplayName(availableTypes[index]),
+                  selected: availableTypes[index].id == _selectedTypeId,
+                  enabled: !_isSubmitting,
+                  showCode: showTypeCode,
+                  showBottomBorder: index != availableTypes.length - 1,
+                  onTap: () {
+                    setState(() {
+                      _selectedTypeId = availableTypes[index].id;
+                      _submitError = null;
+                    });
+                  },
+                ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 18),
+
+        const _SectionTitle('검사 메모'),
+        const SizedBox(height: 7),
+
+        TextFormField(
+          enabled: !_isSubmitting,
+          minLines: 3,
+          maxLines: 4,
+          onChanged: (value) {
+            _clinicalNote = value;
+          },
+          decoration: const InputDecoration(
+            hintText: '검사 목적이나 참고사항을 입력하세요.',
+            border: OutlineInputBorder(),
+          ),
+        ),
+
+        if (_submitError != null) ...[
+          const SizedBox(height: 10),
+          Text(
+            _submitError!,
+            style: const TextStyle(fontSize: 10.5, color: Colors.red),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return FilledButton.icon(
+      onPressed: _isSubmitting ? null : _submit,
+      style: FilledButton.styleFrom(backgroundColor: AppColors.navy),
+      icon: _isSubmitting
+          ? const SizedBox(
+              width: 15,
+              height: 15,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : const Icon(Icons.add_rounded, size: 16),
+      label: Text(_isSubmitting ? '생성 중...' : '오더 생성'),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.dialogMode) {
+      return AlertDialog(
+        title: const Text(
+          '검사 오더 추가',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        content: SizedBox(
+          width: 520,
+          child: SingleChildScrollView(
+            child: _buildFormContent(showTypeCode: false),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _isSubmitting ? null : widget.onCancel,
+            child: const Text('취소'),
+          ),
+          _buildSubmitButton(),
+        ],
+      );
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -251,7 +442,7 @@ class _ExaminationOrderComposerState extends State<ExaminationOrderComposer> {
               children: [
                 const Expanded(
                   child: Text(
-                    '새 검사 오더',
+                    '검사 오더 추가',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -270,138 +461,8 @@ class _ExaminationOrderComposerState extends State<ExaminationOrderComposer> {
 
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _SectionTitle('환자'),
-
-                  const SizedBox(height: 7),
-
-                  _PatientSelector(
-                    patient: patient,
-                    encounterText: encounter == null
-                        ? null
-                        : '최근 진료  '
-                              '${_formatDate(encounter.visitDate)}'
-                              ' · #${encounter.id}'
-                              ' · ${encounter.status}',
-                    patients: _availablePatients,
-                    enabled: !_isSubmitting,
-                    locked: widget.lockPatientSelection,
-                    onSelected: (selectedPatient) {
-                      setState(() {
-                        _selectedPatientId = selectedPatient.id;
-                        _syncEncounter();
-                        _submitError = null;
-                      });
-                    },
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  const Divider(height: 1, color: AppColors.border),
-
-                  const SizedBox(height: 12),
-
-                  Row(
-                    children: [
-                      const _SectionTitle('우선순위'),
-
-                      const Spacer(),
-
-                      _PrioritySegment(
-                        label: '일반',
-                        selected: _selectedPriority == 'NORMAL',
-                        urgent: false,
-                        onTap: _isSubmitting
-                            ? null
-                            : () {
-                                setState(() {
-                                  _selectedPriority = 'NORMAL';
-                                });
-                              },
-                      ),
-
-                      const SizedBox(width: 6),
-
-                      _PrioritySegment(
-                        label: '긴급',
-                        selected: _selectedPriority == 'URGENT',
-                        urgent: true,
-                        onTap: _isSubmitting
-                            ? null
-                            : () {
-                                setState(() {
-                                  _selectedPriority = 'URGENT';
-                                });
-                              },
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  const Divider(height: 1, color: AppColors.border),
-
-                  const SizedBox(height: 12),
-
-                  const _SectionTitle('검사 종류'),
-
-                  const SizedBox(height: 7),
-
-                  Container(
-                    decoration: const BoxDecoration(
-                      border: Border(top: BorderSide(color: AppColors.border)),
-                    ),
-                    child: Column(
-                      children: [
-                        for (final type in availableTypes)
-                          _ExaminationTypeRow(
-                            type: type,
-                            selected: type.id == _selectedTypeId,
-                            enabled: !_isSubmitting,
-                            onTap: () {
-                              setState(() {
-                                _selectedTypeId = type.id;
-                                _submitError = null;
-                              });
-                            },
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  const SizedBox(height: 12),
-
-                  const _SectionTitle('임상 메모'),
-
-                  const SizedBox(height: 8),
-
-                  TextFormField(
-                    enabled: !_isSubmitting,
-                    minLines: 2,
-                    maxLines: 3,
-                    onChanged: (value) {
-                      _clinicalNote = value;
-                    },
-                    decoration: const InputDecoration(
-                      hintText: '검사 목적이나 참고사항을 입력하세요.',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-
-                  if (_submitError != null) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      _submitError!,
-                      style: const TextStyle(fontSize: 10.5, color: Colors.red),
-                    ),
-                  ],
-                ],
-              ),
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+              child: _buildFormContent(showTypeCode: true),
             ),
           ),
 
@@ -418,23 +479,7 @@ class _ExaminationOrderComposerState extends State<ExaminationOrderComposer> {
                   child: const Text('취소'),
                 ),
                 const SizedBox(width: 8),
-                FilledButton.icon(
-                  onPressed: _isSubmitting ? null : _submit,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.navy,
-                  ),
-                  icon: _isSubmitting
-                      ? const SizedBox(
-                          width: 15,
-                          height: 15,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.add_rounded, size: 16),
-                  label: Text(_isSubmitting ? '생성 중...' : '오더 생성'),
-                ),
+                _buildSubmitButton(),
               ],
             ),
           ),
@@ -863,28 +908,24 @@ class _PatientSelectorState extends State<_PatientSelector> {
 
 class _ExaminationTypeRow extends StatelessWidget {
   final ExaminationTypeUiModel type;
+  final String displayName;
 
   final bool selected;
   final bool enabled;
+  final bool showCode;
+  final bool showBottomBorder;
 
   final VoidCallback onTap;
 
   const _ExaminationTypeRow({
     required this.type,
+    required this.displayName,
     required this.selected,
     required this.enabled,
+    required this.showCode,
+    required this.showBottomBorder,
     required this.onTap,
   });
-
-  String get _displayName {
-    switch (type.code) {
-      case 'CCTA_3D':
-        return '관상동맥 CT 3D';
-
-      default:
-        return type.name;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -893,15 +934,17 @@ class _ExaminationTypeRow extends StatelessWidget {
       child: InkWell(
         onTap: enabled ? onTap : null,
         child: Container(
-          height: 46,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             border: Border(
               left: BorderSide(
                 color: selected ? AppColors.navy : Colors.transparent,
                 width: 3,
               ),
-              bottom: const BorderSide(color: AppColors.border),
+              bottom: showBottomBorder
+                  ? const BorderSide(color: AppColors.border)
+                  : BorderSide.none,
             ),
           ),
           child: Row(
@@ -913,12 +956,10 @@ class _ExaminationTypeRow extends StatelessWidget {
                 size: 16,
                 color: selected ? AppColors.navy : AppColors.textSecondary,
               ),
-
               const SizedBox(width: 9),
-
               Expanded(
                 child: Text(
-                  _displayName,
+                  displayName,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 11,
@@ -927,16 +968,16 @@ class _ExaminationTypeRow extends StatelessWidget {
                   ),
                 ),
               ),
-
-              const SizedBox(width: 10),
-
-              Text(
-                type.code,
-                style: const TextStyle(
-                  fontSize: 9.5,
-                  color: AppColors.textSecondary,
+              if (showCode) ...[
+                const SizedBox(width: 8),
+                Text(
+                  type.code,
+                  style: const TextStyle(
+                    fontSize: 8.5,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),

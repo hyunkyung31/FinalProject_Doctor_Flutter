@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/auth/access_control.dart';
 import '../../../../core/auth/auth_provider.dart';
@@ -36,7 +37,7 @@ class ClinicalBriefing extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
 
       decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
+        color: context.appSurfaceSoft,
 
         borderRadius: BorderRadius.circular(AppRadius.large),
       ),
@@ -64,13 +65,13 @@ class ClinicalBriefing extends StatelessWidget {
 
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
-                        color: AppColors.surface,
+                        color: context.appSurface,
 
                         alignment: Alignment.center,
 
-                        child: const Icon(
+                        child: Icon(
                           Icons.favorite_rounded,
-                          color: AppColors.navy,
+                          color: context.appBrand,
                           size: 24,
                         ),
                       );
@@ -81,11 +82,11 @@ class ClinicalBriefing extends StatelessWidget {
 
               const SizedBox(height: 4),
 
-              const Text(
+              Text(
                 'BOMI ASSISTANT',
 
                 style: TextStyle(
-                  color: AppColors.primaryBlue,
+                  color: context.appPrimary,
                   fontSize: 7,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.2,
@@ -104,11 +105,11 @@ class ClinicalBriefing extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
 
               children: [
-                const Text(
+                Text(
                   'CLINICAL BRIEFING',
 
                   style: TextStyle(
-                    color: AppColors.primaryBlue,
+                    color: context.appPrimary,
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1.0,
@@ -123,8 +124,8 @@ class ClinicalBriefing extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
 
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
+                  style: TextStyle(
+                    color: context.appTextPrimary,
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
                     height: 1.3,
@@ -137,8 +138,8 @@ class ClinicalBriefing extends StatelessWidget {
                   description,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.navyLight,
+                  style: TextStyle(
+                    color: context.appNavyLight,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     height: 1.35,
@@ -161,10 +162,10 @@ class ClinicalBriefing extends StatelessWidget {
             label: const Text('확인'),
 
             style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.navy,
-              backgroundColor: AppColors.surface,
+              foregroundColor: context.appBrand,
+              backgroundColor: context.appSurface,
 
-              side: const BorderSide(color: AppColors.border),
+              side: BorderSide(color: context.appBorder),
 
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             ),

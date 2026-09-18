@@ -262,7 +262,10 @@ class ExaminationOrderDetailPanel extends StatelessWidget {
           children: [
             _InfoRow(label: '환자', value: '${patient.name} (#${patient.id})'),
             _InfoRow(label: 'Encounter', value: '#${encounter.id}'),
-            _InfoRow(label: '진료 상태', value: encounter.status),
+            _InfoRow(
+              label: '진료 상태',
+              value: _encounterStatusLabel(encounter.status),
+            ),
             _InfoRow(label: '처방 의료진', value: '#${order.orderedBy}'),
           ],
         ),
@@ -1179,21 +1182,20 @@ class ExaminationStatusBadge extends StatelessWidget {
 // ============================================================
 
 String formatExamDateTime(DateTime date) {
-  final month = date.month.toString().padLeft(2, '0');
+  final local = date.toUtc().add(const Duration(hours: 9));
 
-  final day = date.day.toString().padLeft(2, '0');
+  final month = local.month.toString().padLeft(2, '0');
+  final day = local.day.toString().padLeft(2, '0');
+  final hour = local.hour.toString().padLeft(2, '0');
+  final minute = local.minute.toString().padLeft(2, '0');
 
-  final hour = date.hour.toString().padLeft(2, '0');
-
-  final minute = date.minute.toString().padLeft(2, '0');
-
-  return '${date.year}.$month.$day $hour:$minute';
+  return '${local.year}.$month.$day $hour:$minute';
 }
 
 String _categoryLabel(String category) {
   switch (category) {
     case 'LAB':
-      return '혈액 검사';
+      return '혈액검사';
 
     case 'IMAGING':
       return '영상';
@@ -1222,10 +1224,29 @@ String _priorityLabel(String priority) {
   }
 }
 
+String _encounterStatusLabel(String status) {
+  switch (status.trim().toUpperCase()) {
+    case 'COMPLETED':
+      return '완료';
+
+    case 'IN_PROGRESS':
+      return '진행 중';
+
+    case 'CANCELED':
+      return '취소';
+
+    case 'SCHEDULED':
+      return '예약';
+
+    default:
+      return status;
+  }
+}
+
 String _statusLabel(String status) {
   switch (status) {
     case 'ORDERED':
-      return '처방';
+      return '오더';
 
     case 'SCHEDULED':
       return '검사 예정';

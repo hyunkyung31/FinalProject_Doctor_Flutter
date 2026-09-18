@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/network/api_client.dart';
@@ -322,9 +323,9 @@ class _StaffSchedulePageState extends State<StaffSchedulePage> {
       pageTitle: '일정',
       selectedIndex: 7,
       body: Material(
-        color: AppColors.background,
+        color: context.appBackground,
         child: Container(
-          color: AppColors.background,
+          color: context.appBackground,
           padding: const EdgeInsets.fromLTRB(20, 5, 20, 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -552,7 +553,7 @@ class _StaffSchedulePageState extends State<StaffSchedulePage> {
         return AppColors.warning;
 
       case 'OFF':
-        return AppColors.textSecondary;
+        return context.appTextSecondary;
 
       default:
         return AppColors.secondaryBlue;
@@ -587,12 +588,12 @@ class _ScheduleError extends StatelessWidget {
 
           const SizedBox(height: 10),
 
-          const Text(
+          Text(
             '일정을 불러오지 못했습니다.',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: context.appTextPrimary,
             ),
           ),
 

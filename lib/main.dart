@@ -9,6 +9,7 @@ import 'core/network/api_client.dart';
 import 'core/network/api_endpoints.dart';
 import 'core/router/app_router.dart';
 import 'core/settings/text_scale_provider.dart';
+import 'core/settings/theme_mode_provider.dart';
 import 'core/theme/app_theme.dart';
 
 import 'features/calendar/data/services/schedule_service.dart';
@@ -44,6 +45,14 @@ Future<void> main() async {
   await textScaleProvider.load();
 
   // ==========================================================
+  // Theme Mode
+  // ==========================================================
+
+  final themeModeProvider = ThemeModeProvider();
+
+  await themeModeProvider.load();
+
+  // ==========================================================
   // API Client
   // 앱 전체에서 하나의 ApiClient 인스턴스 사용
   // ==========================================================
@@ -60,9 +69,6 @@ Future<void> main() async {
 
   // ==========================================================
   // 개발용 로그인 정보
-  //
-  // 소스코드에 ID / Password를 저장하지 않고
-  // flutter run --dart-define 으로 전달
   // ==========================================================
 
   const username = String.fromEnvironment('STAFF_USERNAME');
@@ -81,14 +87,6 @@ Future<void> main() async {
 
     debugPrint(success ? '[AUTH] 의료진 로그인 성공' : '[AUTH] 의료진 로그인 실패');
 
-    // ========================================================
-    // 로그인 성공 후 일정 API 사전 로딩
-    //
-    // await 하지 않음
-    // → 대시보드 실행과 동시에 백그라운드에서 일정 조회
-    // → 일정 페이지 첫 진입 시 캐시 활용
-    // ========================================================
-
     if (success) {
       unawaited(_prefetchSchedules(apiClient));
     }
@@ -106,6 +104,7 @@ Future<void> main() async {
   runApp(
     CardioAiApp(
       textScaleProvider: textScaleProvider,
+      themeModeProvider: themeModeProvider,
       apiClient: apiClient,
       authProvider: authProvider,
     ),
@@ -119,6 +118,8 @@ Future<void> main() async {
 class CardioAiApp extends StatelessWidget {
   final TextScaleProvider textScaleProvider;
 
+  final ThemeModeProvider themeModeProvider;
+
   final ApiClient apiClient;
 
   final AuthProvider authProvider;
@@ -126,6 +127,7 @@ class CardioAiApp extends StatelessWidget {
   const CardioAiApp({
     super.key,
     required this.textScaleProvider,
+    required this.themeModeProvider,
     required this.apiClient,
     required this.authProvider,
   });
@@ -150,17 +152,34 @@ class CardioAiApp extends StatelessWidget {
         ChangeNotifierProvider<TextScaleProvider>.value(
           value: textScaleProvider,
         ),
+
+        // ======================================================
+        // Theme Mode Provider
+        // ======================================================
+        ChangeNotifierProvider<ThemeModeProvider>.value(
+          value: themeModeProvider,
+        ),
       ],
 
-      child: Consumer<TextScaleProvider>(
-        builder: (context, textScale, child) {
+      child: Consumer2<TextScaleProvider, ThemeModeProvider>(
+        builder: (context, textScale, themeMode, child) {
           return MaterialApp.router(
             debugShowCheckedModeBanner: false,
 
             title: 'CardioAI',
 
+            // ==================================================
+            // Theme
+            // ==================================================
             theme: AppTheme.light,
 
+            darkTheme: AppTheme.dark,
+
+            themeMode: themeMode.themeMode,
+
+            // ==================================================
+            // Router
+            // ==================================================
             routerConfig: appRouter,
 
             // ==================================================
@@ -171,9 +190,9 @@ class CardioAiApp extends StatelessWidget {
                 return const SizedBox.shrink();
               }
 
-              // ==================================================
+              // ================================================
               // 시스템 글자 크기 사용
-              // ==================================================
+              // ================================================
 
               if (textScale.useSystemScale) {
                 return child;
@@ -181,9 +200,9 @@ class CardioAiApp extends StatelessWidget {
 
               final mediaQuery = MediaQuery.of(context);
 
-              // ==================================================
+              // ================================================
               // 앱 설정 글자 크기 사용
-              // ==================================================
+              // ================================================
 
               return MediaQuery(
                 data: mediaQuery.copyWith(

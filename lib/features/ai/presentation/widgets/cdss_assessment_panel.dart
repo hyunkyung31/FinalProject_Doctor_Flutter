@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../ai_ui_models.dart';
@@ -62,7 +63,7 @@ class _CdssAssessmentPanelState extends State<CdssAssessmentPanel> {
             color: AppColors.warningBackground,
             borderRadius: BorderRadius.circular(9),
           ),
-          child: const Row(
+          child: Row(
             children: [
               Icon(
                 Icons.info_outline_rounded,
@@ -78,7 +79,7 @@ class _CdssAssessmentPanelState extends State<CdssAssessmentPanel> {
                   style: TextStyle(
                     fontSize: 9.5,
                     height: 1.4,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ),
@@ -98,9 +99,9 @@ class _CdssAssessmentPanelState extends State<CdssAssessmentPanel> {
                 flex: 4,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: context.appSurface,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: context.appBorder),
                   ),
                   child: Column(
                     children: [
@@ -108,13 +109,13 @@ class _CdssAssessmentPanelState extends State<CdssAssessmentPanel> {
                         padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
                         child: Row(
                           children: [
-                            const Expanded(
+                            Expanded(
                               child: Text(
                                 '통합 평가',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
+                                  color: context.appTextPrimary,
                                 ),
                               ),
                             ),
@@ -135,7 +136,7 @@ class _CdssAssessmentPanelState extends State<CdssAssessmentPanel> {
                         ),
                       ),
 
-                      const Divider(height: 1, color: AppColors.border),
+                      Divider(height: 1, color: context.appBorder),
 
                       Expanded(
                         child: widget.assessments.isEmpty
@@ -212,10 +213,10 @@ class _AssessmentListItem extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(11),
         decoration: BoxDecoration(
-          color: selected ? AppColors.surfaceSoft : AppColors.surface,
+          color: selected ? context.appSurfaceSoft : context.appSurface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: selected ? AppColors.primaryBlue : AppColors.border,
+            color: selected ? AppColors.primaryBlue : context.appBorder,
           ),
         ),
         child: Column(
@@ -226,10 +227,10 @@ class _AssessmentListItem extends StatelessWidget {
                 Expanded(
                   child: Text(
                     assessment.patientName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
                 ),
@@ -246,10 +247,10 @@ class _AssessmentListItem extends StatelessWidget {
 
             Text(
               'Encounter #${assessment.encounterId}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
 
@@ -257,9 +258,9 @@ class _AssessmentListItem extends StatelessWidget {
 
             Text(
               'AI Result ${assessment.aiResultIds.length}건 · ${assessment.rulesetVersion}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9.5,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ],
@@ -286,9 +287,9 @@ class _AssessmentDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -304,13 +305,13 @@ class _AssessmentDetail extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceSoft,
+                    color: context.appSurfaceSoft,
                     borderRadius: BorderRadius.circular(11),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.medical_services_outlined,
                     size: 21,
-                    color: AppColors.navy,
+                    color: context.appBrand,
                   ),
                 ),
 
@@ -322,12 +323,12 @@ class _AssessmentDetail extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          const Text(
+                          Text(
                             '통합 임상 판단',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
+                              color: context.appTextPrimary,
                             ),
                           ),
 
@@ -345,9 +346,9 @@ class _AssessmentDetail extends StatelessWidget {
 
                       Text(
                         '${assessment.patientName} · ${assessment.patientMeta}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10.5,
-                          color: AppColors.textSecondary,
+                          color: context.appTextSecondary,
                         ),
                       ),
                     ],
@@ -363,7 +364,7 @@ class _AssessmentDetail extends StatelessWidget {
             ),
           ),
 
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.appBorder),
 
           // ======================================================
           // Content
@@ -408,7 +409,7 @@ class _AssessmentDetail extends StatelessWidget {
                             children: [
                               Text(
                                 '종합 위험도 · ${assessment.riskLevel}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.danger,
@@ -419,10 +420,10 @@ class _AssessmentDetail extends StatelessWidget {
 
                               Text(
                                 assessment.summary,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 10.5,
                                   height: 1.5,
-                                  color: AppColors.textPrimary,
+                                  color: context.appTextPrimary,
                                 ),
                               ),
                             ],
@@ -528,7 +529,7 @@ class _RiskComponentRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: context.appBackground,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -539,10 +540,10 @@ class _RiskComponentRow extends StatelessWidget {
               children: [
                 Text(
                   component.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
 
@@ -550,9 +551,9 @@ class _RiskComponentRow extends StatelessWidget {
 
                 Text(
                   component.description,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -561,10 +562,10 @@ class _RiskComponentRow extends StatelessWidget {
 
           Text(
             component.value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10.5,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: context.appTextPrimary,
             ),
           ),
 
@@ -598,15 +599,15 @@ class _SourceRow extends StatelessWidget {
             height: 32,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.surfaceSoft,
+              color: context.appSurfaceSoft,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               source.sourceType,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 8,
                 fontWeight: FontWeight.w700,
-                color: AppColors.navy,
+                color: context.appBrand,
               ),
             ),
           ),
@@ -619,10 +620,10 @@ class _SourceRow extends StatelessWidget {
               children: [
                 Text(
                   source.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
 
@@ -630,10 +631,10 @@ class _SourceRow extends StatelessWidget {
 
                 Text(
                   source.description,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9,
                     height: 1.4,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -660,17 +661,17 @@ class _RecommendationRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: context.appBackground,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
+          Icon(
             Icons.check_circle_outline_rounded,
             size: 17,
-            color: AppColors.navy,
+            color: context.appBrand,
           ),
 
           const SizedBox(width: 9),
@@ -684,10 +685,10 @@ class _RecommendationRow extends StatelessWidget {
                     Expanded(
                       child: Text(
                         recommendation.title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: context.appTextPrimary,
                         ),
                       ),
                     ),
@@ -700,10 +701,10 @@ class _RecommendationRow extends StatelessWidget {
 
                 Text(
                   recommendation.description,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9.5,
                     height: 1.5,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -736,25 +737,25 @@ class _SectionCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 16, color: AppColors.navy),
+              Icon(icon, size: 16, color: context.appBrand),
 
               const SizedBox(width: 7),
 
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: context.appTextPrimary,
                 ),
               ),
             ],
@@ -785,9 +786,9 @@ class _ValueRow extends StatelessWidget {
             width: 100,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9.5,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ),
@@ -795,10 +796,10 @@ class _ValueRow extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
           ),
@@ -876,7 +877,7 @@ class _EmptyAssessment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
         padding: EdgeInsets.all(20),
         child: Text(
@@ -885,7 +886,7 @@ class _EmptyAssessment extends StatelessWidget {
           style: TextStyle(
             fontSize: 10.5,
             height: 1.6,
-            color: AppColors.textSecondary,
+            color: context.appTextSecondary,
           ),
         ),
       ),
@@ -900,14 +901,14 @@ class _EmptyAssessmentDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
-      child: const Center(
+      child: Center(
         child: Text(
           '통합 판단 항목을 선택해 주세요.',
-          style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 11.5, color: context.appTextSecondary),
         ),
       ),
     );

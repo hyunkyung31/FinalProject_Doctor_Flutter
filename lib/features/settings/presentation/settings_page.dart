@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/settings/text_scale_provider.dart';
+import '../../../../core/settings/theme_mode_provider.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_shell.dart';
 
 // ============================================================
-// STEP 2. Settings Page
+// STEP 1. Settings Page
 // ============================================================
 
 class SettingsPage extends StatefulWidget {
@@ -18,58 +20,167 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   // ============================================================
-  // 알림 설정
+  // STEP 2. SharedPreferences Key
+  // ============================================================
+
+  static const String _reservationNotificationKey =
+      'settings_reservation_notification';
+
+  static const String _examinationNotificationKey =
+      'settings_examination_notification';
+
+  static const String _aiNotificationKey = 'settings_ai_notification';
+
+  static const String _cdssNotificationKey = 'settings_cdss_notification';
+
+  static const String _consultationNotificationKey =
+      'settings_consultation_notification';
+
+  static const String _chatNotificationKey = 'settings_chat_notification';
+
+  static const String _scheduleNotificationKey =
+      'settings_schedule_notification';
+
+  static const String _autoLoginKey = 'settings_auto_login';
+
+  static const String _autoLockKey = 'settings_auto_lock';
+
+  static const String _biometricLoginKey = 'settings_biometric_login';
+
+  static const String _reauthenticationKey = 'settings_reauthentication';
+
+  static const String _screenProtectionKey = 'settings_screen_protection';
+
+  // ============================================================
+  // STEP 3. 알림 설정
   // ============================================================
 
   bool _reservationNotification = true;
+
   bool _examinationNotification = true;
+
   bool _aiNotification = true;
+
+  bool _cdssNotification = true;
+
   bool _consultationNotification = true;
+
+  bool _chatNotification = true;
+
   bool _scheduleNotification = true;
 
   // ============================================================
-  // 보안 설정
-  //
-  // 1차 UI 단계에서는 화면 상태만 변경.
-  // 실제 자동 로그인 / 생체인증 연결은 추후 진행.
+  // STEP 4. 보안 설정
   // ============================================================
 
   bool _autoLogin = true;
+
+  String _autoLock = '5';
+
   bool _biometricLogin = false;
 
+  bool _reauthentication = true;
+
+  bool _screenProtection = true;
+
   // ============================================================
-  // STEP 3. Main UI
-  //
-  // settings는 Sidebar 하단 별도 메뉴이므로 selectedIndex는
-  // 실제 AppShell 구조 확인 후 최종 연결합니다.
-  //
-  // 현재 AppShell에서 음수 index 사용이 안전하지 않을 수 있으므로
-  // 일단 화면 확인 시 기존 설정 route의 selectedIndex 값을 사용하거나,
-  // AppShell 코드를 확인한 뒤 정확히 맞춥니다.
+  // STEP 5. Init
+  // ============================================================
+
+  @override
+  void initState() {
+    super.initState();
+
+    _loadSettings();
+  }
+
+  // ============================================================
+  // STEP 6. 저장된 설정 불러오기
+  // ============================================================
+
+  Future<void> _loadSettings() async {
+    final preferences = await SharedPreferences.getInstance();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _reservationNotification =
+          preferences.getBool(_reservationNotificationKey) ?? true;
+
+      _examinationNotification =
+          preferences.getBool(_examinationNotificationKey) ?? true;
+
+      _aiNotification = preferences.getBool(_aiNotificationKey) ?? true;
+
+      _cdssNotification = preferences.getBool(_cdssNotificationKey) ?? true;
+
+      _consultationNotification =
+          preferences.getBool(_consultationNotificationKey) ?? true;
+
+      _chatNotification = preferences.getBool(_chatNotificationKey) ?? true;
+
+      _scheduleNotification =
+          preferences.getBool(_scheduleNotificationKey) ?? true;
+
+      _autoLogin = preferences.getBool(_autoLoginKey) ?? true;
+
+      _autoLock = preferences.getString(_autoLockKey) ?? '5';
+
+      _biometricLogin = preferences.getBool(_biometricLoginKey) ?? false;
+
+      _reauthentication = preferences.getBool(_reauthenticationKey) ?? true;
+
+      _screenProtection = preferences.getBool(_screenProtectionKey) ?? true;
+    });
+  }
+
+  // ============================================================
+  // STEP 7. Bool 설정 저장
+  // ============================================================
+
+  Future<void> _saveBoolSetting(String key, bool value) async {
+    final preferences = await SharedPreferences.getInstance();
+
+    await preferences.setBool(key, value);
+  }
+
+  // ============================================================
+  // STEP 8. String 설정 저장
+  // ============================================================
+
+  Future<void> _saveStringSetting(String key, String value) async {
+    final preferences = await SharedPreferences.getInstance();
+
+    await preferences.setString(key, value);
+  }
+
+  // ============================================================
+  // STEP 9. Main UI
   // ============================================================
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return AppShell(
       pageTitle: '설정',
       selectedIndex: -1,
       body: Material(
-        color: AppColors.background,
+        color: theme.scaffoldBackgroundColor,
         child: Container(
-          color: AppColors.background,
+          color: theme.scaffoldBackgroundColor,
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // =================================================
-                // 상단 안내
-                // =================================================
-                const Text(
+                Text(
                   '내 계정과 앱 사용 환경을 설정할 수 있습니다.',
                   style: TextStyle(
                     fontSize: 10.5,
-                    color: AppColors.textSecondary,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
 
@@ -125,79 +236,106 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   // ============================================================
-  // STEP 4. 내 계정
+  // STEP 10. 내 계정
   // ============================================================
 
   Widget _buildAccountSection() {
-    return Row(
+    final theme = Theme.of(context);
+
+    return Column(
       children: [
-        Container(
-          width: 54,
-          height: 54,
-          decoration: BoxDecoration(
-            color: AppColors.surfaceSoft,
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.border),
-          ),
-          child: const Icon(
-            Icons.person_outline_rounded,
-            size: 25,
-            color: AppColors.navy,
-          ),
+        Row(
+          children: [
+            Container(
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                shape: BoxShape.circle,
+                border: Border.all(color: theme.dividerColor),
+              ),
+              child: Icon(
+                Icons.person_outline_rounded,
+                size: 25,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+
+            const SizedBox(width: 14),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '김OO 의사',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  Text(
+                    '순환기내과',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+
+                  const SizedBox(height: 2),
+
+                  Text(
+                    '의사',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            OutlinedButton.icon(
+              onPressed: () {
+                _showMessage('계정 정보 화면은 실제 직원 정보 API 연결 후 구현합니다.');
+              },
+              icon: const Icon(Icons.arrow_forward_rounded, size: 14),
+              label: const Text('계정 정보', style: TextStyle(fontSize: 10)),
+            ),
+          ],
         ),
 
-        const SizedBox(width: 14),
+        const _SettingsDivider(),
 
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '김OO 의사',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-
-              SizedBox(height: 4),
-
-              Text(
-                '순환기내과',
-                style: TextStyle(
-                  fontSize: 10.5,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-
-              SizedBox(height: 2),
-
-              Text(
-                '의사',
-                style: TextStyle(fontSize: 9.5, color: AppColors.textSecondary),
-              ),
-            ],
+        _SettingsRow(
+          title: '로그아웃',
+          subtitle: '현재 의료진 계정에서 로그아웃합니다.',
+          trailing: OutlinedButton.icon(
+            onPressed: _showLogoutDialog,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.danger,
+              side: const BorderSide(color: AppColors.danger),
+            ),
+            icon: const Icon(Icons.logout_rounded, size: 14),
+            label: const Text('로그아웃', style: TextStyle(fontSize: 10)),
           ),
-        ),
-
-        OutlinedButton.icon(
-          onPressed: () {
-            _showMessage('계정 정보 화면은 실제 직원 정보 API 연결 후 구현합니다.');
-          },
-          icon: const Icon(Icons.arrow_forward_rounded, size: 14),
-          label: const Text('계정 정보', style: TextStyle(fontSize: 10)),
         ),
       ],
     );
   }
 
   // ============================================================
-  // STEP 5. 화면 설정
+  // STEP 11. 화면 설정
   // ============================================================
 
   Widget _buildDisplaySection() {
     final textScaleProvider = context.watch<TextScaleProvider>();
+
+    final themeModeProvider = context.watch<ThemeModeProvider>();
 
     return Column(
       children: [
@@ -214,12 +352,14 @@ class _SettingsPageState extends State<SettingsPage> {
 
         const _SettingsDivider(),
 
-        const _SettingsRow(
+        _SettingsRow(
           title: '화면 모드',
-          subtitle: '기기의 화면 모드 설정을 따릅니다.',
-          trailing: _SettingValue(
-            icon: Icons.devices_outlined,
-            text: '시스템 설정 사용',
+          subtitle: '시스템 설정 또는 라이트·다크 모드를 선택합니다.',
+          trailing: _ThemeModeSelector(
+            selected: themeModeProvider.mode,
+            onChanged: (mode) async {
+              await context.read<ThemeModeProvider>().setMode(mode);
+            },
           ),
         ),
       ],
@@ -227,7 +367,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   // ============================================================
-  // STEP 6. 알림
+  // STEP 12. 알림 설정
   // ============================================================
 
   Widget _buildNotificationSection() {
@@ -241,6 +381,8 @@ class _SettingsPageState extends State<SettingsPage> {
             setState(() {
               _reservationNotification = value;
             });
+
+            _saveBoolSetting(_reservationNotificationKey, value);
           },
         ),
 
@@ -254,6 +396,8 @@ class _SettingsPageState extends State<SettingsPage> {
             setState(() {
               _examinationNotification = value;
             });
+
+            _saveBoolSetting(_examinationNotificationKey, value);
           },
         ),
 
@@ -267,6 +411,23 @@ class _SettingsPageState extends State<SettingsPage> {
             setState(() {
               _aiNotification = value;
             });
+
+            _saveBoolSetting(_aiNotificationKey, value);
+          },
+        ),
+
+        const _SettingsDivider(),
+
+        _SettingsSwitchRow(
+          title: 'CDSS 검토 알림',
+          subtitle: 'CDSS 분석 또는 검토가 필요한 경우 알려드립니다.',
+          value: _cdssNotification,
+          onChanged: (value) {
+            setState(() {
+              _cdssNotification = value;
+            });
+
+            _saveBoolSetting(_cdssNotificationKey, value);
           },
         ),
 
@@ -280,6 +441,23 @@ class _SettingsPageState extends State<SettingsPage> {
             setState(() {
               _consultationNotification = value;
             });
+
+            _saveBoolSetting(_consultationNotificationKey, value);
+          },
+        ),
+
+        const _SettingsDivider(),
+
+        _SettingsSwitchRow(
+          title: '채팅 알림',
+          subtitle: '새로운 1:1·그룹·협진 채팅 메시지를 알려드립니다.',
+          value: _chatNotification,
+          onChanged: (value) {
+            setState(() {
+              _chatNotification = value;
+            });
+
+            _saveBoolSetting(_chatNotificationKey, value);
           },
         ),
 
@@ -293,6 +471,8 @@ class _SettingsPageState extends State<SettingsPage> {
             setState(() {
               _scheduleNotification = value;
             });
+
+            _saveBoolSetting(_scheduleNotificationKey, value);
           },
         ),
       ],
@@ -300,7 +480,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   // ============================================================
-  // STEP 7. 보안
+  // STEP 13. 보안 설정
   // ============================================================
 
   Widget _buildSecuritySection() {
@@ -314,7 +494,26 @@ class _SettingsPageState extends State<SettingsPage> {
             setState(() {
               _autoLogin = value;
             });
+
+            _saveBoolSetting(_autoLoginKey, value);
           },
+        ),
+
+        const _SettingsDivider(),
+
+        _SettingsRow(
+          title: '자동 잠금',
+          subtitle: '일정 시간 동안 사용하지 않으면 앱을 잠급니다.',
+          trailing: _AutoLockSelector(
+            selected: _autoLock,
+            onChanged: (value) {
+              setState(() {
+                _autoLock = value;
+              });
+
+              _saveStringSetting(_autoLockKey, value);
+            },
+          ),
         ),
 
         const _SettingsDivider(),
@@ -328,64 +527,52 @@ class _SettingsPageState extends State<SettingsPage> {
               _biometricLogin = value;
             });
 
+            _saveBoolSetting(_biometricLoginKey, value);
+
             if (value) {
-              _showMessage('현재는 UI DEMO입니다. 실제 생체 인증은 추후 연결합니다.');
+              _showMessage(
+                '생체 인증 설정이 활성화되었습니다. '
+                '실제 기기 인증 연결은 다음 단계에서 적용합니다.',
+              );
             }
           },
         ),
 
         const _SettingsDivider(),
 
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '로그아웃',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
+        _SettingsSwitchRow(
+          title: '앱 복귀 시 재인증',
+          subtitle: '백그라운드에서 앱으로 복귀할 때 다시 인증합니다.',
+          value: _reauthentication,
+          onChanged: (value) {
+            setState(() {
+              _reauthentication = value;
+            });
 
-                    SizedBox(height: 3),
+            _saveBoolSetting(_reauthenticationKey, value);
+          },
+        ),
 
-                    Text(
-                      '현재 의료진 계정에서 로그아웃합니다.',
-                      style: TextStyle(
-                        fontSize: 9.5,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+        const _SettingsDivider(),
 
-              OutlinedButton.icon(
-                onPressed: _showLogoutDialog,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.danger,
-                  side: const BorderSide(color: AppColors.danger),
-                ),
-                icon: const Icon(Icons.logout_rounded, size: 14),
-                label: const Text('로그아웃', style: TextStyle(fontSize: 10)),
-              ),
-            ],
-          ),
+        _SettingsSwitchRow(
+          title: '화면 보호',
+          subtitle: '앱이 백그라운드에 있을 때 의료정보 화면을 보호합니다.',
+          value: _screenProtection,
+          onChanged: (value) {
+            setState(() {
+              _screenProtection = value;
+            });
+
+            _saveBoolSetting(_screenProtectionKey, value);
+          },
         ),
       ],
     );
   }
 
   // ============================================================
-  // STEP 8. 로그아웃 확인 Dialog
-  //
-  // 실제 Auth logout API / token 삭제는 아직 연결하지 않습니다.
+  // STEP 14. 로그아웃 확인 Dialog
   // ============================================================
 
   Future<void> _showLogoutDialog() async {
@@ -415,15 +602,18 @@ class _SettingsPageState extends State<SettingsPage> {
       },
     );
 
-    if (result != true) {
+    if (result != true || !mounted) {
       return;
     }
 
-    _showMessage('현재는 UI DEMO입니다. 실제 로그아웃은 AuthService와 연결합니다.');
+    _showMessage(
+      '현재는 로그아웃 UI까지 연결되어 있습니다. '
+      'AuthProvider 토큰 삭제는 다음 단계에서 연결합니다.',
+    );
   }
 
   // ============================================================
-  // STEP 9. SnackBar
+  // STEP 15. SnackBar
   // ============================================================
 
   void _showMessage(String message) {
@@ -436,12 +626,14 @@ class _SettingsPageState extends State<SettingsPage> {
 }
 
 // ============================================================
-// STEP 10. 공통 설정 Section Card
+// STEP 16. 공통 설정 Section Card
 // ============================================================
 
 class _SettingsSectionCard extends StatelessWidget {
   final String title;
+
   final IconData icon;
+
   final Widget child;
 
   const _SettingsSectionCard({
@@ -452,12 +644,14 @@ class _SettingsSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: Column(
         children: [
@@ -469,27 +663,27 @@ class _SettingsSectionCard extends StatelessWidget {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceSoft,
+                    color: theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(icon, size: 16, color: AppColors.navy),
+                  child: Icon(icon, size: 16, color: theme.colorScheme.primary),
                 ),
 
                 const SizedBox(width: 9),
 
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
               ],
             ),
           ),
 
-          const Divider(height: 1, thickness: 1, color: AppColors.border),
+          Divider(height: 1, thickness: 1, color: theme.dividerColor),
 
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -502,12 +696,14 @@ class _SettingsSectionCard extends StatelessWidget {
 }
 
 // ============================================================
-// STEP 11. 일반 설정 Row
+// STEP 17. 일반 설정 Row
 // ============================================================
 
 class _SettingsRow extends StatelessWidget {
   final String title;
+
   final String subtitle;
+
   final Widget trailing;
 
   const _SettingsRow({
@@ -518,6 +714,8 @@ class _SettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -528,10 +726,10 @@ class _SettingsRow extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
 
@@ -539,9 +737,9 @@ class _SettingsRow extends StatelessWidget {
 
                 Text(
                   subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9.5,
-                    color: AppColors.textSecondary,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -558,14 +756,16 @@ class _SettingsRow extends StatelessWidget {
 }
 
 // ============================================================
-// STEP 12. Switch 설정 Row
+// STEP 18. Switch 설정 Row
 // ============================================================
 
 class _SettingsSwitchRow extends StatelessWidget {
   final String title;
+
   final String subtitle;
 
   final bool value;
+
   final ValueChanged<bool> onChanged;
 
   const _SettingsSwitchRow({
@@ -577,6 +777,8 @@ class _SettingsSwitchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
@@ -587,10 +789,10 @@ class _SettingsSwitchRow extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
 
@@ -598,9 +800,9 @@ class _SettingsSwitchRow extends StatelessWidget {
 
                 Text(
                   subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9.5,
-                    color: AppColors.textSecondary,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -617,7 +819,7 @@ class _SettingsSwitchRow extends StatelessWidget {
 }
 
 // ============================================================
-// STEP 13. 구분선
+// STEP 19. 구분선
 // ============================================================
 
 class _SettingsDivider extends StatelessWidget {
@@ -625,30 +827,37 @@ class _SettingsDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 6),
-      child: Divider(height: 1, thickness: 1, color: AppColors.border),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Divider(
+        height: 1,
+        thickness: 1,
+        color: Theme.of(context).dividerColor,
+      ),
     );
   }
 }
 
 // ============================================================
-// STEP. 실제 TextScaleProvider 글자 크기 Selector
+// STEP 20. Text Scale Selector
 // ============================================================
 
 class _TextScaleSelector extends StatelessWidget {
   final AppTextScaleMode selected;
+
   final ValueChanged<AppTextScaleMode> onChanged;
 
   const _TextScaleSelector({required this.selected, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Container(
       height: 34,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
+        color: theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -691,10 +900,15 @@ class _TextScaleSelector extends StatelessWidget {
   }
 }
 
+// ============================================================
+// STEP 21. Text Scale Button
+// ============================================================
+
 class _TextScaleButton extends StatelessWidget {
   final String label;
 
   final bool selected;
+
   final VoidCallback onTap;
 
   const _TextScaleButton({
@@ -705,6 +919,8 @@ class _TextScaleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
@@ -714,7 +930,7 @@ class _TextScaleButton extends StatelessWidget {
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 9),
         decoration: BoxDecoration(
-          color: selected ? AppColors.navy : Colors.transparent,
+          color: selected ? theme.colorScheme.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
         ),
         child: Text(
@@ -722,7 +938,9 @@ class _TextScaleButton extends StatelessWidget {
           style: TextStyle(
             fontSize: 9.5,
             fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : AppColors.textSecondary,
+            color: selected
+                ? theme.colorScheme.onPrimary
+                : theme.colorScheme.onSurfaceVariant,
           ),
         ),
       ),
@@ -731,33 +949,181 @@ class _TextScaleButton extends StatelessWidget {
 }
 
 // ============================================================
-// STEP 15. 일반 값 표시
+// STEP 22. Theme Mode Selector
 // ============================================================
 
-class _SettingValue extends StatelessWidget {
-  final IconData icon;
-  final String text;
+class _ThemeModeSelector extends StatelessWidget {
+  final AppThemeMode selected;
 
-  const _SettingValue({required this.icon, required this.text});
+  final ValueChanged<AppThemeMode> onChanged;
+
+  const _ThemeModeSelector({required this.selected, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: AppColors.textSecondary),
+    final theme = Theme.of(context);
 
-        const SizedBox(width: 6),
+    return Container(
+      height: 34,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ThemeModeButton(
+            label: '시스템',
+            icon: Icons.devices_outlined,
+            selected: selected == AppThemeMode.system,
+            onTap: () {
+              onChanged(AppThemeMode.system);
+            },
+          ),
 
-        Text(
-          text,
-          style: const TextStyle(
+          _ThemeModeButton(
+            label: '라이트',
+            icon: Icons.light_mode_outlined,
+            selected: selected == AppThemeMode.light,
+            onTap: () {
+              onChanged(AppThemeMode.light);
+            },
+          ),
+
+          _ThemeModeButton(
+            label: '다크',
+            icon: Icons.dark_mode_outlined,
+            selected: selected == AppThemeMode.dark,
+            onTap: () {
+              onChanged(AppThemeMode.dark);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// STEP 23. Theme Mode Button
+// ============================================================
+
+class _ThemeModeButton extends StatelessWidget {
+  final String label;
+
+  final IconData icon;
+
+  final bool selected;
+
+  final VoidCallback onTap;
+
+  const _ThemeModeButton({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        height: 28,
+        padding: const EdgeInsets.symmetric(horizontal: 9),
+        decoration: BoxDecoration(
+          color: selected ? theme.colorScheme.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 12,
+              color: selected
+                  ? theme.colorScheme.onPrimary
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+
+            const SizedBox(width: 4),
+
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w600,
+                color: selected
+                    ? theme.colorScheme.onPrimary
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// STEP 24. Auto Lock Selector
+// ============================================================
+
+class _AutoLockSelector extends StatelessWidget {
+  final String selected;
+
+  final ValueChanged<String> onChanged;
+
+  const _AutoLockSelector({required this.selected, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: selected,
+          isDense: true,
+          borderRadius: BorderRadius.circular(10),
+          dropdownColor: theme.colorScheme.surface,
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            size: 17,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          style: TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
+            color: theme.colorScheme.onSurface,
           ),
+          items: const [
+            DropdownMenuItem(value: 'off', child: Text('사용 안 함')),
+            DropdownMenuItem(value: '1', child: Text('1분')),
+            DropdownMenuItem(value: '5', child: Text('5분')),
+            DropdownMenuItem(value: '10', child: Text('10분')),
+            DropdownMenuItem(value: '30', child: Text('30분')),
+          ],
+          onChanged: (value) {
+            if (value == null) {
+              return;
+            }
+
+            onChanged(value);
+          },
         ),
-      ],
+      ),
     );
   }
 }

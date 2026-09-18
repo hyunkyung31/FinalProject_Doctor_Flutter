@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 
@@ -192,9 +193,9 @@ class _ConsultationFormDialogState extends State<ConsultationFormDialog> {
         ),
         child: Container(
           decoration: BoxDecoration(
-            color: AppColors.background,
+            color: context.appBackground,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.appBorder),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -204,8 +205,8 @@ class _ConsultationFormDialogState extends State<ConsultationFormDialog> {
               // ==================================================
               Container(
                 padding: const EdgeInsets.fromLTRB(18, 14, 14, 14),
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
+                decoration: BoxDecoration(
+                  color: context.appSurface,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                 ),
                 child: Row(
@@ -214,19 +215,19 @@ class _ConsultationFormDialogState extends State<ConsultationFormDialog> {
                       width: 38,
                       height: 38,
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceSoft,
+                        color: context.appSurfaceSoft,
                         borderRadius: BorderRadius.circular(9),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.groups_outlined,
                         size: 19,
-                        color: AppColors.navy,
+                        color: context.appBrand,
                       ),
                     ),
 
                     const SizedBox(width: 10),
 
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -235,7 +236,7 @@ class _ConsultationFormDialogState extends State<ConsultationFormDialog> {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
+                              color: context.appTextPrimary,
                             ),
                           ),
                           SizedBox(height: 3),
@@ -243,7 +244,7 @@ class _ConsultationFormDialogState extends State<ConsultationFormDialog> {
                             '환자와 담당 의료진을 선택하여 협진을 요청합니다.',
                             style: TextStyle(
                               fontSize: 9.5,
-                              color: AppColors.textSecondary,
+                              color: context.appTextSecondary,
                             ),
                           ),
                         ],
@@ -358,10 +359,10 @@ class _ConsultationFormDialogState extends State<ConsultationFormDialog> {
                                 Expanded(
                                   child: DropdownButtonFormField<String>(
                                     initialValue: _priority,
-                                    decoration: const InputDecoration(
+                                    decoration: InputDecoration(
                                       labelText: '우선순위',
                                       filled: true,
-                                      fillColor: AppColors.surface,
+                                      fillColor: context.appSurface,
                                       border: OutlineInputBorder(),
                                     ),
                                     items: const [
@@ -393,17 +394,17 @@ class _ConsultationFormDialogState extends State<ConsultationFormDialog> {
                                     onTap: _pickDueDate,
                                     borderRadius: BorderRadius.circular(8),
                                     child: InputDecorator(
-                                      decoration: const InputDecoration(
+                                      decoration: InputDecoration(
                                         labelText: '기한',
                                         filled: true,
-                                        fillColor: AppColors.surface,
+                                        fillColor: context.appSurface,
                                         border: OutlineInputBorder(),
                                       ),
                                       child: Text(
                                         _formatDate(_dueAt),
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 11,
-                                          color: AppColors.textPrimary,
+                                          color: context.appTextPrimary,
                                         ),
                                       ),
                                     ),
@@ -427,20 +428,20 @@ class _ConsultationFormDialogState extends State<ConsultationFormDialog> {
                   horizontal: 16,
                   vertical: 12,
                 ),
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
+                decoration: BoxDecoration(
+                  color: context.appSurface,
                   borderRadius: BorderRadius.vertical(
                     bottom: Radius.circular(16),
                   ),
                 ),
                 child: Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         '* UI DEMO · 실제 API 연결 전',
                         style: TextStyle(
                           fontSize: 9,
-                          color: AppColors.textSecondary,
+                          color: context.appTextSecondary,
                         ),
                       ),
                     ),
@@ -489,19 +490,19 @@ class _FormCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11.5,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: context.appTextPrimary,
             ),
           ),
 
@@ -542,7 +543,7 @@ class _TextField extends StatelessWidget {
         labelText: label,
         hintText: hintText,
         filled: true,
-        fillColor: AppColors.surface,
+        fillColor: context.appSurface,
         border: const OutlineInputBorder(),
       ),
     );

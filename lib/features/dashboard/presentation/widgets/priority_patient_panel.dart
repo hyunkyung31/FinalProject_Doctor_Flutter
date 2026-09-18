@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/auth/access_control.dart';
 import '../../../../core/auth/auth_provider.dart';
@@ -65,11 +66,11 @@ class _PriorityPatientSidePanel extends StatelessWidget {
         margin: const EdgeInsets.fromLTRB(0, 10, 10, 10),
 
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: context.appSurface,
 
           borderRadius: BorderRadius.circular(AppRadius.large),
 
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.appBorder),
         ),
 
         child: Column(
@@ -91,21 +92,21 @@ class _PriorityPatientSidePanel extends StatelessWidget {
                     alignment: Alignment.center,
 
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceSoft,
+                      color: context.appSurfaceSoft,
 
                       borderRadius: BorderRadius.circular(AppRadius.small),
                     ),
 
-                    child: const Icon(
+                    child: Icon(
                       Icons.monitor_heart_outlined,
-                      color: AppColors.navy,
+                      color: context.appBrand,
                       size: 19,
                     ),
                   ),
 
                   const SizedBox(width: 11),
 
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
 
@@ -114,7 +115,7 @@ class _PriorityPatientSidePanel extends StatelessWidget {
                           '우선 확인 환자',
 
                           style: TextStyle(
-                            color: AppColors.textPrimary,
+                            color: context.appTextPrimary,
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
                           ),
@@ -126,7 +127,7 @@ class _PriorityPatientSidePanel extends StatelessWidget {
                           '임상 우선순위가 높은 환자 3명',
 
                           style: TextStyle(
-                            color: AppColors.textSecondary,
+                            color: context.appTextSecondary,
                             fontSize: 9.5,
                           ),
                         ),
@@ -141,10 +142,10 @@ class _PriorityPatientSidePanel extends StatelessWidget {
                       Navigator.of(context).pop();
                     },
 
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.close_rounded,
                       size: 20,
-                      color: AppColors.textSecondary,
+                      color: context.appTextSecondary,
                     ),
                   ),
                 ],
@@ -287,12 +288,12 @@ class _PriorityPatientSidePanel extends StatelessWidget {
 
               child: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       '위험도와 임상 상태를 기준으로 정렬',
 
                       style: TextStyle(
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                         fontSize: 9,
                       ),
                     ),
@@ -380,8 +381,8 @@ class _PriorityPatientItem extends StatelessWidget {
                   child: Text(
                     '$name · $age',
 
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
+                    style: TextStyle(
+                      color: context.appTextPrimary,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
@@ -410,8 +411,8 @@ class _PriorityPatientItem extends StatelessWidget {
                         color: part.danger
                             ? AppColors.danger
                             : part.emphasize
-                            ? AppColors.textPrimary
-                            : AppColors.textSecondary,
+                            ? context.appTextPrimary
+                            : context.appTextSecondary,
 
                         fontSize: part.emphasize ? 10.8 : 10.3,
 
@@ -449,8 +450,8 @@ class _PriorityStatusTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final background = danger
-        ? AppColors.dangerBackground
-        : AppColors.warningBackground;
+        ? context.appDangerBackground
+        : context.appWarningBackground;
 
     final foreground = danger ? AppColors.danger : AppColors.warning;
 

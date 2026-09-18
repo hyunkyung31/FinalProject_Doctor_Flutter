@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import 'patient_detail_tabs.dart';
@@ -113,9 +114,9 @@ class _PatientListPanelState extends State<PatientListPanel> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -127,13 +128,13 @@ class _PatientListPanelState extends State<PatientListPanel> {
             padding: const EdgeInsets.fromLTRB(16, 15, 16, 12),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     '환자 목록',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
                 ),
@@ -144,17 +145,17 @@ class _PatientListPanelState extends State<PatientListPanel> {
                     vertical: 5,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceSoft,
+                    color: context.appSurface,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     widget.totalCount > 0
                         ? _getCountLabel()
                         : '${widget.patients.length}명',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
+                      color: context.appTextSecondary,
                     ),
                   ),
                 ),
@@ -185,20 +186,20 @@ class _PatientListPanelState extends State<PatientListPanel> {
 
                         widget.onSearchChanged?.call(value);
                       },
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                       ),
                       decoration: InputDecoration(
                         hintText: '환자명 · 환자번호 검색',
-                        hintStyle: const TextStyle(
+                        hintStyle: TextStyle(
                           fontSize: 11,
-                          color: AppColors.textDisabled,
+                          color: context.appTextDisabled,
                         ),
-                        prefixIcon: const Icon(
+                        prefixIcon: Icon(
                           Icons.search_rounded,
                           size: 18,
-                          color: AppColors.textSecondary,
+                          color: context.appTextSecondary,
                         ),
                         suffixIcon: _searchText.isEmpty
                             ? null
@@ -215,13 +216,13 @@ class _PatientListPanelState extends State<PatientListPanel> {
                                 icon: const Icon(Icons.close_rounded, size: 16),
                               ),
                         filled: true,
-                        fillColor: AppColors.background,
+                        fillColor: context.appBackground,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 12,
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(9),
-                          borderSide: const BorderSide(color: AppColors.border),
+                          borderSide: BorderSide(color: context.appBorder),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(9),
@@ -234,43 +235,13 @@ class _PatientListPanelState extends State<PatientListPanel> {
                     ),
                   ),
                 ),
-
-                const SizedBox(width: 8),
-
-                // ========================================================
-                // 상세 필터
-                // ========================================================
-                SizedBox(
-                  height: 40,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      widget.onDetailFilterTap?.call();
-                    },
-                    icon: const Icon(Icons.tune_rounded, size: 15),
-                    label: const Text(
-                      '필터',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.navy,
-                      padding: const EdgeInsets.symmetric(horizontal: 11),
-                      side: const BorderSide(color: AppColors.border),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(9),
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
 
           // ======================================================
           // Patient Scope
-          // 전체 / 내 담당 / 협진 / 최근 조회
+          // 환자 조회 / 협진 / 최근 조회
           // ======================================================
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -278,22 +249,10 @@ class _PatientListPanelState extends State<PatientListPanel> {
               children: [
                 Expanded(
                   child: _ScopeButton(
-                    label: '전체',
+                    label: '환자 조회',
                     selected: widget.selectedScope == PatientListScope.all,
                     onTap: () {
                       widget.onScopeChanged?.call(PatientListScope.all);
-                    },
-                  ),
-                ),
-
-                const SizedBox(width: 5),
-
-                Expanded(
-                  child: _ScopeButton(
-                    label: '내 담당',
-                    selected: widget.selectedScope == PatientListScope.assigned,
-                    onTap: () {
-                      widget.onScopeChanged?.call(PatientListScope.assigned);
                     },
                   ),
                 ),
@@ -330,7 +289,7 @@ class _PatientListPanelState extends State<PatientListPanel> {
 
           const SizedBox(height: 12),
 
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.appBorder),
 
           // ======================================================
           // Patient List
@@ -345,11 +304,11 @@ class _PatientListPanelState extends State<PatientListPanel> {
                     ),
                     itemCount: widget.patients.length,
                     separatorBuilder: (context, index) {
-                      return const Divider(
+                      return Divider(
                         height: 1,
                         indent: 12,
                         endIndent: 12,
-                        color: AppColors.border,
+                        color: context.appBorder,
                       );
                     },
                     itemBuilder: (context, index) {
@@ -366,7 +325,7 @@ class _PatientListPanelState extends State<PatientListPanel> {
                   ),
           ),
 
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.appBorder),
 
           // ======================================================
           // Pagination
@@ -391,10 +350,10 @@ class _PatientListPanelState extends State<PatientListPanel> {
                   alignment: Alignment.center,
                   child: Text(
                     '${widget.currentPage} / $_totalPages',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
                 ),
@@ -445,7 +404,7 @@ class _ScopeButton extends StatelessWidget {
           height: 31,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? AppColors.navy : AppColors.surfaceSoft,
+            color: selected ? AppColors.navy : context.appSurface,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
@@ -453,7 +412,7 @@ class _ScopeButton extends StatelessWidget {
             style: TextStyle(
               fontSize: 9.5,
               fontWeight: FontWeight.w600,
-              color: selected ? Colors.white : AppColors.textSecondary,
+              color: selected ? Colors.white : context.appTextSecondary,
             ),
           ),
         ),
@@ -539,9 +498,23 @@ class _PatientListItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(9),
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 3),
+
+          // ========================================================
+          // 선택 환자 강조
+          // 다크모드에서는 한 단계 밝은 청회색 배경 사용
+          // ========================================================
           decoration: BoxDecoration(
-            color: selected ? AppColors.surfaceSoft : Colors.transparent,
+            color: selected
+                ? context.isDarkMode
+                      ? const Color(0xFF354A5B)
+                      : const Color(0xFFEAF2F8)
+                : Colors.transparent,
+
             borderRadius: BorderRadius.circular(9),
+
+            border: selected
+                ? Border.all(color: context.appPrimary.withValues(alpha: 0.45))
+                : null,
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -552,10 +525,10 @@ class _PatientListItem extends StatelessWidget {
               // ==================================================
               AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                width: 4,
+                width: selected ? 4 : 3,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: selected ? AppColors.primaryBlue : Colors.transparent,
+                  color: selected ? context.appPrimary : Colors.transparent,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(9),
                     bottomLeft: Radius.circular(9),
@@ -582,10 +555,12 @@ class _PatientListItem extends StatelessWidget {
                               patient.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
+                                fontWeight: selected
+                                    ? FontWeight.w800
+                                    : FontWeight.w700,
+                                color: context.appTextPrimary,
                               ),
                             ),
                           ),
@@ -594,10 +569,10 @@ class _PatientListItem extends StatelessWidget {
 
                           Text(
                             '${patient.age}세 · ${patient.gender}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 10.3,
                               fontWeight: FontWeight.w500,
-                              color: AppColors.textSecondary,
+                              color: context.appTextSecondary,
                             ),
                           ),
 
@@ -618,10 +593,10 @@ class _PatientListItem extends StatelessWidget {
                         patient.id,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
+                          color: context.appTextSecondary,
                         ),
                       ),
 
@@ -632,37 +607,37 @@ class _PatientListItem extends StatelessWidget {
                       // ============================================
                       Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.cake_outlined,
                             size: 11,
-                            color: AppColors.textDisabled,
+                            color: context.appTextDisabled,
                           ),
 
                           const SizedBox(width: 4),
 
                           Text(
                             birthDate,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 10,
-                              color: AppColors.textSecondary,
+                              color: context.appTextSecondary,
                             ),
                           ),
 
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.symmetric(horizontal: 6),
                             child: Text(
                               '·',
                               style: TextStyle(
                                 fontSize: 10,
-                                color: AppColors.textDisabled,
+                                color: context.appTextDisabled,
                               ),
                             ),
                           ),
 
-                          const Icon(
+                          Icon(
                             Icons.phone_outlined,
                             size: 11,
-                            color: AppColors.textDisabled,
+                            color: context.appTextDisabled,
                           ),
 
                           const SizedBox(width: 4),
@@ -672,9 +647,9 @@ class _PatientListItem extends StatelessWidget {
                               phone,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 10,
-                                color: AppColors.textSecondary,
+                                color: context.appTextSecondary,
                               ),
                             ),
                           ),
@@ -712,7 +687,7 @@ class _PatientStatusBadge extends StatelessWidget {
     switch (normalizedStatus) {
       case 'INACTIVE':
         label = '비활성';
-        color = AppColors.textSecondary;
+        color = context.appTextSecondary;
         break;
 
       case 'SUSPENDED':
@@ -722,7 +697,7 @@ class _PatientStatusBadge extends StatelessWidget {
 
       default:
         label = status;
-        color = AppColors.textSecondary;
+        color = context.appTextSecondary;
     }
 
     return Container(
@@ -765,8 +740,8 @@ class _PaginationButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final foregroundColor = enabled
-        ? AppColors.textPrimary
-        : AppColors.textDisabled;
+        ? context.appTextPrimary
+        : context.appTextDisabled;
 
     return Material(
       color: Colors.transparent,
@@ -777,9 +752,9 @@ class _PaginationButton extends StatelessWidget {
           height: 32,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: enabled ? AppColors.surfaceSoft : AppColors.background,
+            color: enabled ? context.appSurface : context.appBackground,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.appBorder),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -821,14 +796,14 @@ class _EmptyPatientList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             Icons.person_search_outlined,
             size: 34,
-            color: AppColors.textDisabled,
+            color: context.appTextDisabled,
           ),
 
           SizedBox(height: 10),
@@ -838,7 +813,7 @@ class _EmptyPatientList extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
+              color: context.appTextSecondary,
             ),
           ),
         ],

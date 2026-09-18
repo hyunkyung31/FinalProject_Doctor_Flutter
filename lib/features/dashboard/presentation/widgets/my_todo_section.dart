@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import 'dashboard_section_card.dart';
@@ -230,10 +231,10 @@ class _AddTodoDialogState extends State<_AddTodoDialog> {
       contentPadding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
       actionsPadding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
 
-      title: const Text(
+      title: Text(
         'To-do 추가',
         style: TextStyle(
-          color: AppColors.textPrimary,
+          color: context.appTextPrimary,
           fontSize: 16,
           fontWeight: FontWeight.w700,
         ),
@@ -352,8 +353,8 @@ class _TodoSummary extends StatelessWidget {
 
           Text(
             '$count',
-            style: const TextStyle(
-              color: AppColors.navy,
+            style: TextStyle(
+              color: context.appBrand,
               fontSize: 22,
               fontWeight: FontWeight.w800,
             ),
@@ -361,10 +362,10 @@ class _TodoSummary extends StatelessWidget {
 
           const SizedBox(width: 6),
 
-          const Text(
+          Text(
             'To-do',
             style: TextStyle(
-              color: AppColors.primaryBlue,
+              color: context.appPrimary,
               fontSize: 10,
               fontWeight: FontWeight.w700,
             ),
@@ -394,8 +395,8 @@ class _TodoSummary extends StatelessWidget {
 
         Text(
           '$count',
-          style: const TextStyle(
-            color: AppColors.navy,
+          style: TextStyle(
+            color: context.appBrand,
             fontSize: 24,
             height: 1,
             fontWeight: FontWeight.w800,
@@ -404,10 +405,10 @@ class _TodoSummary extends StatelessWidget {
 
         const SizedBox(height: 3),
 
-        const Text(
+        Text(
           'To-do',
           style: TextStyle(
-            color: AppColors.primaryBlue,
+            color: context.appPrimary,
             fontSize: 10,
             fontWeight: FontWeight.w700,
           ),
@@ -430,15 +431,11 @@ class _TodoIcon extends StatelessWidget {
       width: 23,
       height: 23,
       alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceSoft,
+      decoration: BoxDecoration(
+        color: context.appSurfaceSoft,
         shape: BoxShape.circle,
       ),
-      child: const Icon(
-        Icons.push_pin_outlined,
-        size: 12,
-        color: AppColors.primaryBlue,
-      ),
+      child: Icon(Icons.push_pin_outlined, size: 12, color: context.appPrimary),
     );
   }
 }
@@ -466,15 +463,11 @@ class _TodoAddButton extends StatelessWidget {
             height: 23,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.surfaceSoft,
+              color: context.appSurfaceSoft,
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: context.appBorder),
             ),
-            child: const Icon(
-              Icons.add_rounded,
-              size: 15,
-              color: AppColors.primaryBlue,
-            ),
+            child: Icon(Icons.add_rounded, size: 15, color: context.appPrimary),
           ),
         ),
       ),
@@ -549,13 +542,13 @@ class _TodoRow extends StatelessWidget {
               height: 17,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: completed ? AppColors.primaryBlue : Colors.transparent,
+                color: completed ? context.appPrimary : Colors.transparent,
                 border: Border.all(
                   color: completed
-                      ? AppColors.primaryBlue
+                      ? context.appPrimary
                       : isHigh
                       ? AppColors.warning
-                      : AppColors.textDisabled,
+                      : context.appTextDisabled,
                   width: 1.5,
                 ),
               ),
@@ -580,8 +573,8 @@ class _TodoRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: completed
-                      ? AppColors.textDisabled
-                      : AppColors.textPrimary,
+                      ? context.appTextDisabled
+                      : context.appTextPrimary,
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                   decoration: completed ? TextDecoration.lineThrough : null,
@@ -598,10 +591,10 @@ class _TodoRow extends StatelessWidget {
               data.dueTime,
               style: TextStyle(
                 color: completed
-                    ? AppColors.textDisabled
+                    ? context.appTextDisabled
                     : isHigh
                     ? AppColors.warning
-                    : AppColors.textSecondary,
+                    : context.appTextSecondary,
                 fontSize: 9,
                 fontWeight: FontWeight.w600,
               ),

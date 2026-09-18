@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_shell.dart';
 
 import 'consultation_ui_models.dart';
@@ -153,9 +153,9 @@ class _ConsultationPageState extends State<ConsultationPage> {
       pageTitle: '협진',
       selectedIndex: 6,
       body: Material(
-        color: AppColors.background,
+        color: context.appBackground,
         child: Container(
-          color: AppColors.background,
+          color: context.appBackground,
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
           child: Row(
             children: [
@@ -355,14 +355,14 @@ class _EmptyDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
-      child: const Center(
+      child: Center(
         child: Text(
           '협진 항목을 선택해 주세요.',
-          style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 11.5, color: context.appTextSecondary),
         ),
       ),
     );

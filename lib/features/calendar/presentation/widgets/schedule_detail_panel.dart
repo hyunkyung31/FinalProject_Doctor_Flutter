@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../data/models/staff_schedule.dart';
@@ -31,9 +32,9 @@ class ScheduleDetailPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
       child: Column(
@@ -44,10 +45,10 @@ class ScheduleDetailPanel extends StatelessWidget {
           // ======================================================
           Text(
             _formatFullDate(selectedDate),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: context.appTextPrimary,
             ),
           ),
 
@@ -55,15 +56,15 @@ class ScheduleDetailPanel extends StatelessWidget {
 
           Text(
             schedules.isEmpty ? '등록된 일정이 없습니다.' : '${schedules.length}개의 일정',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
-              color: AppColors.textSecondary,
+              color: context.appTextSecondary,
             ),
           ),
 
           const SizedBox(height: 14),
 
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.appBorder),
 
           // ======================================================
           // 일정 목록
@@ -75,7 +76,7 @@ class ScheduleDetailPanel extends StatelessWidget {
                     padding: EdgeInsets.zero,
                     itemCount: schedules.length,
                     separatorBuilder: (context, index) {
-                      return const Divider(height: 1, color: AppColors.border);
+                      return Divider(height: 1, color: context.appBorder);
                     },
                     itemBuilder: (context, index) {
                       final schedule = schedules[index];
@@ -168,8 +169,8 @@ class _EmptyScheduleDetail extends StatelessWidget {
           Container(
             width: 44,
             height: 44,
-            decoration: const BoxDecoration(
-              color: AppColors.surfaceSoft,
+            decoration: BoxDecoration(
+              color: context.appSurfaceSoft,
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -181,20 +182,20 @@ class _EmptyScheduleDetail extends StatelessWidget {
 
           const SizedBox(height: 10),
 
-          const Text(
+          Text(
             '일정이 없습니다.',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: context.appTextPrimary,
             ),
           ),
 
           const SizedBox(height: 4),
 
-          const Text(
+          Text(
             '다른 날짜를 선택해 주세요.',
-            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 11, color: context.appTextSecondary),
           ),
         ],
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
 import '../../../../../core/theme/app_theme.dart';
 import 'today_schedule_models.dart';
@@ -36,7 +37,7 @@ class TodayScheduleItem extends StatelessWidget {
         ? AppColors.danger
         : data.completed
         ? AppColors.success
-        : AppColors.border;
+        : context.appBorder;
 
     // ==========================================================
     // Timeline Line Color
@@ -47,11 +48,11 @@ class TodayScheduleItem extends StatelessWidget {
 
     final topLineColor = data.completed || data.current
         ? AppColors.success
-        : AppColors.border;
+        : context.appBorder;
 
     final bottomLineColor = data.completed
         ? AppColors.success
-        : AppColors.border;
+        : context.appBorder;
 
     return Material(
       color: Colors.transparent,
@@ -69,14 +70,12 @@ class TodayScheduleItem extends StatelessWidget {
             // 선택된 일정
             // NOW와 선택 상태는 별도로 표현
             // ====================================================
-            color: selected ? const Color(0xFFF8FAFC) : Colors.transparent,
+            color: selected ? context.appSelection : Colors.transparent,
 
             borderRadius: BorderRadius.circular(AppRadius.small),
 
             border: selected
-                ? const Border(
-                    left: BorderSide(color: AppColors.primaryBlue, width: 2),
-                  )
+                ? Border(left: BorderSide(color: context.appPrimary, width: 2))
                 : null,
           ),
 
@@ -96,7 +95,7 @@ class TodayScheduleItem extends StatelessWidget {
                   style: TextStyle(
                     color: data.current
                         ? AppColors.danger
-                        : AppColors.textSecondary,
+                        : context.appTextSecondary,
 
                     fontSize: 10.5,
 
@@ -161,7 +160,7 @@ class TodayScheduleItem extends StatelessWidget {
 
                         border: data.current
                             ? Border.all(
-                                color: AppColors.dangerBackground,
+                                color: context.appDangerBackground,
                                 width: 2,
                               )
                             : null,
@@ -190,7 +189,7 @@ class TodayScheduleItem extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
 
                       style: TextStyle(
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                         fontSize: 10.5,
 
                         fontWeight: selected
@@ -207,8 +206,8 @@ class TodayScheduleItem extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
 
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
+                      style: TextStyle(
+                        color: context.appTextSecondary,
                         fontSize: 9.5,
                         fontWeight: FontWeight.w500,
                       ),
@@ -258,14 +257,14 @@ class _ScheduleStatusTag extends StatelessWidget {
     Color foreground;
 
     if (danger) {
-      background = AppColors.dangerBackground;
+      background = context.appDangerBackground;
       foreground = AppColors.danger;
     } else if (success) {
-      background = AppColors.successBackground;
+      background = context.appSuccessBackground;
       foreground = AppColors.success;
     } else {
-      background = AppColors.surfaceSoft;
-      foreground = AppColors.textSecondary;
+      background = context.appSurfaceSoft;
+      foreground = context.appTextSecondary;
     }
 
     return Container(
