@@ -4,11 +4,13 @@ import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../patients/presentation/widgets/patient_detail_tabs.dart';
 import '../appointment_ui_model.dart';
+import '../appointment_doctor_ui_model.dart';
 
 class AppointmentDayTimelinePanel extends StatelessWidget {
   final List<AppointmentUiModel> appointments;
   final DateTime selectedDate;
   final Map<int, PatientUiModel> patientMap;
+  final Map<int, AppointmentDoctorUiModel> doctorMap;
   final int? selectedAppointmentId;
   final ValueChanged<AppointmentUiModel> onAppointmentSelected;
   final bool canManage;
@@ -20,6 +22,7 @@ class AppointmentDayTimelinePanel extends StatelessWidget {
     required this.appointments,
     required this.selectedDate,
     required this.patientMap,
+    required this.doctorMap,
     required this.selectedAppointmentId,
     required this.onAppointmentSelected,
     required this.canManage,
@@ -192,6 +195,7 @@ class AppointmentDayTimelinePanel extends StatelessWidget {
                             minute: slotMinute,
                             appointments: slotAppointments,
                             patientMap: patientMap,
+                            doctorMap: doctorMap,
                             selectedAppointmentId: selectedAppointmentId,
                             onAppointmentSelected: onAppointmentSelected,
                           ),
@@ -209,6 +213,9 @@ class AppointmentDayTimelinePanel extends StatelessWidget {
               patient: selected.patient == null
                   ? null
                   : patientMap[selected.patient],
+              doctor: selected.doctor == null
+                  ? null
+                  : doctorMap[selected.doctor],
               canManage: canManage,
               onAccept: () {
                 onAccept(selected);
@@ -280,6 +287,7 @@ class _TimeSlotRow extends StatelessWidget {
   final int minute;
   final List<AppointmentUiModel> appointments;
   final Map<int, PatientUiModel> patientMap;
+  final Map<int, AppointmentDoctorUiModel> doctorMap;
   final int? selectedAppointmentId;
   final ValueChanged<AppointmentUiModel> onAppointmentSelected;
 
@@ -287,6 +295,7 @@ class _TimeSlotRow extends StatelessWidget {
     required this.minute,
     required this.appointments,
     required this.patientMap,
+    required this.doctorMap,
     required this.selectedAppointmentId,
     required this.onAppointmentSelected,
   });
@@ -343,6 +352,9 @@ class _TimeSlotRow extends StatelessWidget {
                             patient: appointments[index].patient == null
                                 ? null
                                 : patientMap[appointments[index].patient],
+                            doctor: appointments[index].doctor == null
+                                ? null
+                                : doctorMap[appointments[index].doctor],
                             selected:
                                 appointments[index].id == selectedAppointmentId,
                             onTap: () {
@@ -400,12 +412,14 @@ class _ClosingTimeRow extends StatelessWidget {
 class _AppointmentTile extends StatelessWidget {
   final AppointmentUiModel appointment;
   final PatientUiModel? patient;
+  final AppointmentDoctorUiModel? doctor;
   final bool selected;
   final VoidCallback onTap;
 
   const _AppointmentTile({
     required this.appointment,
     required this.patient,
+    required this.doctor,
     required this.selected,
     required this.onTap,
   });
@@ -431,6 +445,11 @@ class _AppointmentTile extends StatelessWidget {
         '$displayName$recordText'
         '${genderAge.isEmpty ? '' : '  $genderAge'}';
 
+    final doctorText = doctor == null
+        ? ''
+        : '${doctor!.name} 의사 · '
+              '${doctor!.departmentName}';
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -443,16 +462,12 @@ class _AppointmentTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: _statusBackground(appointment.status),
             borderRadius: BorderRadius.circular(8),
-
-            // 선택해도 강한 파란 테두리를 두르지 않고
-            // 약한 테두리 + 그림자로만 강조
             border: Border.all(
               color: selected
                   ? AppColors.primaryBlue.withValues(alpha: 0.45)
                   : context.appBorder,
               width: selected ? 1.2 : 1,
             ),
-
             boxShadow: selected
                 ? [
                     BoxShadow(
@@ -474,7 +489,6 @@ class _AppointmentTile extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                 ),
-
                 const SizedBox(width: 8),
               ],
 
@@ -490,6 +504,24 @@ class _AppointmentTile extends StatelessWidget {
                   ),
                 ),
               ),
+
+              if (doctorText.isNotEmpty) ...[
+                const SizedBox(width: 12),
+
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 190),
+                  child: Text(
+                    doctorText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w600,
+                      color: context.appTextSecondary,
+                    ),
+                  ),
+                ),
+              ],
 
               const SizedBox(width: 10),
 
@@ -518,12 +550,14 @@ Color _statusBackground(AppointmentStatus status) {
 class _SelectedAppointmentSummary extends StatelessWidget {
   final AppointmentUiModel appointment;
   final PatientUiModel? patient;
+  final AppointmentDoctorUiModel? doctor;
   final bool canManage;
   final VoidCallback onAccept;
 
   const _SelectedAppointmentSummary({
     required this.appointment,
     required this.patient,
+    required this.doctor,
     required this.canManage,
     required this.onAccept,
   });
@@ -541,6 +575,11 @@ class _SelectedAppointmentSummary extends StatelessWidget {
         : appointment.applicantContact;
 
     final recordNo = patient?.medicalRecordNo;
+
+    final doctorText = doctor == null
+        ? ''
+        : '${doctor!.name} 의사 · '
+              '${doctor!.departmentName}';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 11, 16, 12),
@@ -599,6 +638,7 @@ class _SelectedAppointmentSummary extends StatelessWidget {
                 Text(
                   '예약 '
                   '${_formatTime(appointment.reservedAt.toLocal())}'
+                  '${doctorText.isEmpty ? '' : '  ·  $doctorText'}'
                   '  ·  ${_formatContact(contact)}'
                   '${recordNo != null && recordNo.isNotEmpty ? '  ·  $recordNo' : ''}',
                   maxLines: 1,

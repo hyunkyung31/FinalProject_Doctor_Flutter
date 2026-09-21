@@ -11,11 +11,13 @@ import '../ai_ui_models.dart';
 class AiResultPanel extends StatefulWidget {
   final List<AiResultUiModel> results;
 
+  final ValueChanged<AiResultUiModel> onResultSelected;
   final VoidCallback onOpenImaging;
 
   const AiResultPanel({
     super.key,
     required this.results,
+    required this.onResultSelected,
     required this.onOpenImaging,
   });
 
@@ -24,20 +26,20 @@ class AiResultPanel extends StatefulWidget {
 }
 
 class _AiResultPanelState extends State<AiResultPanel> {
-  int? _selectedId;
+  int? _selectedAnalysisId;
 
   @override
   void initState() {
     super.initState();
 
     if (widget.results.isNotEmpty) {
-      _selectedId = widget.results.first.id;
+      _selectedAnalysisId = widget.results.first.analysisId;
     }
   }
 
   AiResultUiModel? get _selected {
     for (final result in widget.results) {
-      if (result.id == _selectedId) {
+      if (result.analysisId == _selectedAnalysisId) {
         return result;
       }
     }
@@ -135,11 +137,19 @@ class _AiResultPanelState extends State<AiResultPanel> {
 
                       return _ResultListItem(
                         result: result,
-                        selected: result.id == _selectedId,
+                        selected: result.analysisId == _selectedAnalysisId,
                         onTap: () {
                           setState(() {
-                            _selectedId = result.id;
+                            _selectedAnalysisId = result.analysisId;
                           });
+
+                          debugPrint(
+                            '[AI RESULT] 항목 선택: '
+                            'analysisId=${result.analysisId}, '
+                            'examinationId=${result.examinationId}',
+                          );
+
+                          widget.onResultSelected(result);
                         },
                       );
                     },
@@ -215,9 +225,10 @@ class _ResultListItem extends StatelessWidget {
                   ),
                 ),
 
-                const _DemoBadge(),
-
-                const SizedBox(width: 5),
+                if (result.isDemo) ...[
+                  const _DemoBadge(),
+                  const SizedBox(width: 5),
+                ],
 
                 _ResultTypeBadge(type: result.analysisType),
               ],
@@ -240,10 +251,7 @@ class _ResultListItem extends StatelessWidget {
               result.summary,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 9.5,
-                color: context.appTextSecondary,
-              ),
+              style: TextStyle(fontSize: 9.5, color: context.appTextSecondary),
             ),
           ],
         ),
@@ -314,9 +322,7 @@ class _ResultDetail extends StatelessWidget {
                             ),
                           ),
 
-                          const SizedBox(width: 8),
-
-                          const _DemoBadge(),
+                          if (result.isDemo) ...[const _DemoBadge()],
                         ],
                       ),
 
@@ -361,7 +367,9 @@ class _ResultDetail extends StatelessWidget {
 
                   if (result.analysisType == 'CCTA') _buildCctaResult(context),
 
-                  if (result.analysisType == 'LAB') _buildLabResult(context),
+                  if (result.analysisType == 'CLINICAL' ||
+                      result.analysisType == 'LAB')
+                    _buildLabResult(context),
                 ],
               ),
             ),
@@ -373,72 +381,216 @@ class _ResultDetail extends StatelessWidget {
 
   // ============================================================
   // STEP 4. 2D Angio
+  // 실제 ANGIO_2D Result JSON 기반
   // ============================================================
 
   Widget _buildAngioResult(BuildContext context) {
+    double? toDouble(dynamic value) {
+      if (value is num) {
+        return value.toDouble();
+      }
+
+      if (value == null) {
+        return null;
+      }
+
+      return double.tryParse(value.toString());
+    }
+
+    int? toInt(dynamic value) {
+      if (value is int) {
+        return value;
+      }
+
+      if (value is num) {
+        return value.toInt();
+      }
+
+      if (value == null) {
+        return null;
+      }
+
+      return int.tryParse(value.toString());
+    }
+
+    Map<String, dynamic> toMap(dynamic value) {
+      if (value is Map) {
+        return Map<String, dynamic>.from(value);
+      }
+
+      return const {};
+    }
+
+    final rawSides = result.resultJson['sides'];
+
+    final sides = rawSides is List
+        ? rawSides
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList()
+        : <Map<String, dynamic>>[];
+
+    final rawWarnings = result.resultJson['warnings'];
+
+    final warnings = rawWarnings is List
+        ? rawWarnings.map((item) => item.toString()).toList()
+        : <String>[];
+
+    String sideLabel(String side) {
+      switch (side) {
+        case 'LEFT':
+          return '좌측 관상동맥';
+
+        case 'RIGHT':
+          return '우측 관상동맥';
+
+        default:
+          return side;
+      }
+    }
+
+    String predictionLabel(int? prediction) {
+      switch (prediction) {
+        case 1:
+          return '탐지';
+
+        case 0:
+          return '미탐지';
+
+        default:
+          return '-';
+      }
+    }
+
     return Column(
       children: [
-        _SectionCard(
-          title: '협착 탐지',
-          icon: Icons.center_focus_strong_outlined,
-          child: Column(
-            children: [
-              for (final detection in result.detections)
-                _DetectionRow(detection: detection),
-            ],
+        if (sides.isEmpty)
+          _SectionCard(
+            title: '2D 혈관조영 AI 결과',
+            icon: Icons.monitor_heart_outlined,
+            child: Text(
+              '혈관 측별 AI 분석 결과가 없습니다.',
+              style: TextStyle(fontSize: 10.5, color: context.appTextSecondary),
+            ),
           ),
-        ),
 
-        const SizedBox(height: 12),
+        for (final side in sides) ...[
+          Builder(
+            builder: (context) {
+              final sideName = side['side']?.toString() ?? '-';
 
-        _SectionCard(
-          title: '병변 정보',
-          icon: Icons.monitor_heart_outlined,
-          child: Column(
-            children: [
-              for (final lesion in result.lesions) _LesionRow(lesion: lesion),
-            ],
-          ),
-        ),
+              final threshold = toDouble(side['threshold']);
 
-        const SizedBox(height: 12),
+              final anyStenosis = toMap(side['any_stenosis']);
 
-        _SectionCard(
-          title: 'XAI 설명',
-          icon: Icons.visibility_outlined,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 92,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF071722),
-                  borderRadius: BorderRadius.circular(8),
+              final significantStenosis = toMap(side['significant_stenosis']);
+
+              final features = toMap(side['features']);
+
+              final anyScore = toDouble(anyStenosis['ai_score']);
+
+              final anyPrediction = toInt(anyStenosis['prediction']);
+
+              final significantScore = toDouble(
+                significantStenosis['ai_score'],
+              );
+
+              final significantPrediction = toInt(
+                significantStenosis['prediction'],
+              );
+
+              final nFrames = toInt(features['n_frames']);
+
+              final nSeries = toInt(features['n_series']);
+
+              return _SectionCard(
+                title: sideLabel(sideName),
+                icon: Icons.center_focus_strong_outlined,
+                child: Column(
+                  children: [
+                    _ValueRow(
+                      label: '전체 협착 AI score',
+                      value: anyScore == null
+                          ? '-'
+                          : anyScore.toStringAsFixed(3),
+                      bold: true,
+                    ),
+
+                    _ValueRow(
+                      label: '전체 협착 판정',
+                      value: predictionLabel(anyPrediction),
+                    ),
+
+                    _ValueRow(
+                      label: '유의 협착 AI score',
+                      value: significantScore == null
+                          ? '-'
+                          : significantScore.toStringAsFixed(3),
+                      bold: true,
+                    ),
+
+                    _ValueRow(
+                      label: '유의 협착 판정',
+                      value: predictionLabel(significantPrediction),
+                    ),
+
+                    if (threshold != null)
+                      _ValueRow(
+                        label: '판정 임계값',
+                        value: threshold.toStringAsFixed(3),
+                      ),
+
+                    if (nSeries != null)
+                      _ValueRow(label: '분석 Series', value: '$nSeries개'),
+
+                    if (nFrames != null)
+                      _ValueRow(label: '분석 Frame', value: '$nFrames장'),
+                  ],
                 ),
-                child: const Center(
-                  child: Text(
-                    'Grad-CAM',
-                    style: TextStyle(fontSize: 10, color: Colors.white54),
+              );
+            },
+          ),
+
+          const SizedBox(height: 12),
+        ],
+
+        if (warnings.isNotEmpty)
+          _SectionCard(
+            title: 'AI 결과 안내',
+            icon: Icons.info_outline_rounded,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final warning in warnings)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 7),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          size: 15,
+                          color: context.appBrand,
+                        ),
+
+                        const SizedBox(width: 7),
+
+                        Expanded(
+                          child: Text(
+                            warning,
+                            style: TextStyle(
+                              fontSize: 10,
+                              height: 1.5,
+                              color: context.appTextSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ),
-
-              const SizedBox(width: 12),
-
-              Expanded(
-                child: Text(
-                  result.explanation ?? '설명 정보가 없습니다.',
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    height: 1.6,
-                    color: context.appTextSecondary,
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
       ],
     );
   }
@@ -455,12 +607,76 @@ class _ResultDetail extends StatelessWidget {
         _SectionCard(
           title: '혈관 Segmentation',
           icon: Icons.hub_outlined,
-          child: Column(
-            children: [
-              for (final item in result.segmentations)
-                _SimpleStatusRow(label: item.vessel, value: item.status),
-            ],
-          ),
+          child: result.segmentationDetails.isEmpty
+              ? Text(
+                  'Segmentation 결과가 없습니다.',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    color: context.appTextSecondary,
+                  ),
+                )
+              : Column(
+                  children: [
+                    for (final item in result.segmentationDetails)
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: context.appSurfaceSoft,
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.structureName,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: context.appTextPrimary,
+                              ),
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            _ValueRow(
+                              label: 'Mask File Asset',
+                              value: item.maskFileAssetId == null
+                                  ? '-'
+                                  : '#${item.maskFileAssetId}',
+                            ),
+
+                            _ValueRow(
+                              label: 'Mesh File Asset',
+                              value: item.meshFileAssetId == null
+                                  ? '-'
+                                  : '#${item.meshFileAssetId}',
+                            ),
+
+                            if (item.volumeMm3 != null)
+                              _ValueRow(
+                                label: 'Volume',
+                                value:
+                                    '${item.volumeMm3!.toStringAsFixed(1)} mm³',
+                              ),
+
+                            if (item.metricsJson['raw_voxels'] != null)
+                              _ValueRow(
+                                label: 'Raw Voxels',
+                                value: '${item.metricsJson['raw_voxels']}',
+                              ),
+
+                            if (item.metricsJson['hu130_voxels'] != null)
+                              _ValueRow(
+                                label: 'HU ≥ 130 Voxels',
+                                value: '${item.metricsJson['hu130_voxels']}',
+                              ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
         ),
 
         const SizedBox(height: 12),
@@ -469,7 +685,13 @@ class _ResultDetail extends StatelessWidget {
           title: 'CAC Score',
           icon: Icons.analytics_outlined,
           child: cac == null
-              ? const Text('CAC 결과가 없습니다.')
+              ? Text(
+                  'CAC 결과가 없습니다.',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    color: context.appTextSecondary,
+                  ),
+                )
               : Column(
                   children: [
                     _ValueRow(label: 'LAD', value: cac.lad.toStringAsFixed(0)),
@@ -489,37 +711,128 @@ class _ResultDetail extends StatelessWidget {
   }
 
   // ============================================================
-  // STEP 6. LAB
+  // STEP 6. Clinical
   // ============================================================
 
   Widget _buildLabResult(BuildContext context) {
-    return _SectionCard(
-      title: '혈액·임상 AI 결과',
-      icon: Icons.biotech_outlined,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            result.summary,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: context.appTextPrimary,
-            ),
+    double? toDouble(dynamic value) {
+      if (value is num) {
+        return value.toDouble();
+      }
+
+      if (value == null) {
+        return null;
+      }
+
+      return double.tryParse(value.toString());
+    }
+
+    int? toInt(dynamic value) {
+      if (value is int) {
+        return value;
+      }
+
+      if (value is num) {
+        return value.toInt();
+      }
+
+      if (value == null) {
+        return null;
+      }
+
+      return int.tryParse(value.toString());
+    }
+
+    final probability = toDouble(result.resultJson['probability']);
+
+    final threshold = toDouble(result.resultJson['threshold']);
+
+    final prediction = toInt(result.resultJson['prediction']);
+
+    final rawWarnings = result.resultJson['warnings'];
+
+    final warnings = rawWarnings is List
+        ? rawWarnings.map((item) => item.toString()).toList()
+        : <String>[];
+
+    final predictionLabel = switch (prediction) {
+      1 => '위험 신호 감지',
+      0 => '위험 신호 없음',
+      _ => '결과 없음',
+    };
+
+    return Column(
+      children: [
+        _SectionCard(
+          title: '혈액·임상 AI 결과',
+          icon: Icons.biotech_outlined,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _ValueRow(label: '예측 결과', value: predictionLabel, bold: true),
+
+              if (probability != null)
+                _ValueRow(
+                  label: '위험 확률',
+                  value: '${(probability * 100).toStringAsFixed(1)}%',
+                ),
+
+              if (threshold != null)
+                _ValueRow(
+                  label: '판정 임계값',
+                  value: '${(threshold * 100).toStringAsFixed(1)}%',
+                ),
+
+              if (result.confidence != null)
+                _ValueRow(
+                  label: 'Confidence',
+                  value: '${(result.confidence! * 100).toStringAsFixed(1)}%',
+                ),
+            ],
           ),
+        ),
 
-          const SizedBox(height: 8),
+        if (warnings.isNotEmpty) ...[
+          const SizedBox(height: 12),
 
-          Text(
-            '혈액 AI의 실제 Result Schema는 아직 확인되지 않았습니다. 현재 영역은 통합 판단 화면 구성을 위한 UI Preview입니다.',
-            style: TextStyle(
-              fontSize: 9.5,
-              height: 1.5,
-              color: context.appTextSecondary,
+          _SectionCard(
+            title: '입력 데이터 경고',
+            icon: Icons.warning_amber_rounded,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final warning in warnings)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 7),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          size: 15,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+
+                        const SizedBox(width: 7),
+
+                        Expanded(
+                          child: Text(
+                            warning,
+                            style: TextStyle(
+                              fontSize: 10,
+                              height: 1.5,
+                              color: context.appTextSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -544,11 +857,7 @@ class _SummaryCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.auto_awesome_outlined,
-            size: 19,
-            color: context.appBrand,
-          ),
+          Icon(Icons.auto_awesome_outlined, size: 19, color: context.appBrand),
 
           const SizedBox(width: 10),
 
@@ -648,144 +957,6 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
-// ============================================================
-// STEP 9. Rows
-// ============================================================
-
-class _DetectionRow extends StatelessWidget {
-  final AiDetectionUiModel detection;
-
-  const _DetectionRow({required this.detection});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 9),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              '${detection.vessel} · ${detection.location}',
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w600,
-                color: context.appTextPrimary,
-              ),
-            ),
-          ),
-
-          Text(
-            '${(detection.confidence * 100).round()}%',
-            style: TextStyle(
-              fontSize: 10,
-              color: context.appTextSecondary,
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          _RiskBadge(level: detection.severity),
-        ],
-      ),
-    );
-  }
-}
-
-class _LesionRow extends StatelessWidget {
-  final AiLesionUiModel lesion;
-
-  const _LesionRow({required this.lesion});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 9),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              '${lesion.vessel} · ${lesion.segment}',
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w600,
-                color: context.appTextPrimary,
-              ),
-            ),
-          ),
-
-          Expanded(
-            child: LinearProgressIndicator(
-              value: lesion.stenosisPercent / 100,
-              minHeight: 6,
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-
-          const SizedBox(width: 10),
-
-          Text(
-            '${lesion.stenosisPercent.round()}%',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: context.appTextPrimary,
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          _RiskBadge(level: lesion.riskLevel),
-        ],
-      ),
-    );
-  }
-}
-
-class _SimpleStatusRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _SimpleStatusRow({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w600,
-                color: context.appTextPrimary,
-              ),
-            ),
-          ),
-
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.successBackground,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                color: AppColors.success,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ValueRow extends StatelessWidget {
   final String label;
   final String value;
@@ -824,50 +995,6 @@ class _ValueRow extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ============================================================
-// STEP 10. Badges
-// ============================================================
-
-class _RiskBadge extends StatelessWidget {
-  final String level;
-
-  const _RiskBadge({required this.level});
-
-  @override
-  Widget build(BuildContext context) {
-    final isHigh = level == 'HIGH';
-    final isModerate = level == 'MODERATE';
-
-    final color = isHigh
-        ? AppColors.danger
-        : isModerate
-        ? AppColors.warning
-        : AppColors.success;
-
-    final background = isHigh
-        ? AppColors.dangerBackground
-        : isModerate
-        ? AppColors.warningBackground
-        : AppColors.successBackground;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        level,
-        style: TextStyle(
-          fontSize: 8.5,
-          fontWeight: FontWeight.w700,
-          color: color,
-        ),
       ),
     );
   }
@@ -950,6 +1077,7 @@ String _resultTypeLabel(String type) {
     case 'CCTA':
       return 'CCTA · 3D AI 결과';
 
+    case 'CLINICAL':
     case 'LAB':
       return '혈액·임상 AI 결과';
 

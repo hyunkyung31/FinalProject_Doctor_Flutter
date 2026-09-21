@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_context.dart';
 import '../../../core/widgets/app_shell.dart';
 
 import 'imaging_ui_models.dart';
@@ -238,9 +239,9 @@ class _ImagingPageState extends State<ImagingPage> {
       pageTitle: '영상',
       selectedIndex: 4,
       body: Material(
-        color: AppColors.background,
+        color: context.appBackground,
         child: Container(
-          color: AppColors.background,
+          color: context.appBackground,
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
           child: _compareMode ? _buildCompareView() : _buildViewerWorkspace(),
         ),
@@ -267,14 +268,14 @@ class _ImagingPageState extends State<ImagingPage> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: context.appSurface,
                 borderRadius: BorderRadius.circular(9),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: context.appBorder),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.image_outlined,
                 size: 18,
-                color: AppColors.navy,
+                color: context.appBrand,
               ),
             ),
 
@@ -288,10 +289,10 @@ class _ImagingPageState extends State<ImagingPage> {
                     children: [
                       Text(
                         '${study.modality} Study #${study.id}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: context.appTextPrimary,
                         ),
                       ),
 
@@ -324,9 +325,9 @@ class _ImagingPageState extends State<ImagingPage> {
 
                   Text(
                     '검사 #${study.examinationId} · Series ${study.seriesCount} · Instance ${study.instanceCount}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 9.5,
-                      color: AppColors.textSecondary,
+                      color: context.appTextSecondary,
                     ),
                   ),
                 ],

@@ -6,30 +6,105 @@ import 'schedule_date_picker_dialog.dart';
 
 // ============================================================
 // STEP 1. 휴무 유형
+// Backend AttendanceType Enum과 동일한 범위
 // ============================================================
 
-enum LeaveType { annual, morningHalf, afternoonHalf }
+enum LeaveType {
+  annual,
+  morningHalf,
+  afternoonHalf,
+  hourly,
+  sickLeave,
+  officialLeave,
+  businessTrip,
+  education,
+}
 
 // ============================================================
-// STEP 2. 휴무 신청 결과
+// STEP 2. 휴무 유형 UI Helper
+// ============================================================
+
+extension LeaveTypeUiExtension on LeaveType {
+  String get label {
+    switch (this) {
+      case LeaveType.annual:
+        return '연차';
+      case LeaveType.morningHalf:
+        return '오전 반차';
+      case LeaveType.afternoonHalf:
+        return '오후 반차';
+      case LeaveType.hourly:
+        return '시간차';
+      case LeaveType.sickLeave:
+        return '병가';
+      case LeaveType.officialLeave:
+        return '공가';
+      case LeaveType.businessTrip:
+        return '출장';
+      case LeaveType.education:
+        return '교육';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case LeaveType.annual:
+        return Icons.calendar_month_outlined;
+      case LeaveType.morningHalf:
+        return Icons.wb_sunny_outlined;
+      case LeaveType.afternoonHalf:
+        return Icons.nights_stay_outlined;
+      case LeaveType.hourly:
+        return Icons.schedule_outlined;
+      case LeaveType.sickLeave:
+        return Icons.medical_services_outlined;
+      case LeaveType.officialLeave:
+        return Icons.account_balance_outlined;
+      case LeaveType.businessTrip:
+        return Icons.business_center_outlined;
+      case LeaveType.education:
+        return Icons.school_outlined;
+    }
+  }
+
+  bool get isHalfDay {
+    return this == LeaveType.morningHalf || this == LeaveType.afternoonHalf;
+  }
+
+  bool get isHourly {
+    return this == LeaveType.hourly;
+  }
+
+  bool get isSingleDay {
+    return isHalfDay || isHourly;
+  }
+}
+
+// ============================================================
+// STEP 3. 휴무 신청 결과
+// 신청 사유는 사용하지 않음
 // ============================================================
 
 class LeaveRequestFormResult {
   final LeaveType leaveType;
+
   final DateTime startDate;
   final DateTime endDate;
-  final String reason;
+
+  final String? startTime;
+  final String? endTime;
 
   const LeaveRequestFormResult({
     required this.leaveType,
     required this.startDate,
     required this.endDate,
-    required this.reason,
+    required this.startTime,
+    required this.endTime,
   });
 }
 
 // ============================================================
-// STEP 3. 휴무 신청 Dialog
+// STEP 4. 휴무 신청 Dialog
 // ============================================================
 
 class LeaveRequestFormDialog extends StatefulWidget {
@@ -45,25 +120,16 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
   DateTime? _startDate;
   DateTime? _endDate;
 
-  final TextEditingController _reasonController = TextEditingController();
+  TimeOfDay? _startTime;
+  TimeOfDay? _endTime;
 
   String? _startDateError;
   String? _endDateError;
-  String? _reasonError;
-
-  bool get _isHalfDay {
-    return _selectedLeaveType == LeaveType.morningHalf ||
-        _selectedLeaveType == LeaveType.afternoonHalf;
-  }
-
-  @override
-  void dispose() {
-    _reasonController.dispose();
-    super.dispose();
-  }
+  String? _startTimeError;
+  String? _endTimeError;
 
   // ============================================================
-  // STEP 4. 휴무 유형 변경
+  // STEP 5. 휴무 유형 변경
   // ============================================================
 
   void _changeLeaveType(LeaveType type) {
@@ -76,18 +142,22 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
 
       _startDateError = null;
       _endDateError = null;
+      _startTimeError = null;
+      _endTimeError = null;
 
-      if (type == LeaveType.morningHalf || type == LeaveType.afternoonHalf) {
-        if (_startDate != null) {
-          _endDate = _startDate;
-        }
+      if (type.isSingleDay && _startDate != null) {
+        _endDate = _startDate;
+      }
+
+      if (!type.isHourly) {
+        _startTime = null;
+        _endTime = null;
       }
     });
   }
 
   // ============================================================
-  // STEP 5. 시작일 / 반차 휴무일 선택
-  // 공통 Custom Calendar 사용
+  // STEP 6. 시작일 선택
   // ============================================================
 
   Future<void> _selectStartDate() async {
@@ -110,19 +180,11 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
       _startDate = pickedDate;
       _startDateError = null;
 
-      // ==========================================================
-      // 반차는 시작일 = 종료일
-      // ==========================================================
-
-      if (_isHalfDay) {
+      if (_selectedLeaveType.isSingleDay) {
         _endDate = pickedDate;
         _endDateError = null;
         return;
       }
-
-      // ==========================================================
-      // 시작일 변경 후 기존 종료일이 더 앞이면 초기화
-      // ==========================================================
 
       if (_endDate != null && _endDate!.isBefore(pickedDate)) {
         _endDate = null;
@@ -131,8 +193,7 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
   }
 
   // ============================================================
-  // STEP 6. 연차 종료일 선택
-  // 공통 Custom Calendar 사용
+  // STEP 7. 종료일 선택
   // ============================================================
 
   Future<void> _selectEndDate() async {
@@ -160,33 +221,93 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
   }
 
   // ============================================================
-  // STEP 7. 신청
+  // STEP 8. 시간차 시작 시간
+  // ============================================================
+
+  Future<void> _selectStartTime() async {
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: _startTime ?? const TimeOfDay(hour: 9, minute: 0),
+    );
+
+    if (pickedTime == null) {
+      return;
+    }
+
+    setState(() {
+      _startTime = pickedTime;
+      _startTimeError = null;
+
+      if (_endTime != null &&
+          _timeMinutes(_endTime!) <= _timeMinutes(pickedTime)) {
+        _endTime = null;
+      }
+    });
+  }
+
+  // ============================================================
+  // STEP 9. 시간차 종료 시간
+  // ============================================================
+
+  Future<void> _selectEndTime() async {
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: _endTime ?? const TimeOfDay(hour: 10, minute: 0),
+    );
+
+    if (pickedTime == null) {
+      return;
+    }
+
+    setState(() {
+      _endTime = pickedTime;
+      _endTimeError = null;
+    });
+  }
+
+  // ============================================================
+  // STEP 10. 신청
   // ============================================================
 
   void _submit() {
-    final reason = _reasonController.text.trim();
-
     bool hasError = false;
 
     setState(() {
       _startDateError = null;
       _endDateError = null;
-      _reasonError = null;
+      _startTimeError = null;
+      _endTimeError = null;
 
       if (_startDate == null) {
-        _startDateError = _isHalfDay ? '휴무일을 선택해 주세요.' : '시작일을 선택해 주세요.';
+        _startDateError = _selectedLeaveType.isSingleDay
+            ? '휴무일을 선택해 주세요.'
+            : '시작일을 선택해 주세요.';
 
         hasError = true;
       }
 
-      if (!_isHalfDay && _endDate == null) {
+      if (!_selectedLeaveType.isSingleDay && _endDate == null) {
         _endDateError = '종료일을 선택해 주세요.';
         hasError = true;
       }
 
-      if (reason.isEmpty) {
-        _reasonError = '신청 사유를 입력해 주세요.';
-        hasError = true;
+      if (_selectedLeaveType.isHourly) {
+        if (_startTime == null) {
+          _startTimeError = '시작 시간을 선택해 주세요.';
+          hasError = true;
+        }
+
+        if (_endTime == null) {
+          _endTimeError = '종료 시간을 선택해 주세요.';
+          hasError = true;
+        }
+
+        if (_startTime != null &&
+            _endTime != null &&
+            _timeMinutes(_endTime!) <= _timeMinutes(_startTime!)) {
+          _endTimeError = '종료 시간은 시작 시간보다 늦어야 합니다.';
+          hasError = true;
+        }
       }
     });
 
@@ -196,31 +317,53 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
 
     final startDate = _startDate!;
 
-    final endDate = _isHalfDay ? startDate : _endDate!;
+    final endDate = _selectedLeaveType.isSingleDay ? startDate : _endDate!;
 
     Navigator.of(context).pop(
       LeaveRequestFormResult(
         leaveType: _selectedLeaveType,
         startDate: startDate,
         endDate: endDate,
-        reason: reason,
+        startTime: _selectedLeaveType.isHourly
+            ? _formatTimeForApi(_startTime!)
+            : null,
+        endTime: _selectedLeaveType.isHourly
+            ? _formatTimeForApi(_endTime!)
+            : null,
       ),
     );
   }
 
   // ============================================================
-  // STEP 8. 화면
+  // STEP 11. Helper
+  // ============================================================
+
+  int _timeMinutes(TimeOfDay time) {
+    return time.hour * 60 + time.minute;
+  }
+
+  String _formatTimeForApi(TimeOfDay time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+
+    final minute = time.minute.toString().padLeft(2, '0');
+
+    return '$hour:$minute:00';
+  }
+
+  // ============================================================
+  // STEP 12. 화면
   // ============================================================
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: context.appSurface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: SizedBox(
-        width: 500,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 640),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+          padding: const EdgeInsets.fromLTRB(26, 22, 26, 22),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -231,27 +374,43 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      '휴무 신청',
-                      style: TextStyle(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w700,
-                        color: context.appTextPrimary,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '휴무 신청',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: context.appTextPrimary,
+                          ),
+                        ),
+
+                        const SizedBox(height: 4),
+
+                        Text(
+                          '휴무 유형과 일정을 선택해 주세요.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: context.appTextSecondary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
                   SizedBox(
-                    width: 32,
-                    height: 32,
+                    width: 34,
+                    height: 34,
                     child: IconButton(
+                      tooltip: '닫기',
                       padding: EdgeInsets.zero,
                       onPressed: () {
                         Navigator.of(context).pop();
                       },
                       icon: Icon(
                         Icons.close_rounded,
-                        size: 20,
+                        size: 21,
                         color: context.appTextSecondary,
                       ),
                     ),
@@ -259,106 +418,63 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
                 ],
               ),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 22),
 
               // ==================================================
               // 휴무 유형
               // ==================================================
               const _FieldLabel(label: '휴무 유형'),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: _LeaveTypeButton(
-                      label: '연차',
-                      isSelected: _selectedLeaveType == LeaveType.annual,
-                      onTap: () {
-                        _changeLeaveType(LeaveType.annual);
-                      },
-                    ),
-                  ),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  const gap = 8.0;
 
-                  const SizedBox(width: 8),
+                  final itemWidth = (constraints.maxWidth - gap * 3) / 4;
 
-                  Expanded(
-                    child: _LeaveTypeButton(
-                      label: '오전 반차',
-                      isSelected: _selectedLeaveType == LeaveType.morningHalf,
-                      onTap: () {
-                        _changeLeaveType(LeaveType.morningHalf);
-                      },
-                    ),
-                  ),
-
-                  const SizedBox(width: 8),
-
-                  Expanded(
-                    child: _LeaveTypeButton(
-                      label: '오후 반차',
-                      isSelected: _selectedLeaveType == LeaveType.afternoonHalf,
-                      onTap: () {
-                        _changeLeaveType(LeaveType.afternoonHalf);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 18),
-
-              // ==================================================
-              // 날짜
-              // ==================================================
-              if (_isHalfDay) _buildHalfDayField() else _buildAnnualFields(),
-
-              const SizedBox(height: 18),
-
-              // ==================================================
-              // 신청 사유
-              // ==================================================
-              const _FieldLabel(label: '신청 사유'),
-
-              const SizedBox(height: 8),
-
-              TextField(
-                controller: _reasonController,
-                minLines: 2,
-                maxLines: 3,
-                maxLength: 200,
-                onChanged: (value) {
-                  if (_reasonError != null && value.trim().isNotEmpty) {
-                    setState(() {
-                      _reasonError = null;
-                    });
-                  }
+                  return Wrap(
+                    spacing: gap,
+                    runSpacing: gap,
+                    children: LeaveType.values
+                        .map(
+                          (type) => SizedBox(
+                            width: itemWidth,
+                            child: _LeaveTypeButton(
+                              label: type.label,
+                              icon: type.icon,
+                              isSelected: _selectedLeaveType == type,
+                              onTap: () {
+                                _changeLeaveType(type);
+                              },
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  );
                 },
-                decoration: InputDecoration(
-                  hintText: '휴무 신청 사유를 입력해 주세요.',
-                  errorText: _reasonError,
-                  filled: true,
-                  fillColor: context.appSurface,
-                  contentPadding: const EdgeInsets.all(12),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(9),
-                    borderSide: BorderSide(
-                      color: _reasonError == null
-                          ? context.appBorder
-                          : AppColors.danger,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(9),
-                    borderSide: const BorderSide(
-                      color: AppColors.primaryBlue,
-                      width: 1.2,
-                    ),
-                  ),
-                ),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 24),
+
+              // ==================================================
+              // 휴무 날짜
+              // ==================================================
+              if (_selectedLeaveType.isSingleDay)
+                _buildSingleDayField()
+              else
+                _buildDateRangeFields(),
+
+              // ==================================================
+              // 시간차 시간
+              // ==================================================
+              if (_selectedLeaveType.isHourly) ...[
+                const SizedBox(height: 20),
+
+                _buildHourlyTimeFields(),
+              ],
+
+              const SizedBox(height: 20),
 
               // ==================================================
               // 안내
@@ -366,22 +482,22 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
+                  horizontal: 14,
+                  vertical: 11,
                 ),
                 decoration: BoxDecoration(
                   color: context.appSurfaceSoft,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.info_outline_rounded,
-                      size: 16,
+                      size: 17,
                       color: AppColors.secondaryBlue,
                     ),
 
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
 
                     Expanded(
                       child: Text(
@@ -396,7 +512,7 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
                 ),
               ),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 20),
 
               // ==================================================
               // Actions
@@ -418,11 +534,15 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.navy,
                       foregroundColor: Colors.white,
+                      minimumSize: const Size(96, 42),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(9),
                       ),
                     ),
-                    child: const Text('신청하기'),
+                    child: const Text(
+                      '신청하기',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ],
               ),
@@ -434,16 +554,16 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
   }
 
   // ============================================================
-  // STEP 9. 연차 날짜 영역
+  // STEP 13. 날짜 범위
   // ============================================================
 
-  Widget _buildAnnualFields() {
+  Widget _buildDateRangeFields() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _FieldLabel(label: '휴무 기간'),
 
-        const SizedBox(height: 8),
+        const SizedBox(height: 9),
 
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -477,16 +597,16 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
   }
 
   // ============================================================
-  // STEP 10. 반차 날짜 영역
+  // STEP 14. 단일 날짜
   // ============================================================
 
-  Widget _buildHalfDayField() {
+  Widget _buildSingleDayField() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _FieldLabel(label: '휴무일'),
 
-        const SizedBox(height: 8),
+        const SizedBox(height: 9),
 
         _DateField(
           value: _startDate,
@@ -497,10 +617,53 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
       ],
     );
   }
+
+  // ============================================================
+  // STEP 15. 시간차 시간 영역
+  // ============================================================
+
+  Widget _buildHourlyTimeFields() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _FieldLabel(label: '휴무 시간'),
+
+        const SizedBox(height: 9),
+
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _TimeField(
+                value: _startTime,
+                placeholder: '시작 시간',
+                errorText: _startTimeError,
+                onTap: _selectStartTime,
+              ),
+            ),
+
+            const Padding(
+              padding: EdgeInsets.fromLTRB(10, 13, 10, 0),
+              child: Text('~'),
+            ),
+
+            Expanded(
+              child: _TimeField(
+                value: _endTime,
+                placeholder: '종료 시간',
+                errorText: _endTimeError,
+                onTap: _selectEndTime,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }
 
 // ============================================================
-// STEP 11. Field Label
+// STEP 16. Field Label
 // ============================================================
 
 class _FieldLabel extends StatelessWidget {
@@ -536,42 +699,67 @@ class _FieldLabel extends StatelessWidget {
 }
 
 // ============================================================
-// STEP 12. 휴무 유형 Button
+// STEP 17. 휴무 유형 Button
 // ============================================================
 
 class _LeaveTypeButton extends StatelessWidget {
   final String label;
+  final IconData icon;
+
   final bool isSelected;
   final VoidCallback onTap;
 
   const _LeaveTypeButton({
     required this.label,
+    required this.icon,
     required this.isSelected,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        height: 40,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isSelected ? context.appSurfaceSoft : context.appSurface,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? AppColors.primaryBlue : context.appBorder,
-            width: isSelected ? 1.2 : 1,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          height: 54,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? context.appSurfaceSoft : context.appSurface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected ? AppColors.primaryBlue : context.appBorder,
+              width: isSelected ? 1.3 : 1,
+            ),
           ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11.5,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? AppColors.navy : context.appTextSecondary,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: isSelected ? AppColors.navy : context.appTextSecondary,
+              ),
+
+              const SizedBox(width: 7),
+
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected
+                        ? AppColors.navy
+                        : context.appTextSecondary,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -580,7 +768,7 @@ class _LeaveTypeButton extends StatelessWidget {
 }
 
 // ============================================================
-// STEP 13. 날짜 Field
+// STEP 18. 날짜 Field
 // ============================================================
 
 class _DateField extends StatelessWidget {
@@ -605,7 +793,7 @@ class _DateField extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(9),
           child: Container(
-            height: 44,
+            height: 46,
             padding: const EdgeInsets.symmetric(horizontal: 13),
             decoration: BoxDecoration(
               color: context.appSurface,
@@ -656,5 +844,85 @@ class _DateField extends StatelessWidget {
     final day = date.day.toString().padLeft(2, '0');
 
     return '${date.year}.$month.$day';
+  }
+}
+
+// ============================================================
+// STEP 19. 시간 Field
+// ============================================================
+
+class _TimeField extends StatelessWidget {
+  final TimeOfDay? value;
+  final String placeholder;
+  final String? errorText;
+  final VoidCallback onTap;
+
+  const _TimeField({
+    required this.value,
+    required this.placeholder,
+    required this.errorText,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(9),
+          child: Container(
+            height: 46,
+            padding: const EdgeInsets.symmetric(horizontal: 13),
+            decoration: BoxDecoration(
+              color: context.appSurface,
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(
+                color: errorText == null ? context.appBorder : AppColors.danger,
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    value == null ? placeholder : _formatTime(value!),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: value == null
+                          ? context.appTextDisabled
+                          : context.appTextPrimary,
+                    ),
+                  ),
+                ),
+
+                const Icon(
+                  Icons.schedule_outlined,
+                  size: 18,
+                  color: AppColors.secondaryBlue,
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        if (errorText != null) ...[
+          const SizedBox(height: 5),
+
+          Text(
+            errorText!,
+            style: const TextStyle(fontSize: 10.5, color: AppColors.danger),
+          ),
+        ],
+      ],
+    );
+  }
+
+  String _formatTime(TimeOfDay time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+
+    final minute = time.minute.toString().padLeft(2, '0');
+
+    return '$hour:$minute';
   }
 }

@@ -34,7 +34,12 @@ class AiAnalysisUiModel {
     this.isDemo = false,
   });
 
-  AiAnalysisUiModel copyWith({String? status, DateTime? completedAt}) {
+  AiAnalysisUiModel copyWith({
+    String? status,
+    DateTime? completedAt,
+    String? patientName,
+    String? patientMeta,
+  }) {
     return AiAnalysisUiModel(
       id: id,
       examinationId: examinationId,
@@ -43,8 +48,8 @@ class AiAnalysisUiModel {
       status: status ?? this.status,
       requestedAt: requestedAt,
       completedAt: completedAt ?? this.completedAt,
-      patientName: patientName,
-      patientMeta: patientMeta,
+      patientName: patientName ?? this.patientName,
+      patientMeta: patientMeta ?? this.patientMeta,
       isDemo: isDemo,
     );
   }
@@ -86,6 +91,74 @@ class AiInputUiModel {
 }
 
 // ============================================================
+// STEP 3. AI Job
+// GET /api/ai-analyses/{id}/ 상세 jobs 기반
+// ============================================================
+
+class AiJobUiModel {
+  final int id;
+  final int analysisId;
+  final int aiModelVersion;
+
+  final String status;
+
+  final double progressPercent;
+  final int retryCount;
+
+  final String? errorCode;
+  final String? errorMessage;
+  final String? workerId;
+
+  final DateTime? queuedAt;
+  final DateTime? startedAt;
+  final DateTime? finishedAt;
+
+  const AiJobUiModel({
+    required this.id,
+    required this.analysisId,
+    required this.aiModelVersion,
+    required this.status,
+    required this.progressPercent,
+    required this.retryCount,
+    required this.errorCode,
+    required this.errorMessage,
+    required this.workerId,
+    required this.queuedAt,
+    required this.startedAt,
+    required this.finishedAt,
+  });
+}
+
+// ============================================================
+// STEP 4. AI Analysis Result Summary
+// 분석 현황 상세 화면용 실제 Result
+// ============================================================
+
+class AiAnalysisResultSummaryUiModel {
+  final int id;
+  final int analysisId;
+  final int jobId;
+
+  final String resultType;
+  final String summaryText;
+  final String status;
+
+  final double? confidence;
+  final Map<String, dynamic> resultJson;
+
+  const AiAnalysisResultSummaryUiModel({
+    required this.id,
+    required this.analysisId,
+    required this.jobId,
+    required this.resultType,
+    required this.summaryText,
+    required this.status,
+    required this.confidence,
+    required this.resultJson,
+  });
+}
+
+// ============================================================
 // STEP 3. Detection
 // UI DEMO
 // 실제 연결 시 /detections/ 응답으로 교체
@@ -120,6 +193,29 @@ class AiLesionUiModel {
     required this.segment,
     required this.stenosisPercent,
     required this.riskLevel,
+  });
+}
+
+// ============================================================
+// 실제 CCTA Segmentation 상세
+// ============================================================
+
+class AiResultSegmentationUiModel {
+  final String structureName;
+
+  final int? maskFileAssetId;
+  final int? meshFileAssetId;
+
+  final double? volumeMm3;
+
+  final Map<String, dynamic> metricsJson;
+
+  const AiResultSegmentationUiModel({
+    required this.structureName,
+    required this.maskFileAssetId,
+    required this.meshFileAssetId,
+    required this.volumeMm3,
+    required this.metricsJson,
   });
 }
 
@@ -181,6 +277,14 @@ class AiResultUiModel {
 
   final bool isDemo;
 
+  final String resultType;
+  final double? confidence;
+  final Map<String, dynamic> resultJson;
+
+  final int? modelVersionId;
+
+  final List<AiResultSegmentationUiModel> segmentationDetails;
+
   const AiResultUiModel({
     required this.id,
     required this.analysisId,
@@ -196,6 +300,13 @@ class AiResultUiModel {
     required this.segmentations,
     required this.cacScore,
     required this.explanation,
+
+    this.resultType = '',
+    this.confidence,
+    this.resultJson = const {},
+    this.modelVersionId,
+    this.segmentationDetails = const [],
+
     this.isDemo = true,
   });
 }

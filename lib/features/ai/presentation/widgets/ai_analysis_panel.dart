@@ -11,19 +11,25 @@ import '../ai_ui_models.dart';
 class AiAnalysisPanel extends StatefulWidget {
   final List<AiAnalysisUiModel> analyses;
   final List<AiInputUiModel> inputs;
+  final List<AiJobUiModel> jobs;
+  final List<AiAnalysisResultSummaryUiModel> resultSummaries;
 
   final VoidCallback onCreateAnalysis;
 
   final ValueChanged<AiAnalysisUiModel> onRetry;
   final ValueChanged<AiAnalysisUiModel> onCancel;
+  final ValueChanged<AiAnalysisUiModel> onAnalysisSelected;
 
   const AiAnalysisPanel({
     super.key,
     required this.analyses,
     required this.inputs,
+    required this.jobs,
+    required this.resultSummaries,
     required this.onCreateAnalysis,
     required this.onRetry,
     required this.onCancel,
+    required this.onAnalysisSelected,
   });
 
   @override
@@ -35,6 +41,7 @@ class _AiAnalysisPanelState extends State<AiAnalysisPanel> {
 
   String _searchText = '';
   String _statusFilter = 'ALL';
+  String _typeFilter = 'ALL';
 
   int? _selectedId;
 
@@ -70,15 +77,68 @@ class _AiAnalysisPanelState extends State<AiAnalysisPanel> {
           query.isEmpty ||
           analysis.patientName.toLowerCase().contains(query) ||
           analysis.analysisType.toLowerCase().contains(query) ||
+          _analysisTypeLabel(
+            analysis.analysisType,
+          ).toLowerCase().contains(query) ||
           analysis.id.toString().contains(query) ||
           analysis.examinationId.toString().contains(query);
 
-      final matchesStatus =
-          _statusFilter == 'ALL' || analysis.status == _statusFilter;
+      final matchesStatus = _matchesStatus(analysis, _statusFilter);
 
-      return matchesSearch && matchesStatus;
+      final matchesType = _matchesType(analysis, _typeFilter);
+
+      return matchesSearch && matchesStatus && matchesType;
     }).toList();
   }
+
+  bool _matchesStatus(AiAnalysisUiModel analysis, String filter) {
+    switch (filter) {
+      case 'WAITING':
+        return analysis.status == 'REQUESTED' || analysis.status == 'QUEUED';
+
+      case 'RUNNING':
+        return analysis.status == 'RUNNING';
+
+      case 'SUCCEEDED':
+        return analysis.status == 'SUCCEEDED';
+
+      case 'FAILED':
+        return analysis.status == 'FAILED';
+
+      case 'ALL':
+      default:
+        return true;
+    }
+  }
+
+  bool _matchesType(AiAnalysisUiModel analysis, String filter) {
+    switch (filter) {
+      case 'CLINICAL':
+        return analysis.analysisType == 'CLINICAL';
+
+      case 'ANGIO_2D':
+        return analysis.analysisType == 'ANGIO_2D';
+
+      case 'CCTA':
+        return analysis.analysisType == 'CCTA' ||
+            analysis.analysisType == 'CCTA_SEGMENTATION';
+
+      case 'ALL':
+      default:
+        return true;
+    }
+  }
+
+  int _statusCount(String filter) {
+    return widget.analyses.where((analysis) {
+      return _matchesType(analysis, _typeFilter) &&
+          _matchesStatus(analysis, filter);
+    }).length;
+  }
+
+  // ============================================================
+  // Selected Analysis
+  // ============================================================
 
   AiAnalysisUiModel? get _selected {
     for (final analysis in widget.analyses) {
@@ -90,6 +150,10 @@ class _AiAnalysisPanelState extends State<AiAnalysisPanel> {
     return null;
   }
 
+  // ============================================================
+  // Selected Input
+  // ============================================================
+
   AiInputUiModel? _inputFor(AiAnalysisUiModel analysis) {
     for (final input in widget.inputs) {
       if (input.analysisId == analysis.id) {
@@ -98,6 +162,48 @@ class _AiAnalysisPanelState extends State<AiAnalysisPanel> {
     }
 
     return null;
+  }
+
+  // ============================================================
+  // Selected Job
+  // 가장 최근 Job 사용
+  // ============================================================
+
+  AiJobUiModel? _jobFor(AiAnalysisUiModel analysis) {
+    AiJobUiModel? latest;
+
+    for (final job in widget.jobs) {
+      if (job.analysisId != analysis.id) {
+        continue;
+      }
+
+      if (latest == null || job.id > latest.id) {
+        latest = job;
+      }
+    }
+
+    return latest;
+  }
+
+  // ============================================================
+  // Selected Result
+  // 가장 최근 Result 사용
+  // ============================================================
+
+  AiAnalysisResultSummaryUiModel? _resultFor(AiAnalysisUiModel analysis) {
+    AiAnalysisResultSummaryUiModel? latest;
+
+    for (final result in widget.resultSummaries) {
+      if (result.analysisId != analysis.id) {
+        continue;
+      }
+
+      if (latest == null || result.id > latest.id) {
+        latest = result;
+      }
+    }
+
+    return latest;
   }
 
   // ============================================================
@@ -128,6 +234,8 @@ class _AiAnalysisPanelState extends State<AiAnalysisPanel> {
               : _AnalysisDetailPanel(
                   analysis: selected,
                   input: _inputFor(selected),
+                  job: _jobFor(selected),
+                  result: _resultFor(selected),
                   onRetry: () {
                     widget.onRetry(selected);
                   },
@@ -185,31 +293,84 @@ class _AiAnalysisPanelState extends State<AiAnalysisPanel> {
 
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: SizedBox(
-              height: 38,
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) {
-                  setState(() {
-                    _searchText = value;
-                  });
-                },
-                style: const TextStyle(fontSize: 11),
-                decoration: InputDecoration(
-                  hintText: '환자 · 분석 종류 · 분석번호 검색',
-                  prefixIcon: const Icon(Icons.search_rounded, size: 17),
-                  filled: true,
-                  fillColor: context.appBackground,
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: context.appBorder),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.primaryBlue),
+            child: Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 38,
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (value) {
+                        setState(() {
+                          _searchText = value;
+                        });
+                      },
+                      style: const TextStyle(fontSize: 11),
+                      decoration: InputDecoration(
+                        hintText: '환자 · 분석 종류 · 분석번호 검색',
+                        prefixIcon: const Icon(Icons.search_rounded, size: 17),
+                        filled: true,
+                        fillColor: context.appBackground,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: context.appBorder),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: AppColors.primaryBlue,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+
+                const SizedBox(width: 8),
+
+                Container(
+                  height: 38,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: context.appBackground,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: context.appBorder),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _typeFilter,
+                      isDense: true,
+                      borderRadius: BorderRadius.circular(10),
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: context.appTextPrimary,
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'ALL', child: Text('전체 분석')),
+                        DropdownMenuItem(
+                          value: 'CLINICAL',
+                          child: Text('혈액·임상'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'ANGIO_2D',
+                          child: Text('2D 혈관조영'),
+                        ),
+                        DropdownMenuItem(value: 'CCTA', child: Text('3D CCTA')),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) {
+                          return;
+                        }
+
+                        setState(() {
+                          _typeFilter = value;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -220,7 +381,7 @@ class _AiAnalysisPanelState extends State<AiAnalysisPanel> {
             child: Row(
               children: [
                 _FilterButton(
-                  text: '전체',
+                  text: '전체 ${_statusCount('ALL')}',
                   selected: _statusFilter == 'ALL',
                   onTap: () {
                     setState(() {
@@ -232,7 +393,19 @@ class _AiAnalysisPanelState extends State<AiAnalysisPanel> {
                 const SizedBox(width: 5),
 
                 _FilterButton(
-                  text: '진행',
+                  text: '대기 ${_statusCount('WAITING')}',
+                  selected: _statusFilter == 'WAITING',
+                  onTap: () {
+                    setState(() {
+                      _statusFilter = 'WAITING';
+                    });
+                  },
+                ),
+
+                const SizedBox(width: 5),
+
+                _FilterButton(
+                  text: '분석 중 ${_statusCount('RUNNING')}',
                   selected: _statusFilter == 'RUNNING',
                   onTap: () {
                     setState(() {
@@ -244,7 +417,7 @@ class _AiAnalysisPanelState extends State<AiAnalysisPanel> {
                 const SizedBox(width: 5),
 
                 _FilterButton(
-                  text: '완료',
+                  text: '완료 ${_statusCount('SUCCEEDED')}',
                   selected: _statusFilter == 'SUCCEEDED',
                   onTap: () {
                     setState(() {
@@ -256,7 +429,7 @@ class _AiAnalysisPanelState extends State<AiAnalysisPanel> {
                 const SizedBox(width: 5),
 
                 _FilterButton(
-                  text: '실패',
+                  text: '실패 ${_statusCount('FAILED')}',
                   selected: _statusFilter == 'FAILED',
                   onTap: () {
                     setState(() {
@@ -299,6 +472,8 @@ class _AiAnalysisPanelState extends State<AiAnalysisPanel> {
                           setState(() {
                             _selectedId = analysis.id;
                           });
+
+                          widget.onAnalysisSelected(analysis);
                         },
                       );
                     },
@@ -380,10 +555,7 @@ class _AnalysisListItem extends StatelessWidget {
 
             Text(
               '#${analysis.id} · 검사 #${analysis.examinationId}',
-              style: TextStyle(
-                fontSize: 9.5,
-                color: context.appTextSecondary,
-              ),
+              style: TextStyle(fontSize: 9.5, color: context.appTextSecondary),
             ),
           ],
         ),
@@ -399,6 +571,8 @@ class _AnalysisListItem extends StatelessWidget {
 class _AnalysisDetailPanel extends StatelessWidget {
   final AiAnalysisUiModel analysis;
   final AiInputUiModel? input;
+  final AiJobUiModel? job;
+  final AiAnalysisResultSummaryUiModel? result;
 
   final VoidCallback onRetry;
   final VoidCallback onCancel;
@@ -406,6 +580,8 @@ class _AnalysisDetailPanel extends StatelessWidget {
   const _AnalysisDetailPanel({
     required this.analysis,
     required this.input,
+    required this.job,
+    required this.result,
     required this.onRetry,
     required this.onCancel,
   });
@@ -516,6 +692,52 @@ class _AnalysisDetailPanel extends StatelessWidget {
                   const SizedBox(height: 12),
 
                   _InfoCard(
+                    title: 'AI 작업 정보',
+                    icon: Icons.memory_rounded,
+                    children: job == null
+                        ? const [_InfoRow(label: 'Job', value: '작업 정보 없음')]
+                        : [
+                            _InfoRow(label: 'Job ID', value: '#${job!.id}'),
+                            _InfoRow(
+                              label: '모델 버전',
+                              value: '#${job!.aiModelVersion}',
+                            ),
+                            _InfoRow(label: '작업 상태', value: job!.status),
+                            _InfoRow(
+                              label: '재시도',
+                              value: '${job!.retryCount}회',
+                            ),
+                            if (job!.workerId != null)
+                              _InfoRow(label: 'Worker', value: job!.workerId!),
+                            _InfoRow(
+                              label: '진행률',
+                              value:
+                                  '${job!.progressPercent.toStringAsFixed(0)}%',
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6, bottom: 2),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(20),
+                                child: LinearProgressIndicator(
+                                  value: (job!.progressPercent / 100).clamp(
+                                    0.0,
+                                    1.0,
+                                  ),
+                                  minHeight: 7,
+                                  backgroundColor: context.appSurfaceSoft,
+                                  color: AppColors.navy,
+                                ),
+                              ),
+                            ),
+                            if (job!.errorMessage != null &&
+                                job!.errorMessage!.isNotEmpty)
+                              _InfoRow(label: '오류', value: job!.errorMessage!),
+                          ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  _InfoCard(
                     title: '입력 데이터',
                     icon: Icons.input_outlined,
                     children: input == null
@@ -561,6 +783,38 @@ class _AnalysisDetailPanel extends StatelessWidget {
                     ],
                   ),
 
+                  if (result != null) ...[
+                    const SizedBox(height: 12),
+
+                    _InfoCard(
+                      title: 'AI 결과 요약',
+                      icon: Icons.auto_graph_rounded,
+                      children: [
+                        _InfoRow(label: 'Result ID', value: '#${result!.id}'),
+                        _InfoRow(label: '결과 유형', value: result!.resultType),
+                        _InfoRow(label: '검토 상태', value: result!.status),
+                        if (result!.confidence != null)
+                          _InfoRow(
+                            label: 'Confidence',
+                            value:
+                                '${(result!.confidence! * 100).toStringAsFixed(1)}%',
+                          ),
+                        _InfoRow(label: '요약', value: result!.summaryText),
+                        if (result!.resultJson['probability'] != null)
+                          _InfoRow(
+                            label: '위험 확률',
+                            value:
+                                '${(((result!.resultJson['probability'] as num).toDouble()) * 100).toStringAsFixed(1)}%',
+                          ),
+                        if (result!.resultJson['prediction'] != null)
+                          _InfoRow(
+                            label: '예측값',
+                            value: result!.resultJson['prediction'].toString(),
+                          ),
+                      ],
+                    ),
+                  ],
+
                   if (analysis.status == 'SUCCEEDED') ...[
                     const SizedBox(height: 12),
 
@@ -581,17 +835,6 @@ class _AnalysisDetailPanel extends StatelessWidget {
                           ),
 
                           SizedBox(width: 8),
-
-                          Expanded(
-                            child: Text(
-                              '현재 Backend에는 Analysis 메타데이터는 존재하지만 Job / Result가 생성되지 않은 항목이 있습니다. 실제 결과 연결 전까지 결과 화면은 UI DEMO 데이터로 표시됩니다.',
-                              style: TextStyle(
-                                fontSize: 9.5,
-                                height: 1.5,
-                                color: context.appTextSecondary,
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -656,10 +899,7 @@ class _ActionFooter extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: TextStyle(
-                fontSize: 10.5,
-                color: context.appTextSecondary,
-              ),
+              style: TextStyle(fontSize: 10.5, color: context.appTextSecondary),
             ),
           ),
 
@@ -805,10 +1045,7 @@ class _InfoRow extends StatelessWidget {
             width: 100,
             child: Text(
               label,
-              style: TextStyle(
-                fontSize: 10,
-                color: context.appTextSecondary,
-              ),
+              style: TextStyle(fontSize: 10, color: context.appTextSecondary),
             ),
           ),
 
@@ -907,14 +1144,18 @@ String formatAiDateTime(DateTime date) {
 
 String _analysisTypeLabel(String type) {
   switch (type) {
-    case 'CCTA':
-      return 'CCTA AI 분석';
+    case 'CLINICAL':
+    case 'LAB':
+      return '혈액·임상 AI 분석';
 
     case 'ANGIO_2D':
       return '2D 혈관조영 AI 분석';
 
-    case 'LAB':
-      return '혈액·임상 AI 분석';
+    case 'CCTA':
+      return 'CCTA AI 분석';
+
+    case 'CCTA_SEGMENTATION':
+      return 'CCTA 혈관 분할';
 
     default:
       return type;

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../core/auth/auth_provider.dart';
+import '../../../../core/router/app_routes.dart';
 import '../../../../core/settings/text_scale_provider.dart';
 import '../../../../core/settings/theme_mode_provider.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_shell.dart';
+import '../../../core/security/biometric_auth_service.dart';
 
 // ============================================================
 // STEP 1. Settings Page
@@ -43,13 +47,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
   static const String _autoLoginKey = 'settings_auto_login';
 
-  static const String _autoLockKey = 'settings_auto_lock';
-
   static const String _biometricLoginKey = 'settings_biometric_login';
 
   static const String _reauthenticationKey = 'settings_reauthentication';
-
-  static const String _screenProtectionKey = 'settings_screen_protection';
 
   // ============================================================
   // STEP 3. 알림 설정
@@ -75,13 +75,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
   bool _autoLogin = true;
 
-  String _autoLock = '5';
-
   bool _biometricLogin = false;
 
   bool _reauthentication = true;
-
-  bool _screenProtection = true;
 
   // ============================================================
   // STEP 5. Init
@@ -126,13 +122,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
       _autoLogin = preferences.getBool(_autoLoginKey) ?? true;
 
-      _autoLock = preferences.getString(_autoLockKey) ?? '5';
-
       _biometricLogin = preferences.getBool(_biometricLoginKey) ?? false;
 
       _reauthentication = preferences.getBool(_reauthenticationKey) ?? true;
-
-      _screenProtection = preferences.getBool(_screenProtectionKey) ?? true;
     });
   }
 
@@ -144,16 +136,6 @@ class _SettingsPageState extends State<SettingsPage> {
     final preferences = await SharedPreferences.getInstance();
 
     await preferences.setBool(key, value);
-  }
-
-  // ============================================================
-  // STEP 8. String 설정 저장
-  // ============================================================
-
-  Future<void> _saveStringSetting(String key, String value) async {
-    final preferences = await SharedPreferences.getInstance();
-
-    await preferences.setString(key, value);
   }
 
   // ============================================================
@@ -242,6 +224,8 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _buildAccountSection() {
     final theme = Theme.of(context);
 
+    final auth = context.watch<AuthProvider>();
+
     return Column(
       children: [
         Row(
@@ -268,7 +252,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '김OO 의사',
+                    '${auth.userName} ${auth.displayPosition}',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -279,7 +263,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   const SizedBox(height: 4),
 
                   Text(
-                    '순환기내과',
+                    auth.department,
                     style: TextStyle(
                       fontSize: 10.5,
                       color: theme.colorScheme.onSurfaceVariant,
@@ -289,7 +273,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   const SizedBox(height: 2),
 
                   Text(
-                    '의사',
+                    auth.displayPosition,
                     style: TextStyle(
                       fontSize: 9.5,
                       color: theme.colorScheme.onSurfaceVariant,
@@ -301,7 +285,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
             OutlinedButton.icon(
               onPressed: () {
-                _showMessage('계정 정보 화면은 실제 직원 정보 API 연결 후 구현합니다.');
+                context.go(AppRoutes.profile);
               },
               icon: const Icon(Icons.arrow_forward_rounded, size: 14),
               label: const Text('계정 정보', style: TextStyle(fontSize: 10)),
@@ -503,38 +487,81 @@ class _SettingsPageState extends State<SettingsPage> {
 
         _SettingsRow(
           title: '자동 잠금',
-          subtitle: '일정 시간 동안 사용하지 않으면 앱을 잠급니다.',
-          trailing: _AutoLockSelector(
-            selected: _autoLock,
-            onChanged: (value) {
-              setState(() {
-                _autoLock = value;
-              });
-
-              _saveStringSetting(_autoLockKey, value);
-            },
-          ),
+          subtitle: '15분 동안 사용하지 않으면 앱이 자동으로 잠깁니다.',
+          trailing: const _PolicyBadge(label: '15분'),
         ),
 
         const _SettingsDivider(),
 
         _SettingsSwitchRow(
           title: '생체 인증',
-          subtitle: '지원되는 기기에서 생체 인증으로 로그인합니다.',
+          subtitle: '앱 잠금 해제와 재인증에 생체 인증을 사용합니다.',
           value: _biometricLogin,
-          onChanged: (value) {
+          onChanged: (value) async {
+            // ==========================================================
+            // 생체인증 OFF
+            // ==========================================================
+
+            if (!value) {
+              setState(() {
+                _biometricLogin = false;
+              });
+
+              await _saveBoolSetting(_biometricLoginKey, false);
+
+              if (!mounted) {
+                return;
+              }
+
+              _showMessage('생체 인증이 비활성화되었습니다.');
+
+              return;
+            }
+
+            // ==========================================================
+            // 생체인증 ON
+            // 먼저 실제 기기 인증 성공 필요
+            // ==========================================================
+
+            final biometricService = BiometricAuthService();
+
+            final available = await biometricService.isAvailable();
+
+            if (!mounted) {
+              return;
+            }
+
+            if (!available) {
+              _showMessage('이 기기에 등록된 생체 인증 정보가 없습니다.');
+
+              return;
+            }
+
+            final authenticated = await biometricService.authenticate(
+              reason: 'DUGN 생체 인증 사용을 활성화해주세요.',
+            );
+
+            if (!mounted) {
+              return;
+            }
+
+            if (!authenticated) {
+              _showMessage('생체 인증이 완료되지 않았습니다.');
+
+              return;
+            }
+
             setState(() {
-              _biometricLogin = value;
+              _biometricLogin = true;
             });
 
-            _saveBoolSetting(_biometricLoginKey, value);
+            await _saveBoolSetting(_biometricLoginKey, true);
 
-            if (value) {
-              _showMessage(
-                '생체 인증 설정이 활성화되었습니다. '
-                '실제 기기 인증 연결은 다음 단계에서 적용합니다.',
-              );
+            if (!mounted) {
+              return;
             }
+
+            _showMessage('생체 인증이 활성화되었습니다.');
           },
         ),
 
@@ -555,17 +582,18 @@ class _SettingsPageState extends State<SettingsPage> {
 
         const _SettingsDivider(),
 
-        _SettingsSwitchRow(
+        _SettingsRow(
           title: '화면 보호',
-          subtitle: '앱이 백그라운드에 있을 때 의료정보 화면을 보호합니다.',
-          value: _screenProtection,
-          onChanged: (value) {
-            setState(() {
-              _screenProtection = value;
-            });
+          subtitle: '백그라운드 전환 시 의료정보 화면을 자동으로 보호합니다.',
+          trailing: const _PolicyBadge(label: '항상 사용'),
+        ),
 
-            _saveBoolSetting(_screenProtectionKey, value);
-          },
+        const _SettingsDivider(),
+
+        _SettingsRow(
+          title: '화면 캡처 방지',
+          subtitle: '환자 의료정보의 화면 캡처와 녹화를 제한합니다.',
+          trailing: const _PolicyBadge(label: '항상 사용'),
         ),
       ],
     );
@@ -606,10 +634,21 @@ class _SettingsPageState extends State<SettingsPage> {
       return;
     }
 
-    _showMessage(
-      '현재는 로그아웃 UI까지 연결되어 있습니다. '
-      'AuthProvider 토큰 삭제는 다음 단계에서 연결합니다.',
-    );
+    // ==========================================================
+    // 인증 정보 초기화
+    // ==========================================================
+
+    await context.read<AuthProvider>().logout();
+
+    if (!mounted) {
+      return;
+    }
+
+    // ==========================================================
+    // 로그인 화면 이동
+    // ==========================================================
+
+    context.go(AppRoutes.login);
   }
 
   // ============================================================
@@ -1070,58 +1109,32 @@ class _ThemeModeButton extends StatelessWidget {
 }
 
 // ============================================================
-// STEP 24. Auto Lock Selector
+// STEP 24. Security Policy Badge
 // ============================================================
 
-class _AutoLockSelector extends StatelessWidget {
-  final String selected;
+class _PolicyBadge extends StatelessWidget {
+  final String label;
 
-  final ValueChanged<String> onChanged;
-
-  const _AutoLockSelector({required this.selected, required this.onChanged});
+  const _PolicyBadge({required this.label});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
+        color: colorScheme.primary.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.dividerColor),
+        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.22)),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selected,
-          isDense: true,
-          borderRadius: BorderRadius.circular(10),
-          dropdownColor: theme.colorScheme.surface,
-          icon: Icon(
-            Icons.keyboard_arrow_down_rounded,
-            size: 17,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: theme.colorScheme.onSurface,
-          ),
-          items: const [
-            DropdownMenuItem(value: 'off', child: Text('사용 안 함')),
-            DropdownMenuItem(value: '1', child: Text('1분')),
-            DropdownMenuItem(value: '5', child: Text('5분')),
-            DropdownMenuItem(value: '10', child: Text('10분')),
-            DropdownMenuItem(value: '30', child: Text('30분')),
-          ],
-          onChanged: (value) {
-            if (value == null) {
-              return;
-            }
-
-            onChanged(value);
-          },
+      child: Text(
+        label,
+        style: TextStyle(
+          color: colorScheme.primary,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

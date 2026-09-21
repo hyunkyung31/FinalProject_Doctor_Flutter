@@ -1,7 +1,15 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_doctor/core/theme/app_theme_context.dart';
+import 'package:provider/provider.dart';
 
+import '../../../../core/auth/auth_provider.dart';
+import '../../../../core/security/reauthentication_dialog.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../data/models/attendance_request.dart';
+import '../../data/services/attendance_request_service.dart';
 
 // ============================================================
 // STEP 1. 휴무 신청 내부 화면 구분
@@ -20,21 +28,20 @@ enum LeaveStatusFilter { all, pending, approved, rejected }
 
 // ============================================================
 // STEP 3. 내 휴무 신청 Preview Model
-//
-// API 연결 후 실제 Model로 교체 예정
 // ============================================================
 
 class _LeaveRequestPreview {
+  final int id;
+
   final String date;
   final String type;
-  final String reason;
   final String requestedAt;
   final String status;
 
   const _LeaveRequestPreview({
+    required this.id,
     required this.date,
     required this.type,
-    required this.reason,
     required this.requestedAt,
     required this.status,
   });
@@ -60,13 +67,11 @@ class _LeaveRequestPreview {
 
 class _LeaveApprovalPreview {
   final int id;
-
   final String requesterName;
   final String department;
 
   final String date;
   final String type;
-  final String reason;
   final String requestedAt;
 
   final String status;
@@ -77,23 +82,9 @@ class _LeaveApprovalPreview {
     required this.department,
     required this.date,
     required this.type,
-    required this.reason,
     required this.requestedAt,
     required this.status,
   });
-
-  _LeaveApprovalPreview copyWith({String? status}) {
-    return _LeaveApprovalPreview(
-      id: id,
-      requesterName: requesterName,
-      department: department,
-      date: date,
-      type: type,
-      reason: reason,
-      requestedAt: requestedAt,
-      status: status ?? this.status,
-    );
-  }
 }
 
 // ============================================================
@@ -122,86 +113,189 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
   LeaveStatusFilter _approvalStatus = LeaveStatusFilter.all;
 
   // ============================================================
-  // STEP 6. 내 신청 Sample Data
-  //
-  // API 연결 시 삭제
+  // STEP 6. 실제 휴무 신청 API 상태
   // ============================================================
 
-  static const List<_LeaveRequestPreview> _previewRequests = [
-    _LeaveRequestPreview(
-      date: '2026.09.18',
-      type: '연차',
-      reason: '개인 사유',
-      requestedAt: '2026.09.11',
-      status: 'PENDING',
-    ),
-    _LeaveRequestPreview(
-      date: '2026.09.24',
-      type: '오후 반차',
-      reason: '병원 방문',
-      requestedAt: '2026.09.10',
-      status: 'APPROVED',
-    ),
-    _LeaveRequestPreview(
-      date: '2026.09.30',
-      type: '오전 반차',
-      reason: '개인 일정',
-      requestedAt: '2026.09.08',
-      status: 'REJECTED',
-    ),
-  ];
+  final List<_LeaveRequestPreview> _requests = [];
+  final List<_LeaveApprovalPreview> _approvalRequests = [];
+  LeaveBalance? _leaveBalance;
+
+  bool _isLoading = true;
+  String? _loadError;
+
+  bool _didInitialLoad = false;
+  int? _cancellingRequestId;
+  int? _processingApprovalRequestId;
 
   // ============================================================
-  // STEP 7. 승인 요청 Sample Data
-  //
-  // 같은 진료과 의료진의 휴무 요청을 가정한 UI DEMO.
-  //
-  // 실제 구현에서는 Backend가 승인 권한과 진료과 범위를
-  // 판단하여 현재 사용자가 처리할 수 있는 요청만 반환해야 함.
+  // STEP 7. 실제 휴무 신청 데이터 초기 조회
   // ============================================================
 
-  final List<_LeaveApprovalPreview> _approvalRequests = [
-    const _LeaveApprovalPreview(
-      id: 101,
-      requesterName: '박OO 의사',
-      department: '순환기내과',
-      date: '2026.09.19',
-      type: '연차',
-      reason: '가족 일정',
-      requestedAt: '2026.09.13',
-      status: 'PENDING',
-    ),
-    const _LeaveApprovalPreview(
-      id: 102,
-      requesterName: '최OO 의사',
-      department: '순환기내과',
-      date: '2026.09.21',
-      type: '오전 반차',
-      reason: '병원 방문',
-      requestedAt: '2026.09.13',
-      status: 'PENDING',
-    ),
-    const _LeaveApprovalPreview(
-      id: 103,
-      requesterName: '이OO 의사',
-      department: '순환기내과',
-      date: '2026.09.23',
-      type: '오후 반차',
-      reason: '개인 일정',
-      requestedAt: '2026.09.12',
-      status: 'PENDING',
-    ),
-    const _LeaveApprovalPreview(
-      id: 104,
-      requesterName: '정OO 의사',
-      department: '순환기내과',
-      date: '2026.09.16',
-      type: '연차',
-      reason: '교육 참석',
-      requestedAt: '2026.09.09',
-      status: 'APPROVED',
-    ),
-  ];
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_didInitialLoad) {
+      return;
+    }
+
+    _didInitialLoad = true;
+
+    unawaited(_loadRequests());
+  }
+
+  // ============================================================
+  // STEP 8. 내 신청 + 승인 요청 조회
+  // ============================================================
+
+  Future<void> _loadRequests({bool showLoading = true}) async {
+    if (mounted && showLoading) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
+
+    try {
+      final auth = context.read<AuthProvider>();
+
+      final service = AttendanceRequestService(
+        apiClient: auth.authService.apiClient,
+      );
+
+      final myRequestsFuture = service.fetchMyRequests();
+
+      final adminRequestsFuture = widget.canApproveLeave
+          ? service.fetchAdminRequests()
+          : Future.value(<AttendanceRequest>[]);
+
+      final leaveBalanceFuture = service.fetchLeaveBalance();
+
+      final results = await Future.wait([
+        myRequestsFuture,
+        adminRequestsFuture,
+        leaveBalanceFuture,
+      ]);
+
+      if (!mounted) {
+        return;
+      }
+
+      final myRequests = results[0] as List<AttendanceRequest>;
+
+      final adminRequests = results[1] as List<AttendanceRequest>;
+
+      final leaveBalance = results[2] as LeaveBalance;
+
+      setState(() {
+        _requests
+          ..clear()
+          ..addAll(myRequests.map(_mapMyRequest));
+
+        _approvalRequests
+          ..clear()
+          ..addAll(adminRequests.map(_mapApprovalRequest));
+
+        _leaveBalance = leaveBalance;
+
+        _isLoading = false;
+        _loadError = null;
+      });
+
+      debugPrint(
+        '[ATTENDANCE] 내 신청 ${myRequests.length}건 / '
+        '승인 요청 ${adminRequests.length}건 조회 완료',
+      );
+      debugPrint(
+        '[ATTENDANCE] 내 신청 ${myRequests.length}건 / '
+        '승인 요청 ${adminRequests.length}건 / '
+        '잔여 연차 ${leaveBalance.remainingDays}일',
+      );
+    } catch (error) {
+      debugPrint('[ATTENDANCE] 휴무 신청 조회 실패: $error');
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isLoading = false;
+        _loadError = '휴무 신청 정보를 불러오지 못했습니다.';
+      });
+    }
+  }
+
+  // ============================================================
+  // STEP 9. API Model → 기존 UI Model
+  // ============================================================
+
+  _LeaveRequestPreview _mapMyRequest(AttendanceRequest request) {
+    return _LeaveRequestPreview(
+      id: request.id,
+      date: _formatLeaveDate(request),
+      type: request.attendanceTypeLabel,
+      requestedAt: _formatDate(request.createdAt.toLocal()),
+      status: request.status,
+    );
+  }
+
+  _LeaveApprovalPreview _mapApprovalRequest(AttendanceRequest request) {
+    return _LeaveApprovalPreview(
+      id: request.id,
+      requesterName: request.requesterName,
+      department: '',
+      date: _formatLeaveDate(request),
+      type: request.attendanceTypeLabel,
+      requestedAt: _formatDate(request.createdAt.toLocal()),
+      status: request.status,
+    );
+  }
+
+  // ============================================================
+  // STEP 10. 표시용 Formatter
+  // ============================================================
+
+  String _formatLeaveDate(AttendanceRequest request) {
+    final start = _formatDate(request.startDate);
+    final end = _formatDate(request.endDate);
+
+    if (request.attendanceType == AttendanceType.hourlyLeave) {
+      final startTime = _formatApiTime(request.startTime);
+      final endTime = _formatApiTime(request.endTime);
+
+      if (startTime != null && endTime != null) {
+        return '$start $startTime ~ $endTime';
+      }
+    }
+
+    if (start == end) {
+      return start;
+    }
+
+    return '$start ~ $end';
+  }
+
+  String? _formatApiTime(String? value) {
+    if (value == null) {
+      return null;
+    }
+
+    final text = value.trim();
+
+    if (text.length >= 5) {
+      return text.substring(0, 5);
+    }
+
+    return text.isEmpty ? null : text;
+  }
+
+  String _formatDate(DateTime date) {
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+
+    return '$year.$month.$day';
+  }
 
   // ============================================================
   // STEP 8. 권한 변경 대응
@@ -219,8 +313,11 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
         _selectedView == LeaveRequestView.approvalRequests) {
       _selectedView = LeaveRequestView.myRequests;
     }
-  }
 
+    if (oldWidget.canApproveLeave != widget.canApproveLeave) {
+      unawaited(_loadRequests());
+    }
+  }
   // ============================================================
   // STEP 9. 내 신청 Filtered Data
   // ============================================================
@@ -228,22 +325,16 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
   List<_LeaveRequestPreview> get _filteredRequests {
     switch (_myRequestStatus) {
       case LeaveStatusFilter.all:
-        return _previewRequests;
+        return _requests;
 
       case LeaveStatusFilter.pending:
-        return _previewRequests
-            .where((item) => item.status == 'PENDING')
-            .toList();
+        return _requests.where((item) => item.status == 'PENDING').toList();
 
       case LeaveStatusFilter.approved:
-        return _previewRequests
-            .where((item) => item.status == 'APPROVED')
-            .toList();
+        return _requests.where((item) => item.status == 'APPROVED').toList();
 
       case LeaveStatusFilter.rejected:
-        return _previewRequests
-            .where((item) => item.status == 'REJECTED')
-            .toList();
+        return _requests.where((item) => item.status == 'REJECTED').toList();
     }
   }
 
@@ -279,6 +370,52 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
 
   @override
   Widget build(BuildContext context) {
+    // ==========================================================
+    // 휴무 신청 API 로딩
+    // ==========================================================
+
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // ==========================================================
+    // 휴무 신청 API 조회 실패
+    // ==========================================================
+
+    if (_loadError != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.error_outline_rounded,
+              size: 32,
+              color: Theme.of(context).colorScheme.error,
+            ),
+
+            const SizedBox(height: 10),
+
+            Text(
+              _loadError!,
+              style: TextStyle(fontSize: 12, color: context.appTextSecondary),
+            ),
+
+            const SizedBox(height: 12),
+
+            OutlinedButton.icon(
+              onPressed: _loadRequests,
+              icon: const Icon(Icons.refresh_rounded, size: 17),
+              label: const Text('다시 시도'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // ==========================================================
+    // 정상 화면
+    // ==========================================================
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -351,7 +488,7 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
           children: [
             _StatusFilterButton(
               label: '전체',
-              count: _previewRequests.length,
+              count: _requests.length,
               isSelected: _myRequestStatus == LeaveStatusFilter.all,
               onTap: () {
                 _changeMyRequestStatus(LeaveStatusFilter.all);
@@ -392,6 +529,12 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
             ),
 
             const Spacer(),
+
+            if (_leaveBalance != null) ...[
+              _LeaveBalanceBadge(balance: _leaveBalance!),
+
+              const SizedBox(width: 10),
+            ],
 
             // ====================================================
             // 휴무 신청
@@ -463,18 +606,34 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
             color: context.appSurfaceSoft,
             child: Row(
               children: [
-                Expanded(flex: 18, child: Text('휴무일', style: _headerStyle(context))),
-
-                Expanded(flex: 15, child: Text('구분', style: _headerStyle(context))),
-
-                Expanded(flex: 32, child: Text('신청 사유', style: _headerStyle(context))),
-
-                Expanded(flex: 20, child: Text('신청일', style: _headerStyle(context))),
+                Expanded(
+                  flex: 24,
+                  child: Text('휴무일', style: _headerStyle(context)),
+                ),
 
                 Expanded(
-                  flex: 15,
+                  flex: 18,
+                  child: Text('구분', style: _headerStyle(context)),
+                ),
+
+                Expanded(
+                  flex: 22,
+                  child: Text('신청일', style: _headerStyle(context)),
+                ),
+
+                Expanded(
+                  flex: 18,
                   child: Text(
                     '상태',
+                    textAlign: TextAlign.center,
+                    style: _headerStyle(context),
+                  ),
+                ),
+
+                Expanded(
+                  flex: 18,
+                  child: Text(
+                    '처리',
                     textAlign: TextAlign.center,
                     style: _headerStyle(context),
                   ),
@@ -488,7 +647,13 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
 
           if (requests.isNotEmpty)
             for (int index = 0; index < requests.length; index++) ...[
-              _LeaveRequestRow(request: requests[index]),
+              _LeaveRequestRow(
+                request: requests[index],
+                isCancelling: _cancellingRequestId == requests[index].id,
+                onCancel: () {
+                  _cancelRequest(requests[index]);
+                },
+              ),
 
               if (index != requests.length - 1)
                 Divider(height: 1, thickness: 1, color: context.appBorder),
@@ -595,7 +760,6 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
 
   Widget _buildApprovalListCard() {
     final requests = _filteredApprovalRequests;
-
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -609,6 +773,7 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
         children: [
           // ======================================================
           // Table Header
+          // 신청 사유는 현재 휴무 정책에서 사용하지 않음
           // ======================================================
           Container(
             height: 44,
@@ -616,15 +781,25 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
             color: context.appSurfaceSoft,
             child: Row(
               children: [
-                Expanded(flex: 18, child: Text('신청자', style: _headerStyle(context))),
+                Expanded(
+                  flex: 22,
+                  child: Text('신청자', style: _headerStyle(context)),
+                ),
 
-                Expanded(flex: 16, child: Text('휴무일', style: _headerStyle(context))),
+                Expanded(
+                  flex: 20,
+                  child: Text('휴무일', style: _headerStyle(context)),
+                ),
 
-                Expanded(flex: 14, child: Text('구분', style: _headerStyle(context))),
+                Expanded(
+                  flex: 16,
+                  child: Text('구분', style: _headerStyle(context)),
+                ),
 
-                Expanded(flex: 23, child: Text('신청 사유', style: _headerStyle(context))),
-
-                Expanded(flex: 15, child: Text('신청일', style: _headerStyle(context))),
+                Expanded(
+                  flex: 16,
+                  child: Text('신청일', style: _headerStyle(context)),
+                ),
 
                 Expanded(
                   flex: 14,
@@ -636,7 +811,7 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
                 ),
 
                 Expanded(
-                  flex: 18,
+                  flex: 20,
                   child: Text(
                     '처리',
                     textAlign: TextAlign.center,
@@ -654,11 +829,13 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
             for (int index = 0; index < requests.length; index++) ...[
               _LeaveApprovalRow(
                 request: requests[index],
+                isProcessing:
+                    _processingApprovalRequestId == requests[index].id,
                 onApprove: () {
-                  _approveRequest(requests[index].id);
+                  _approveRequest(requests[index]);
                 },
                 onReject: () {
-                  _rejectRequest(requests[index].id);
+                  _rejectRequest(requests[index]);
                 },
               ),
 
@@ -695,7 +872,7 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
   }
 
   int _countMyStatus(String status) {
-    return _previewRequests.where((item) => item.status == status).length;
+    return _requests.where((item) => item.status == status).length;
   }
 
   int _countApprovalStatus(String status) {
@@ -703,49 +880,406 @@ class _LeaveRequestPanelState extends State<LeaveRequestPanel> {
   }
 
   // ============================================================
-  // STEP 18. 승인 / 반려 Mock Action
-  //
-  // 실제 API Schema 확인 후 POST/PATCH 호출로 교체.
+  // STEP 18. 내 휴무 신청 취소
   // ============================================================
 
-  void _approveRequest(int id) {
-    final index = _approvalRequests.indexWhere((item) => item.id == id);
-
-    if (index < 0) {
+  Future<void> _cancelRequest(_LeaveRequestPreview request) async {
+    if (request.status != 'PENDING') {
       return;
     }
 
-    if (_approvalRequests[index].status != 'PENDING') {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('휴무 신청 취소'),
+          content: Text('${request.date} ${request.type} 신청을 취소하시겠습니까?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(false);
+              },
+              child: const Text('닫기'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(true);
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: const Text('신청 취소'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) {
       return;
     }
 
     setState(() {
-      _approvalRequests[index] = _approvalRequests[index].copyWith(
-        status: 'APPROVED',
-      );
+      _cancellingRequestId = request.id;
     });
 
-    _showMessage('휴무 요청을 UI에서 승인 처리했습니다. 실제 API는 아직 연결하지 않았습니다.');
+    try {
+      final auth = context.read<AuthProvider>();
+
+      final service = AttendanceRequestService(
+        apiClient: auth.authService.apiClient,
+      );
+
+      await service.cancelRequest(request.id);
+
+      if (!mounted) {
+        return;
+      }
+
+      debugPrint(
+        '[ATTENDANCE] 휴무 신청 취소 성공 '
+        'requestId=${request.id}',
+      );
+
+      await _loadRequests();
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('휴무 신청이 취소되었습니다.');
+    } catch (error) {
+      debugPrint('[ATTENDANCE] 휴무 신청 취소 실패: $error');
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('휴무 신청을 취소하지 못했습니다.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _cancellingRequestId = null;
+        });
+      }
+    }
   }
 
-  void _rejectRequest(int id) {
-    final index = _approvalRequests.indexWhere((item) => item.id == id);
+  // ============================================================
+  // STEP 19. 휴무 승인
+  //
+  // 1) 승인 확인
+  // 2) 민감 작업 재인증
+  // 3) 실제 승인 API 호출
+  // 4) 목록 새로고침
+  // ============================================================
 
-    if (index < 0) {
+  Future<void> _approveRequest(_LeaveApprovalPreview request) async {
+    if (request.status != 'PENDING' || _processingApprovalRequestId != null) {
       return;
     }
 
-    if (_approvalRequests[index].status != 'PENDING') {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('휴무 승인'),
+          content: Text(
+            '${request.requesterName}님의 '
+            '${request.date} ${request.type} 신청을 '
+            '승인하시겠습니까?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(false);
+              },
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(true);
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.navy,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('승인'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    // ==========================================================
+    // 민감 작업 재인증
+    // ==========================================================
+
+    final reauthenticated = await ensureSensitiveReauthentication(context);
+
+    if (!reauthenticated || !mounted) {
       return;
     }
 
     setState(() {
-      _approvalRequests[index] = _approvalRequests[index].copyWith(
-        status: 'REJECTED',
-      );
+      _processingApprovalRequestId = request.id;
     });
 
-    _showMessage('휴무 요청을 UI에서 반려 처리했습니다. 실제 API는 아직 연결하지 않았습니다.');
+    try {
+      final auth = context.read<AuthProvider>();
+
+      final service = AttendanceRequestService(
+        apiClient: auth.authService.apiClient,
+      );
+
+      // ========================================================
+      // Backend Schema상 review_comment는 string으로 전송
+      // null 전송 금지
+      // ========================================================
+
+      await service.approveRequest(requestId: request.id, reviewComment: '승인');
+
+      if (!mounted) {
+        return;
+      }
+
+      debugPrint(
+        '[ATTENDANCE] 휴무 승인 성공 '
+        'requestId=${request.id}',
+      );
+
+      await _loadRequests(showLoading: false);
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('휴무 신청을 승인했습니다.');
+    } on DioException catch (error) {
+      debugPrint(
+        '[ATTENDANCE] 휴무 승인 실패 '
+        'requestId=${request.id}, '
+        'status=${error.response?.statusCode}, '
+        'data=${error.response?.data}',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      String message = '휴무 신청을 승인하지 못했습니다.';
+
+      final data = error.response?.data;
+
+      if (data is Map) {
+        final detail = data['detail'];
+
+        if (detail != null && detail.toString().trim().isNotEmpty) {
+          message = detail.toString();
+        } else if (data.isNotEmpty) {
+          message = data.values.first.toString();
+        }
+      }
+
+      _showMessage(message);
+    } catch (error) {
+      debugPrint(
+        '[ATTENDANCE] 휴무 승인 오류 '
+        'requestId=${request.id}, '
+        'error=$error',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('휴무 신청을 승인하지 못했습니다.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _processingApprovalRequestId = null;
+        });
+      }
+    }
+  }
+
+  // ============================================================
+  // STEP 20. 휴무 반려
+  //
+  // 반려 사유(review_comment)는 Backend 필수 값.
+  // ============================================================
+
+  Future<void> _rejectRequest(_LeaveApprovalPreview request) async {
+    if (request.status != 'PENDING' || _processingApprovalRequestId != null) {
+      return;
+    }
+
+    final auth = context.read<AuthProvider>();
+
+    final reviewComment = await _showRejectCommentDialog(request);
+
+    if (reviewComment == null || !mounted) {
+      return;
+    }
+
+    final reauthenticated = await ensureSensitiveReauthentication(context);
+
+    if (!reauthenticated || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _processingApprovalRequestId = request.id;
+    });
+
+    try {
+      final service = AttendanceRequestService(
+        apiClient: auth.authService.apiClient,
+      );
+
+      await service.rejectRequest(
+        requestId: request.id,
+        reviewComment: reviewComment,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      debugPrint(
+        '[ATTENDANCE] 휴무 반려 성공 '
+        'requestId=${request.id}',
+      );
+
+      await _loadRequests(showLoading: false);
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('휴무 신청을 반려했습니다.');
+    } catch (error) {
+      debugPrint(
+        '[ATTENDANCE] 휴무 반려 실패 '
+        'requestId=${request.id}, error=$error',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('휴무 신청을 반려하지 못했습니다.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _processingApprovalRequestId = null;
+        });
+      }
+    }
+  }
+
+  // ============================================================
+  // STEP 21. 반려 사유 Dialog
+  // ============================================================
+
+  Future<String?> _showRejectCommentDialog(
+    _LeaveApprovalPreview request,
+  ) async {
+    final controller = TextEditingController();
+    String? errorText;
+
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('휴무 신청 반려'),
+              content: SizedBox(
+                width: 400,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${request.requesterName}님의 '
+                      '${request.date} ${request.type} 신청을 반려합니다.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.appTextSecondary,
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    TextField(
+                      controller: controller,
+                      autofocus: true,
+                      minLines: 3,
+                      maxLines: 5,
+                      textInputAction: TextInputAction.newline,
+                      decoration: InputDecoration(
+                        labelText: '반려 사유',
+                        hintText: '반려 사유를 입력해 주세요.',
+                        errorText: errorText,
+                        alignLabelWithHint: true,
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    Text(
+                      '반려 사유는 처리 기록에 저장됩니다.',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: context.appTextSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                  },
+                  child: const Text('취소'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final comment = controller.text.trim();
+
+                    if (comment.isEmpty) {
+                      setDialogState(() {
+                        errorText = '반려 사유를 입력해 주세요.';
+                      });
+                      return;
+                    }
+
+                    Navigator.of(dialogContext).pop(comment);
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                    foregroundColor: Theme.of(context).colorScheme.onError,
+                  ),
+                  child: const Text('반려'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    controller.dispose();
+
+    return result;
   }
 
   // ============================================================
@@ -920,25 +1454,109 @@ class _StatusFilterButton extends StatelessWidget {
 }
 
 // ============================================================
+// Leave Balance Badge
+// ============================================================
+
+class _LeaveBalanceBadge extends StatelessWidget {
+  final LeaveBalance balance;
+
+  const _LeaveBalanceBadge({required this.balance});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: context.appBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.event_available_outlined,
+            size: 16,
+            color: AppColors.secondaryBlue,
+          ),
+
+          const SizedBox(width: 7),
+
+          Text(
+            '${balance.year} 잔여 연차',
+            style: TextStyle(fontSize: 10.5, color: context.appTextSecondary),
+          ),
+
+          const SizedBox(width: 6),
+
+          Text(
+            '${_formatDays(balance.remainingDays)}일',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: context.appTextPrimary,
+            ),
+          ),
+
+          const SizedBox(width: 8),
+
+          Container(width: 1, height: 14, color: context.appBorder),
+
+          const SizedBox(width: 8),
+
+          Text(
+            '사용 ${_formatDays(balance.usedDays)}일',
+            style: TextStyle(fontSize: 9.5, color: context.appTextSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _formatDays(double value) {
+    if (value == value.truncateToDouble()) {
+      return value.toInt().toString();
+    }
+
+    return value
+        .toStringAsFixed(2)
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
+  }
+}
+
+// ============================================================
 // STEP 23. 내 휴무 신청 Row
 // ============================================================
 
 class _LeaveRequestRow extends StatelessWidget {
   final _LeaveRequestPreview request;
 
-  const _LeaveRequestRow({required this.request});
+  final VoidCallback onCancel;
+  final bool isCancelling;
+
+  const _LeaveRequestRow({
+    required this.request,
+    required this.onCancel,
+    required this.isCancelling,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final canCancel = request.status == 'PENDING';
+
     return Container(
       height: 58,
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
       child: Row(
         children: [
           Expanded(
-            flex: 18,
+            flex: 24,
             child: Text(
               request.date,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
@@ -948,45 +1566,68 @@ class _LeaveRequestRow extends StatelessWidget {
           ),
 
           Expanded(
-            flex: 15,
+            flex: 18,
             child: Text(
               request.type,
-              style: TextStyle(
-                fontSize: 12,
-                color: context.appTextPrimary,
-              ),
+              style: TextStyle(fontSize: 12, color: context.appTextPrimary),
             ),
           ),
 
           Expanded(
-            flex: 32,
-            child: Text(
-              request.reason,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12,
-                color: context.appTextSecondary,
-              ),
-            ),
-          ),
-
-          Expanded(
-            flex: 20,
+            flex: 22,
             child: Text(
               request.requestedAt,
-              style: TextStyle(
-                fontSize: 11.5,
-                color: context.appTextSecondary,
-              ),
+              style: TextStyle(fontSize: 11.5, color: context.appTextSecondary),
             ),
           ),
 
           Expanded(
-            flex: 15,
+            flex: 18,
             child: Align(
               alignment: Alignment.center,
               child: _LeaveStatusBadge(status: request.status),
+            ),
+          ),
+
+          Expanded(
+            flex: 18,
+            child: Center(
+              child: canCancel
+                  ? SizedBox(
+                      height: 28,
+                      child: OutlinedButton(
+                        onPressed: isCancelling ? null : onCancel,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.danger,
+                          side: const BorderSide(color: AppColors.danger),
+                          padding: const EdgeInsets.symmetric(horizontal: 9),
+                          visualDensity: VisualDensity.compact,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: isCancelling
+                            ? const SizedBox(
+                                width: 13,
+                                height: 13,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                '취소',
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                      ),
+                    )
+                  : Text(
+                      '-',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: context.appTextDisabled,
+                      ),
+                    ),
             ),
           ),
         ],
@@ -1005,10 +1646,13 @@ class _LeaveApprovalRow extends StatelessWidget {
   final VoidCallback onApprove;
   final VoidCallback onReject;
 
+  final bool isProcessing;
+
   const _LeaveApprovalRow({
     required this.request,
     required this.onApprove,
     required this.onReject,
+    required this.isProcessing,
   });
 
   @override
@@ -1024,7 +1668,7 @@ class _LeaveApprovalRow extends StatelessWidget {
           // 신청자
           // ======================================================
           Expanded(
-            flex: 18,
+            flex: 22,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1040,17 +1684,19 @@ class _LeaveApprovalRow extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 2),
+                if (request.department.isNotEmpty) ...[
+                  const SizedBox(height: 2),
 
-                Text(
-                  request.department,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: context.appTextSecondary,
+                  Text(
+                    request.department,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: context.appTextSecondary,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -1059,9 +1705,11 @@ class _LeaveApprovalRow extends StatelessWidget {
           // 휴무일
           // ======================================================
           Expanded(
-            flex: 16,
+            flex: 20,
             child: Text(
               request.date,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w600,
@@ -1074,29 +1722,10 @@ class _LeaveApprovalRow extends StatelessWidget {
           // 구분
           // ======================================================
           Expanded(
-            flex: 14,
+            flex: 16,
             child: Text(
               request.type,
-              style: TextStyle(
-                fontSize: 11,
-                color: context.appTextPrimary,
-              ),
-            ),
-          ),
-
-          // ======================================================
-          // 신청 사유
-          // ======================================================
-          Expanded(
-            flex: 23,
-            child: Text(
-              request.reason,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 11,
-                color: context.appTextSecondary,
-              ),
+              style: TextStyle(fontSize: 11, color: context.appTextPrimary),
             ),
           ),
 
@@ -1104,13 +1733,10 @@ class _LeaveApprovalRow extends StatelessWidget {
           // 신청일
           // ======================================================
           Expanded(
-            flex: 15,
+            flex: 16,
             child: Text(
               request.requestedAt,
-              style: TextStyle(
-                fontSize: 10.5,
-                color: context.appTextSecondary,
-              ),
+              style: TextStyle(fontSize: 10.5, color: context.appTextSecondary),
             ),
           ),
 
@@ -1129,34 +1755,43 @@ class _LeaveApprovalRow extends StatelessWidget {
           // 처리
           // ======================================================
           Expanded(
-            flex: 18,
-            child: isPending
-                ? Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _ApprovalActionButton(
-                        label: '반려',
-                        danger: true,
-                        onPressed: onReject,
-                      ),
-
-                      const SizedBox(width: 5),
-
-                      _ApprovalActionButton(label: '승인', onPressed: onApprove),
-                    ],
-                  )
-                : Center(
-                    child: Text(
-                      '-',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: context.appTextDisabled,
-                      ),
-                    ),
-                  ),
+            flex: 20,
+            child: _buildActionArea(context, isPending: isPending),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildActionArea(BuildContext context, {required bool isPending}) {
+    if (!isPending) {
+      return Center(
+        child: Text(
+          '-',
+          style: TextStyle(fontSize: 11, color: context.appTextDisabled),
+        ),
+      );
+    }
+
+    if (isProcessing) {
+      return const Center(
+        child: SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _ApprovalActionButton(label: '반려', danger: true, onPressed: onReject),
+
+        const SizedBox(width: 5),
+
+        _ApprovalActionButton(label: '승인', onPressed: onApprove),
+      ],
     );
   }
 }
@@ -1167,7 +1802,7 @@ class _LeaveApprovalRow extends StatelessWidget {
 
 class _ApprovalActionButton extends StatelessWidget {
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   final bool danger;
 
@@ -1192,9 +1827,9 @@ class _ApprovalActionButton extends StatelessWidget {
             visualDensity: VisualDensity.compact,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
-          child: const Text(
-            '반려',
-            style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600),
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600),
           ),
         ),
       );
@@ -1206,14 +1841,15 @@ class _ApprovalActionButton extends StatelessWidget {
         onPressed: onPressed,
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.navy,
+          foregroundColor: Colors.white,
           minimumSize: const Size(42, 28),
           padding: const EdgeInsets.symmetric(horizontal: 8),
           visualDensity: VisualDensity.compact,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
-        child: const Text(
-          '승인',
-          style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -1259,6 +1895,10 @@ class _LeaveStatusBadge extends StatelessWidget {
       case 'REJECTED':
         return '반려';
 
+      case 'CANCELLED':
+      case 'CANCELED':
+        return '취소';
+
       default:
         return status;
     }
@@ -1275,6 +1915,10 @@ class _LeaveStatusBadge extends StatelessWidget {
       case 'REJECTED':
         return AppColors.danger;
 
+      case 'CANCELLED':
+      case 'CANCELED':
+        return context.appTextSecondary;
+
       default:
         return context.appTextSecondary;
     }
@@ -1290,6 +1934,10 @@ class _LeaveStatusBadge extends StatelessWidget {
 
       case 'REJECTED':
         return AppColors.dangerBackground;
+
+      case 'CANCELLED':
+      case 'CANCELED':
+        return context.appSurfaceSoft;
 
       default:
         return context.appSurfaceSoft;

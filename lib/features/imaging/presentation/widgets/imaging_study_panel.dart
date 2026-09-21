@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_theme_context.dart';
 import '../imaging_ui_models.dart';
 
 // ============================================================
@@ -79,9 +80,9 @@ class _ImagingStudyPanelState extends State<ImagingStudyPanel> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         children: [
@@ -92,13 +93,13 @@ class _ImagingStudyPanelState extends State<ImagingStudyPanel> {
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     '영상 목록',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
                 ),
@@ -109,15 +110,15 @@ class _ImagingStudyPanelState extends State<ImagingStudyPanel> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceSoft,
+                    color: context.appSurfaceSoft,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     '${_filteredStudies.length}건',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 9.5,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
+                      color: context.appTextSecondary,
                     ),
                   ),
                 ),
@@ -142,21 +143,21 @@ class _ImagingStudyPanelState extends State<ImagingStudyPanel> {
                 style: const TextStyle(fontSize: 11),
                 decoration: InputDecoration(
                   hintText: 'Study · 검사번호 · Modality 검색',
-                  hintStyle: const TextStyle(
+                  hintStyle: TextStyle(
                     fontSize: 10,
-                    color: AppColors.textDisabled,
+                    color: context.appTextDisabled,
                   ),
-                  prefixIcon: const Icon(
+                  prefixIcon: Icon(
                     Icons.search_rounded,
                     size: 17,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                   filled: true,
-                  fillColor: AppColors.background,
+                  fillColor: context.appBackground,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 10),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.border),
+                    borderSide: BorderSide(color: context.appBorder),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -169,19 +170,19 @@ class _ImagingStudyPanelState extends State<ImagingStudyPanel> {
 
           const SizedBox(height: 11),
 
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.appBorder),
 
           // ======================================================
           // Study List
           // ======================================================
           Expanded(
             child: _filteredStudies.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       '조건에 맞는 영상이 없습니다.',
                       style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   )
@@ -242,10 +243,10 @@ class _StudyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: selected ? AppColors.surfaceSoft : AppColors.surface,
+        color: selected ? context.appSurfaceSoft : context.appSurface,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: selected ? AppColors.primaryBlue : AppColors.border,
+          color: selected ? AppColors.primaryBlue : context.appBorder,
           width: selected ? 1.4 : 1,
         ),
       ),
@@ -267,7 +268,7 @@ class _StudyCard extends StatelessWidget {
                           width: 31,
                           height: 31,
                           decoration: BoxDecoration(
-                            color: AppColors.background,
+                            color: context.appBackground,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
@@ -275,7 +276,7 @@ class _StudyCard extends StatelessWidget {
                                 ? Icons.play_circle_outline_rounded
                                 : Icons.view_in_ar_outlined,
                             size: 17,
-                            color: AppColors.navy,
+                            color: context.appBrand,
                           ),
                         ),
 
@@ -289,10 +290,10 @@ class _StudyCard extends StatelessWidget {
                                 children: [
                                   Text(
                                     '${study.modality} · Study #${study.id}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 11.5,
                                       fontWeight: FontWeight.w700,
-                                      color: AppColors.textPrimary,
+                                      color: context.appTextPrimary,
                                     ),
                                   ),
 
@@ -324,9 +325,9 @@ class _StudyCard extends StatelessWidget {
 
                               Text(
                                 '검사 #${study.examinationId} · ${_formatDate(study.displayDate)}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 9,
-                                  color: AppColors.textSecondary,
+                                  color: context.appTextSecondary,
                                 ),
                               ),
                             ],
@@ -341,9 +342,9 @@ class _StudyCard extends StatelessWidget {
 
                     Text(
                       'Series ${study.seriesCount} · Instance ${study.instanceCount}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 9.5,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   ],
@@ -356,7 +357,7 @@ class _StudyCard extends StatelessWidget {
           // Selected Study → Series
           // ====================================================
           if (selected && series.isNotEmpty) ...[
-            const Divider(height: 1, color: AppColors.border),
+            Divider(height: 1, color: context.appBorder),
 
             for (final item in series)
               _SeriesItem(
@@ -394,13 +395,13 @@ class _SeriesItem extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.fromLTRB(13, 9, 13, 9),
-        color: selected ? AppColors.background : Colors.transparent,
+        color: selected ? context.appBackground : Colors.transparent,
         child: Row(
           children: [
             Icon(
               Icons.subdirectory_arrow_right_rounded,
               size: 14,
-              color: selected ? AppColors.navy : AppColors.textSecondary,
+              color: selected ? AppColors.navy : context.appTextSecondary,
             ),
 
             const SizedBox(width: 7),
@@ -412,16 +413,16 @@ class _SeriesItem extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 9.5,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: selected ? AppColors.navy : AppColors.textPrimary,
+                  color: selected ? AppColors.navy : context.appTextPrimary,
                 ),
               ),
             ),
 
             Text(
               '${series.instanceCount}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ],
@@ -457,8 +458,8 @@ class _StudyStatusBadge extends StatelessWidget {
         break;
 
       default:
-        foreground = AppColors.textSecondary;
-        background = AppColors.surfaceSoft;
+        foreground = context.appTextSecondary;
+        background = context.appSurfaceSoft;
     }
 
     return Container(

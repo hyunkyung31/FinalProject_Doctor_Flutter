@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_theme_context.dart';
 import '../examination_ui_models.dart';
 
 // ============================================================
@@ -173,9 +174,9 @@ class _ProcedureNursingPanelState extends State<ProcedureNursingPanel> {
         // ======================================================
         Container(
           padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            border: Border(bottom: BorderSide(color: AppColors.border)),
+          decoration: BoxDecoration(
+            color: context.appSurface,
+            border: Border(bottom: BorderSide(color: context.appBorder)),
           ),
           child: Row(
             children: [
@@ -183,13 +184,13 @@ class _ProcedureNursingPanelState extends State<ProcedureNursingPanel> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceSoft,
+                  color: context.appSurfaceSoft,
                   borderRadius: BorderRadius.circular(9),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.medical_information_outlined,
                   size: 18,
-                  color: AppColors.navy,
+                  color: context.appBrand,
                 ),
               ),
 
@@ -199,12 +200,12 @@ class _ProcedureNursingPanelState extends State<ProcedureNursingPanel> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       '시술 간호 기록',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                       ),
                     ),
 
@@ -212,9 +213,9 @@ class _ProcedureNursingPanelState extends State<ProcedureNursingPanel> {
 
                     Text(
                       '${widget.patient.name} · ${widget.type.name}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   ],
@@ -371,14 +372,14 @@ class _ProcedureNursingPanelState extends State<ProcedureNursingPanel> {
                           padding: const EdgeInsets.symmetric(vertical: 20),
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: AppColors.background,
+                            color: context.appBackground,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Text(
+                          child: Text(
                             '아직 기록된 시술 이벤트가 없습니다.',
                             style: TextStyle(
                               fontSize: 10,
-                              color: AppColors.textSecondary,
+                              color: context.appTextSecondary,
                             ),
                           ),
                         )
@@ -412,25 +413,25 @@ class _ProcedureNursingPanelState extends State<ProcedureNursingPanel> {
                     enabled: widget.canEdit && !_isFinalized,
                     minLines: 3,
                     maxLines: 5,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10.5,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                     decoration: InputDecoration(
                       hintText: '시술 중 특이사항이나 간호 내용을 입력해 주세요.',
-                      hintStyle: const TextStyle(
+                      hintStyle: TextStyle(
                         fontSize: 10,
-                        color: AppColors.textDisabled,
+                        color: context.appTextDisabled,
                       ),
                       filled: true,
-                      fillColor: AppColors.background,
+                      fillColor: context.appBackground,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: AppColors.border),
+                        borderSide: BorderSide(color: context.appBorder),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: AppColors.border),
+                        borderSide: BorderSide(color: context.appBorder),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -451,9 +452,9 @@ class _ProcedureNursingPanelState extends State<ProcedureNursingPanel> {
         // ======================================================
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            border: Border(top: BorderSide(color: AppColors.border)),
+          decoration: BoxDecoration(
+            color: context.appSurface,
+            border: Border(top: BorderSide(color: context.appBorder)),
           ),
           child: widget.canEdit
               ? Row(
@@ -463,9 +464,9 @@ class _ProcedureNursingPanelState extends State<ProcedureNursingPanel> {
                         _isFinalized
                             ? '최종 확정된 기록입니다.'
                             : '작성 중인 기록은 임시 저장할 수 있습니다.',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10,
-                          color: AppColors.textSecondary,
+                          color: context.appTextSecondary,
                         ),
                       ),
                     ),
@@ -490,12 +491,12 @@ class _ProcedureNursingPanelState extends State<ProcedureNursingPanel> {
                     ],
                   ],
                 )
-              : const Row(
+              : Row(
                   children: [
                     Icon(
                       Icons.visibility_outlined,
                       size: 15,
-                      color: AppColors.textSecondary,
+                      color: context.appTextSecondary,
                     ),
 
                     SizedBox(width: 7),
@@ -504,7 +505,7 @@ class _ProcedureNursingPanelState extends State<ProcedureNursingPanel> {
                       '현재 역할에서는 시술 간호 기록을 조회할 수 있습니다.',
                       style: TextStyle(
                         fontSize: 10,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   ],
@@ -548,25 +549,25 @@ class _SectionCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 15, color: AppColors.navy),
+              Icon(icon, size: 15, color: context.appBrand),
 
               const SizedBox(width: 7),
 
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: context.appTextPrimary,
                 ),
               ),
             ],
@@ -601,9 +602,9 @@ class _InfoRow extends StatelessWidget {
             width: 70,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9.5,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ),
@@ -611,10 +612,10 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
           ),
@@ -648,10 +649,10 @@ class _MeasurementField extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 9.5,
             fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
+            color: context.appTextSecondary,
           ),
         ),
 
@@ -666,14 +667,14 @@ class _MeasurementField extends StatelessWidget {
             decoration: InputDecoration(
               hintText: hintText,
               filled: true,
-              fillColor: AppColors.background,
+              fillColor: context.appBackground,
               contentPadding: const EdgeInsets.symmetric(horizontal: 10),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(color: context.appBorder),
               ),
             ),
           ),
@@ -706,8 +707,8 @@ class _EventButton extends StatelessWidget {
       onPressed: enabled ? onPressed : null,
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(double.infinity, 38),
-        foregroundColor: AppColors.navy,
-        side: const BorderSide(color: AppColors.border),
+        foregroundColor: context.appBrand,
+        side: BorderSide(color: context.appBorder),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
       icon: Icon(icon, size: 15),
@@ -742,7 +743,7 @@ class _ProcedureEventRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: event.canceled
             ? AppColors.dangerBackground
-            : AppColors.background,
+            : context.appBackground,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -751,10 +752,10 @@ class _ProcedureEventRow extends StatelessWidget {
             width: 46,
             child: Text(
               _formatTime(event.recordedAt),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ),
@@ -768,7 +769,7 @@ class _ProcedureEventRow extends StatelessWidget {
                 decoration: event.canceled ? TextDecoration.lineThrough : null,
                 color: event.canceled
                     ? AppColors.danger
-                    : AppColors.textPrimary,
+                    : context.appTextPrimary,
               ),
             ),
           ),
@@ -787,13 +788,13 @@ class _ProcedureEventRow extends StatelessWidget {
                   PopupMenuItem(value: 'cancel', child: Text('기록 취소')),
                 ];
               },
-              child: const SizedBox(
+              child: SizedBox(
                 width: 28,
                 height: 24,
                 child: Icon(
                   Icons.more_horiz_rounded,
                   size: 17,
-                  color: AppColors.textSecondary,
+                  color: context.appTextSecondary,
                 ),
               ),
             ),

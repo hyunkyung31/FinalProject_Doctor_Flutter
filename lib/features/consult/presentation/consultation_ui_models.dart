@@ -1,8 +1,5 @@
 // ============================================================
 // STEP 1. 협진 상태
-//
-// 실제 Backend status enum은 GET API 500으로 아직 미확인.
-// 아래 값은 UI DEMO 전용 상태입니다.
 // ============================================================
 
 enum ConsultationUiStatus { requested, inProgress, completed, withdrawn }
@@ -23,20 +20,42 @@ extension ConsultationUiStatusExtension on ConsultationUiStatus {
 }
 
 // ============================================================
-// STEP 2. 참여자
-// POST /consultations/{id}/participants/
-// doctor_id, role
+// STEP 2. 받은 협진 / 보낸 협진
+// ============================================================
+
+enum ConsultationUiDirection { received, sent }
+
+extension ConsultationUiDirectionExtension on ConsultationUiDirection {
+  String get label {
+    switch (this) {
+      case ConsultationUiDirection.received:
+        return '받은 협진';
+      case ConsultationUiDirection.sent:
+        return '보낸 협진';
+    }
+  }
+
+  String get shortLabel {
+    switch (this) {
+      case ConsultationUiDirection.received:
+        return '받은';
+      case ConsultationUiDirection.sent:
+        return '보낸';
+    }
+  }
+}
+
+// ============================================================
+// STEP 3. 참여자
 // ============================================================
 
 class ConsultationParticipantUiModel {
   final int id;
   final int doctorId;
-
   final String doctorName;
   final String department;
-
-  // 실제 Backend role enum 미확인
   final String roleLabel;
+  final String? title;
 
   const ConsultationParticipantUiModel({
     required this.id,
@@ -44,23 +63,18 @@ class ConsultationParticipantUiModel {
     required this.doctorName,
     required this.department,
     required this.roleLabel,
+    this.title,
   });
 }
 
 // ============================================================
-// STEP 3. 참조 자료
-// POST /consultations/{id}/references/
-// reference_type, reference_id
-//
-// 실제 reference_type enum은 아직 미확인.
+// STEP 4. 공유 자료
 // ============================================================
 
 class ConsultationReferenceUiModel {
   final int id;
-
   final String referenceTypeLabel;
   final int referenceId;
-
   final String title;
   final String description;
 
@@ -74,21 +88,16 @@ class ConsultationReferenceUiModel {
 }
 
 // ============================================================
-// STEP 4. 협진 의견
-// POST /consultations/{id}/opinions/
-// opinion_text, is_final
+// STEP 5. 협진 의견
 // ============================================================
 
 class ConsultationOpinionUiModel {
   final int id;
-
   final int doctorId;
   final String doctorName;
   final String department;
-
   final String opinionText;
   final bool isFinal;
-
   final DateTime createdAt;
 
   const ConsultationOpinionUiModel({
@@ -103,8 +112,96 @@ class ConsultationOpinionUiModel {
 }
 
 // ============================================================
-// STEP 5. 협진
-// POST /api/consultations/ Request 구조 기반
+// STEP 6. 환자 추적검사 / 임상 요약
+//
+// /api/patients/{patient_id}/follow-up-records/ 응답을
+// Flutter UI에 표시하기 위한 전용 모델입니다.
+// ============================================================
+
+class ConsultationFollowUpUiModel {
+  final String medicalRecordNo;
+  final String stageLabel;
+  final int? encounterId;
+  final DateTime? visitDate;
+  final String? doctorName;
+  final String? doctorDepartment;
+
+  final int? cctaExaminationId;
+  final DateTime? cctaPerformedAt;
+  final String? cctaLocation;
+  final String? cctaResultStatus;
+
+  final List<ConsultationClinicalMetricUiModel> clinicalMetrics;
+
+  const ConsultationFollowUpUiModel({
+    required this.medicalRecordNo,
+    required this.stageLabel,
+    required this.encounterId,
+    required this.visitDate,
+    required this.doctorName,
+    required this.doctorDepartment,
+    required this.cctaExaminationId,
+    required this.cctaPerformedAt,
+    required this.cctaLocation,
+    required this.cctaResultStatus,
+    required this.clinicalMetrics,
+  });
+}
+
+class ConsultationClinicalMetricUiModel {
+  final String label;
+  final String value;
+  final String? unit;
+  final String? flag;
+
+  const ConsultationClinicalMetricUiModel({
+    required this.label,
+    required this.value,
+    this.unit,
+    this.flag,
+  });
+}
+
+// ============================================================
+// STEP 7. AI 결과 요약
+//
+// /api/ai-analyses/{analysis_id}/ 의 results[].result_json 기반
+// - AI score는 협착률/보정 confidence가 아니므로 score로만 표시
+// ============================================================
+
+class ConsultationAiSummaryUiModel {
+  final int analysisId;
+  final int resultId;
+  final String analysisType;
+  final String resultStatus;
+
+  final bool leftSignificantPositive;
+  final double leftSignificantScore;
+
+  final bool rightSignificantPositive;
+  final double rightSignificantScore;
+
+  final int seriesCount;
+  final int frameCount;
+  final String? warning;
+
+  const ConsultationAiSummaryUiModel({
+    required this.analysisId,
+    required this.resultId,
+    required this.analysisType,
+    required this.resultStatus,
+    required this.leftSignificantPositive,
+    required this.leftSignificantScore,
+    required this.rightSignificantPositive,
+    required this.rightSignificantScore,
+    required this.seriesCount,
+    required this.frameCount,
+    this.warning,
+  });
+}
+
+// ============================================================
+// STEP 8. 협진
 // ============================================================
 
 class ConsultationUiModel {
@@ -121,18 +218,22 @@ class ConsultationUiModel {
   final String assignedDoctorName;
   final String assignedDepartment;
 
-  final int encounterId;
+  final int? encounterId;
 
   final String priority;
   final DateTime dueAt;
 
   final ConsultationUiStatus status;
+  final ConsultationUiDirection direction;
 
   final DateTime createdAt;
 
   final List<ConsultationParticipantUiModel> participants;
   final List<ConsultationReferenceUiModel> references;
   final List<ConsultationOpinionUiModel> opinions;
+
+  final ConsultationFollowUpUiModel? followUp;
+  final ConsultationAiSummaryUiModel? aiSummary;
 
   final bool isDemo;
 
@@ -150,14 +251,71 @@ class ConsultationUiModel {
     required this.priority,
     required this.dueAt,
     required this.status,
+    required this.direction,
     required this.createdAt,
     required this.participants,
     required this.references,
     required this.opinions,
+    this.followUp,
+    this.aiSummary,
     this.isDemo = true,
   });
 
-  ConsultationUiModel copyWith({ConsultationUiStatus? status}) {
+  ConsultationParticipantUiModel? get requester {
+    for (final participant in participants) {
+      if (participant.roleLabel.contains('요청')) {
+        return participant;
+      }
+    }
+
+    return participants.isEmpty ? null : participants.first;
+  }
+
+  String get priorityLabel {
+    switch (priority.toUpperCase()) {
+      case 'URGENT':
+        return '긴급';
+      case 'HIGH':
+        return '높음';
+      case 'LOW':
+        return '낮음';
+      default:
+        return '일반';
+    }
+  }
+
+  bool get canAccept {
+    return direction == ConsultationUiDirection.received &&
+        status == ConsultationUiStatus.requested;
+  }
+
+  bool get canWithdraw {
+    return direction == ConsultationUiDirection.sent &&
+        status == ConsultationUiStatus.requested;
+  }
+
+  bool get canComplete {
+    return status == ConsultationUiStatus.inProgress;
+  }
+
+  bool get canWriteOpinion {
+    return status == ConsultationUiStatus.inProgress;
+  }
+
+  bool get isReadOnly {
+    return status == ConsultationUiStatus.completed ||
+        status == ConsultationUiStatus.withdrawn;
+  }
+
+  ConsultationUiModel copyWith({
+    ConsultationUiStatus? status,
+    ConsultationUiDirection? direction,
+    List<ConsultationParticipantUiModel>? participants,
+    List<ConsultationReferenceUiModel>? references,
+    List<ConsultationOpinionUiModel>? opinions,
+    ConsultationFollowUpUiModel? followUp,
+    ConsultationAiSummaryUiModel? aiSummary,
+  }) {
     return ConsultationUiModel(
       id: id,
       patientId: patientId,
@@ -172,10 +330,13 @@ class ConsultationUiModel {
       priority: priority,
       dueAt: dueAt,
       status: status ?? this.status,
+      direction: direction ?? this.direction,
       createdAt: createdAt,
-      participants: participants,
-      references: references,
-      opinions: opinions,
+      participants: participants ?? this.participants,
+      references: references ?? this.references,
+      opinions: opinions ?? this.opinions,
+      followUp: followUp ?? this.followUp,
+      aiSummary: aiSummary ?? this.aiSummary,
       isDemo: isDemo,
     );
   }

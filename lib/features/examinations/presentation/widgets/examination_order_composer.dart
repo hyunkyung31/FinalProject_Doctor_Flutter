@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_theme_context.dart';
 import '../examination_ui_models.dart';
 
 typedef ExaminationOrderCreateCallback =
@@ -323,7 +324,7 @@ class _ExaminationOrderComposerState extends State<ExaminationOrderComposer> {
 
         Container(
           decoration: BoxDecoration(
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.appBorder),
             borderRadius: BorderRadius.circular(8),
           ),
           clipBehavior: Clip.antiAlias,
@@ -399,12 +400,12 @@ class _ExaminationOrderComposerState extends State<ExaminationOrderComposer> {
   Widget build(BuildContext context) {
     if (widget.dialogMode) {
       return AlertDialog(
-        title: const Text(
+        title: Text(
           '검사 오더 추가',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
+            color: context.appTextPrimary,
           ),
         ),
         content: SizedBox(
@@ -425,8 +426,8 @@ class _ExaminationOrderComposerState extends State<ExaminationOrderComposer> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.border),
+        color: context.appSurface,
+        border: Border.all(color: context.appBorder),
         borderRadius: BorderRadius.circular(12),
       ),
       clipBehavior: Clip.antiAlias,
@@ -435,18 +436,18 @@ class _ExaminationOrderComposerState extends State<ExaminationOrderComposer> {
           Container(
             height: 52,
             padding: const EdgeInsets.symmetric(horizontal: 18),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppColors.border)),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: context.appBorder)),
             ),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     '검사 오더 추가',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
                 ),
@@ -468,8 +469,8 @@ class _ExaminationOrderComposerState extends State<ExaminationOrderComposer> {
 
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: AppColors.border)),
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: context.appBorder)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -624,13 +625,13 @@ class _PatientSelectorState extends State<_PatientSelector> {
               child: SizedBox(
                 width: targetSize.width,
                 child: Material(
-                  color: AppColors.surface,
+                  color: overlayContext.appSurface,
                   elevation: 8,
                   borderRadius: BorderRadius.circular(8),
                   clipBehavior: Clip.antiAlias,
                   child: Container(
                     decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.border),
+                      border: Border.all(color: overlayContext.appBorder),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
@@ -658,16 +659,16 @@ class _PatientSelectorState extends State<_PatientSelector> {
                           ),
                         ),
 
-                        const Divider(height: 1, color: AppColors.border),
+                        Divider(height: 1, color: overlayContext.appBorder),
 
                         if (patients.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 20),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 20),
                             child: Text(
                               '검색 결과가 없습니다.',
                               style: TextStyle(
                                 fontSize: 10,
-                                color: AppColors.textSecondary,
+                                color: overlayContext.appTextSecondary,
                               ),
                             ),
                           )
@@ -679,9 +680,9 @@ class _PatientSelectorState extends State<_PatientSelector> {
                               padding: EdgeInsets.zero,
                               itemCount: patients.length,
                               separatorBuilder: (context, index) {
-                                return const Divider(
+                                return Divider(
                                   height: 1,
-                                  color: AppColors.border,
+                                  color: context.appBorder,
                                 );
                               },
                               itemBuilder: (context, index) {
@@ -702,8 +703,8 @@ class _PatientSelectorState extends State<_PatientSelector> {
                                       horizontal: 12,
                                     ),
                                     color: selected
-                                        ? AppColors.surfaceSoft
-                                        : AppColors.surface,
+                                        ? context.appSurfaceSoft
+                                        : context.appSurface,
                                     child: Row(
                                       children: [
                                         SizedBox(
@@ -727,7 +728,7 @@ class _PatientSelectorState extends State<_PatientSelector> {
                                               fontWeight: selected
                                                   ? FontWeight.w700
                                                   : FontWeight.w500,
-                                              color: AppColors.textPrimary,
+                                              color: context.appTextPrimary,
                                             ),
                                           ),
                                         ),
@@ -736,9 +737,9 @@ class _PatientSelectorState extends State<_PatientSelector> {
                                           '${patient.age}세 · '
                                           '${patient.gender} · '
                                           '#${patient.id}',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 9.5,
-                                            color: AppColors.textSecondary,
+                                            color: context.appTextSecondary,
                                           ),
                                         ),
                                       ],
@@ -808,38 +809,38 @@ class _PatientSelectorState extends State<_PatientSelector> {
             constraints: BoxConstraints(minHeight: patient == null ? 44 : 54),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: context.appSurface,
               borderRadius: BorderRadius.circular(7),
               border: Border.all(
-                color: _isOpen ? AppColors.primaryBlue : AppColors.border,
+                color: _isOpen ? AppColors.primaryBlue : context.appBorder,
               ),
             ),
             child: patient == null
                 ? Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.search_rounded,
                         size: 17,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
 
                       const SizedBox(width: 9),
 
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           '환자를 선택하세요',
                           style: TextStyle(
                             fontSize: 10.5,
-                            color: AppColors.textSecondary,
+                            color: context.appTextSecondary,
                           ),
                         ),
                       ),
 
                       if (!widget.locked)
-                        const Icon(
+                        Icon(
                           Icons.keyboard_arrow_down_rounded,
                           size: 18,
-                          color: AppColors.textSecondary,
+                          color: context.appTextSecondary,
                         ),
                     ],
                   )
@@ -853,10 +854,10 @@ class _PatientSelectorState extends State<_PatientSelector> {
                               children: [
                                 Text(
                                   patient.name,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
+                                    color: context.appTextPrimary,
                                   ),
                                 ),
 
@@ -866,9 +867,9 @@ class _PatientSelectorState extends State<_PatientSelector> {
                                   '${patient.age}세 · '
                                   '${patient.gender} · '
                                   '#${patient.id}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 9.5,
-                                    color: AppColors.textSecondary,
+                                    color: context.appTextSecondary,
                                   ),
                                 ),
                               ],
@@ -879,9 +880,9 @@ class _PatientSelectorState extends State<_PatientSelector> {
                             Text(
                               widget.encounterText ?? '연결 가능한 최근 진료 없음',
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 9.5,
-                                color: AppColors.textSecondary,
+                                color: context.appTextSecondary,
                               ),
                             ),
                           ],
@@ -895,7 +896,7 @@ class _PatientSelectorState extends State<_PatientSelector> {
                             ? Icons.lock_outline_rounded
                             : Icons.keyboard_arrow_down_rounded,
                         size: 18,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ],
                   ),
@@ -930,7 +931,7 @@ class _ExaminationTypeRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? AppColors.surfaceSoft : AppColors.surface,
+      color: selected ? context.appSurfaceSoft : context.appSurface,
       child: InkWell(
         onTap: enabled ? onTap : null,
         child: Container(
@@ -943,7 +944,7 @@ class _ExaminationTypeRow extends StatelessWidget {
                 width: 3,
               ),
               bottom: showBottomBorder
-                  ? const BorderSide(color: AppColors.border)
+                  ? BorderSide(color: context.appBorder)
                   : BorderSide.none,
             ),
           ),
@@ -954,7 +955,7 @@ class _ExaminationTypeRow extends StatelessWidget {
                     ? Icons.radio_button_checked_rounded
                     : Icons.radio_button_off_rounded,
                 size: 16,
-                color: selected ? AppColors.navy : AppColors.textSecondary,
+                color: selected ? AppColors.navy : context.appTextSecondary,
               ),
               const SizedBox(width: 9),
               Expanded(
@@ -964,7 +965,7 @@ class _ExaminationTypeRow extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
               ),
@@ -972,9 +973,9 @@ class _ExaminationTypeRow extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   type.code,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 8.5,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -1003,7 +1004,7 @@ class _PrioritySegment extends StatelessWidget {
   Widget build(BuildContext context) {
     final selectedBackground = urgent
         ? const Color(0xFFFFF1F1)
-        : AppColors.surfaceSoft;
+        : context.appSurfaceSoft;
 
     final selectedBorder = urgent ? const Color(0xFFE57373) : AppColors.navy;
 
@@ -1020,10 +1021,10 @@ class _PrioritySegment extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? selectedBackground : AppColors.surface,
+            color: selected ? selectedBackground : context.appSurface,
             borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color: selected ? selectedBorder : AppColors.border,
+              color: selected ? selectedBorder : context.appBorder,
             ),
           ),
           child: Text(
@@ -1031,7 +1032,7 @@ class _PrioritySegment extends StatelessWidget {
             style: TextStyle(
               fontSize: 10.5,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected ? selectedText : AppColors.textSecondary,
+              color: selected ? selectedText : context.appTextSecondary,
             ),
           ),
         ),
@@ -1049,10 +1050,10 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.w700,
-        color: AppColors.textPrimary,
+        color: context.appTextPrimary,
       ),
     );
   }

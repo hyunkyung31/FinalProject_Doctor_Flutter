@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_theme_context.dart';
 import '../examination_ui_models.dart';
 
 // ============================================================
@@ -504,16 +505,16 @@ class _DetailShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
           header,
 
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.appBorder),
 
           Expanded(
             child: SingleChildScrollView(
@@ -556,10 +557,10 @@ class _DetailHeader extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: AppColors.surfaceSoft,
+              color: context.appSurfaceSoft,
               borderRadius: BorderRadius.circular(11),
             ),
-            child: Icon(icon, size: 21, color: AppColors.navy),
+            child: Icon(icon, size: 21, color: context.appBrand),
           ),
 
           const SizedBox(width: 12),
@@ -574,10 +575,10 @@ class _DetailHeader extends StatelessWidget {
                       child: Text(
                         title,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: context.appTextPrimary,
                         ),
                       ),
                     ),
@@ -592,9 +593,9 @@ class _DetailHeader extends StatelessWidget {
 
                 Text(
                   subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10.5,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -629,26 +630,26 @@ class _InfoCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 16, color: AppColors.navy),
+              Icon(icon, size: 16, color: context.appBrand),
 
               const SizedBox(width: 7),
 
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
               ),
@@ -688,9 +689,9 @@ class _InfoRow extends StatelessWidget {
             width: 90,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ),
@@ -700,10 +701,10 @@ class _InfoRow extends StatelessWidget {
                 ? Align(alignment: Alignment.centerLeft, child: valueWidget!)
                 : Text(
                     value ?? '-',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
           ),
@@ -728,47 +729,47 @@ class _MeasurementCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          const Padding(
-            padding: EdgeInsets.all(14),
+          Padding(
+            padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                Icon(Icons.biotech_outlined, size: 16, color: AppColors.navy),
+                Icon(Icons.biotech_outlined, size: 16, color: context.appBrand),
 
-                SizedBox(width: 7),
+                const SizedBox(width: 7),
 
                 Text(
                   '측정 결과',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
               ],
             ),
           ),
 
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.appBorder),
 
           Container(
-            color: AppColors.surfaceSoft,
+            color: context.appSurfaceSoft,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            child: const Row(
+            child: Row(
               children: [
                 Expanded(
                   flex: 3,
-                  child: Text('검사 항목', style: _tableHeaderStyle),
+                  child: Text('검사 항목', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: context.appTextSecondary)),
                 ),
-                Expanded(flex: 2, child: Text('결과', style: _tableHeaderStyle)),
-                Expanded(flex: 2, child: Text('단위', style: _tableHeaderStyle)),
-                Expanded(flex: 2, child: Text('검증', style: _tableHeaderStyle)),
+                Expanded(flex: 2, child: Text('결과', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: context.appTextSecondary))),
+                Expanded(flex: 2, child: Text('단위', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: context.appTextSecondary))),
+                Expanded(flex: 2, child: Text('검증', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: context.appTextSecondary))),
               ],
             ),
           ),
@@ -782,10 +783,10 @@ class _MeasurementCard extends StatelessWidget {
                     flex: 3,
                     child: Text(
                       '임상변수 #${measurements[i].clinicalVariableId}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                       ),
                     ),
                   ),
@@ -793,9 +794,9 @@ class _MeasurementCard extends StatelessWidget {
                     flex: 2,
                     child: Text(
                       measurements[i].displayValue,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                       ),
                     ),
                   ),
@@ -803,9 +804,9 @@ class _MeasurementCard extends StatelessWidget {
                     flex: 2,
                     child: Text(
                       measurements[i].unit ?? '-',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 9.5,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   ),
@@ -827,19 +828,13 @@ class _MeasurementCard extends StatelessWidget {
             ),
 
             if (i != measurements.length - 1)
-              const Divider(height: 1, color: AppColors.border),
+              Divider(height: 1, color: context.appBorder),
           ],
         ],
       ),
     );
   }
 }
-
-const TextStyle _tableHeaderStyle = TextStyle(
-  fontSize: 9.5,
-  fontWeight: FontWeight.w700,
-  color: AppColors.textSecondary,
-);
 
 class _LabResultFooter extends StatelessWidget {
   final bool canEnterLabResult;
@@ -886,9 +881,9 @@ class _LabResultFooter extends StatelessWidget {
           Expanded(
             child: Text(
               isDraft ? '작성 중인 혈액 검사 결과가 있습니다.' : '혈액 검사 결과가 아직 입력되지 않았습니다.',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10.5,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ),
@@ -937,13 +932,13 @@ class _OrderFooter extends StatelessWidget {
     return _ActionContainer(
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Text(
               '검사 오더 관리',
               style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ),
@@ -1000,12 +995,12 @@ class _ProgressFooter extends StatelessWidget {
       return _ActionContainer(
         child: Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
                 '검사 대기 상태입니다.',
                 style: TextStyle(
                   fontSize: 10.5,
-                  color: AppColors.textSecondary,
+                  color: context.appTextSecondary,
                 ),
               ),
             ),
@@ -1025,12 +1020,12 @@ class _ProgressFooter extends StatelessWidget {
       return _ActionContainer(
         child: Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
                 '검사가 진행 중입니다.',
                 style: TextStyle(
                   fontSize: 10.5,
-                  color: AppColors.textSecondary,
+                  color: context.appTextSecondary,
                 ),
               ),
             ),
@@ -1073,10 +1068,10 @@ class _ResultFooter extends StatelessWidget {
     return _ActionContainer(
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Text(
               '결과를 검토한 후 최종 확정할 수 있습니다.',
-              style: TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
+              style: TextStyle(fontSize: 10.5, color: context.appTextSecondary),
             ),
           ),
 
@@ -1105,9 +1100,9 @@ class _ActionContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        border: Border(top: BorderSide(color: context.appBorder)),
       ),
       child: child,
     );
@@ -1124,19 +1119,19 @@ class _ReadOnlyFooter extends StatelessWidget {
     return _ActionContainer(
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.visibility_outlined,
             size: 15,
-            color: AppColors.textSecondary,
+            color: context.appTextSecondary,
           ),
 
           const SizedBox(width: 7),
 
           Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10.5,
-              color: AppColors.textSecondary,
+              color: context.appTextSecondary,
             ),
           ),
         ],
@@ -1156,8 +1151,8 @@ class ExaminationStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _statusColor(status);
-    final background = _statusBackground(status);
+    final color = _statusColor(context, status);
+    final background = _statusBackground(context, status);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
@@ -1280,7 +1275,7 @@ String _statusLabel(String status) {
   }
 }
 
-Color _statusColor(String status) {
+Color _statusColor(BuildContext context, String status) {
   switch (status) {
     case 'COMPLETED':
     case 'FINAL':
@@ -1301,11 +1296,11 @@ Color _statusColor(String status) {
       return AppColors.danger;
 
     default:
-      return AppColors.textSecondary;
+      return context.appTextSecondary;
   }
 }
 
-Color _statusBackground(String status) {
+Color _statusBackground(BuildContext context, String status) {
   switch (status) {
     case 'COMPLETED':
     case 'FINAL':
@@ -1319,13 +1314,13 @@ Color _statusBackground(String status) {
       return AppColors.warningBackground;
 
     case 'IN_PROGRESS':
-      return AppColors.surfaceSoft;
+      return context.appSurfaceSoft;
 
     case 'FAILED':
     case 'CANCELED':
       return AppColors.dangerBackground;
 
     default:
-      return AppColors.surfaceSoft;
+      return context.appSurfaceSoft;
   }
 }

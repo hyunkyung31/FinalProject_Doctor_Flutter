@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_theme_context.dart';
 import '../examination_ui_models.dart';
 import 'examination_detail_panel.dart';
 
@@ -108,14 +109,14 @@ class _ExaminationResultPanelState extends State<ExaminationResultPanel> {
           flex: 4,
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: context.appSurface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: context.appBorder),
             ),
             child: Column(
               children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(14, 14, 14, 10),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
@@ -123,13 +124,13 @@ class _ExaminationResultPanelState extends State<ExaminationResultPanel> {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                       ),
                     ),
                   ),
                 ),
 
-                const Divider(height: 1, color: AppColors.border),
+                Divider(height: 1, color: context.appBorder),
 
                 Expanded(
                   child: ListView.separated(
@@ -151,13 +152,13 @@ class _ExaminationResultPanelState extends State<ExaminationResultPanel> {
                           padding: const EdgeInsets.all(11),
                           decoration: BoxDecoration(
                             color: result.id == _selectedId
-                                ? AppColors.surfaceSoft
-                                : AppColors.surface,
+                                ? context.appSurfaceSoft
+                                : context.appSurface,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
                               color: result.id == _selectedId
                                   ? AppColors.primaryBlue
-                                  : AppColors.border,
+                                  : context.appBorder,
                             ),
                           ),
                           child: Column(
@@ -168,10 +169,10 @@ class _ExaminationResultPanelState extends State<ExaminationResultPanel> {
                                   Expanded(
                                     child: Text(
                                       _patientFor(result).name,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w700,
-                                        color: AppColors.textPrimary,
+                                        color: context.appTextPrimary,
                                       ),
                                     ),
                                   ),
@@ -184,10 +185,10 @@ class _ExaminationResultPanelState extends State<ExaminationResultPanel> {
 
                               Text(
                                 _typeFor(result).name,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
+                                  color: context.appTextPrimary,
                                 ),
                               ),
 
@@ -195,9 +196,9 @@ class _ExaminationResultPanelState extends State<ExaminationResultPanel> {
 
                               Text(
                                 '${result.resultType} · v${result.version}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 9.5,
-                                  color: AppColors.textSecondary,
+                                  color: context.appTextSecondary,
                                 ),
                               ),
                             ],
