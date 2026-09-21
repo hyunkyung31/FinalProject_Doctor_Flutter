@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_theme_context.dart';
 import '../imaging_ui_models.dart';
 
 // ============================================================
@@ -70,9 +71,9 @@ class _ImagingInfoPanelState extends State<ImagingInfoPanel> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         children: [
@@ -110,7 +111,7 @@ class _ImagingInfoPanelState extends State<ImagingInfoPanel> {
             ),
           ),
 
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.appBorder),
 
           Expanded(
             child: SingleChildScrollView(
@@ -200,12 +201,12 @@ class _ImagingInfoPanelState extends State<ImagingInfoPanel> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (isCt) ...[
-          const Text(
+          Text(
             'Viewer Mode',
             style: TextStyle(
               fontSize: 10.5,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: context.appTextPrimary,
             ),
           ),
 
@@ -289,15 +290,15 @@ class _ImagingInfoPanelState extends State<ImagingInfoPanel> {
           width: double.infinity,
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AppColors.surfaceSoft,
+            color: context.appSurfaceSoft,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Text(
+          child: Text(
             'AI Overlay는 현재 UI Preview입니다. 실제 분석 결과 연결은 AI 화면 작업 후 연동합니다.',
             style: TextStyle(
               fontSize: 9,
               height: 1.5,
-              color: AppColors.textSecondary,
+              color: context.appTextSecondary,
             ),
           ),
         ),
@@ -340,7 +341,7 @@ class _InfoTabButton extends StatelessWidget {
           style: TextStyle(
             fontSize: 10.5,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            color: selected ? AppColors.navy : AppColors.textSecondary,
+            color: selected ? AppColors.navy : context.appTextSecondary,
           ),
         ),
       ),
@@ -369,25 +370,25 @@ class _InfoCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(11),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 14, color: AppColors.navy),
+              Icon(icon, size: 14, color: context.appBrand),
 
               const SizedBox(width: 6),
 
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: context.appTextPrimary,
                 ),
               ),
             ],
@@ -422,9 +423,9 @@ class _InfoRow extends StatelessWidget {
             width: 76,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ),
@@ -433,10 +434,10 @@ class _InfoRow extends StatelessWidget {
             child: Text(
               value,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
           ),
@@ -470,9 +471,9 @@ class _OverlaySwitch extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Row(
         children: [
@@ -482,10 +483,10 @@ class _OverlaySwitch extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: context.appTextPrimary,
                   ),
                 ),
 
@@ -493,9 +494,9 @@ class _OverlaySwitch extends StatelessWidget {
 
                 Text(
                   subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 8.5,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ],
@@ -536,7 +537,7 @@ class _ViewerModeButton extends StatelessWidget {
         height: 34,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? AppColors.navy : AppColors.surfaceSoft,
+          color: selected ? AppColors.navy : context.appSurfaceSoft,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
@@ -544,7 +545,7 @@ class _ViewerModeButton extends StatelessWidget {
           style: TextStyle(
             fontSize: 9.5,
             fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : AppColors.textSecondary,
+            color: selected ? Colors.white : context.appTextSecondary,
           ),
         ),
       ),

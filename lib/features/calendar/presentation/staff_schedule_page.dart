@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_shell.dart';
+import '../../../core/auth/auth_provider.dart';
 import '../data/models/staff_schedule.dart';
 import '../data/services/schedule_service.dart';
+import '../data/models/attendance_request.dart';
+import '../data/services/attendance_request_service.dart';
 
 import 'widgets/schedule_form_dialog.dart';
 import 'widgets/schedule_detail_panel.dart';
@@ -38,6 +42,8 @@ class _StaffSchedulePageState extends State<StaffSchedulePage> {
   late DateTime _selectedDate;
 
   ScheduleSection _selectedSection = ScheduleSection.mySchedule;
+
+  int _leaveRequestRefreshVersion = 0;
 
   @override
   void initState() {
@@ -436,8 +442,7 @@ class _StaffSchedulePageState extends State<StaffSchedulePage> {
   }
 
   // ============================================================
-  // 휴무 신청 Dialog
-  // 현재 API 연결 전
+  // 휴무 신청 Dialog + API 등록
   // ============================================================
 
   Future<void> _openLeaveRequestDialog() async {
@@ -453,37 +458,131 @@ class _StaffSchedulePageState extends State<StaffSchedulePage> {
     }
 
     // ==========================================================
-    // TODO:
-    // 휴무 신청 API 연결 예정
+    // Flutter LeaveType → Backend AttendanceType
     // ==========================================================
 
-    debugPrint(
-      '[LEAVE REQUEST] '
-      'type=${result.leaveType}, '
-      'startDate=${result.startDate}, '
-      'endDate=${result.endDate}, '
-      'reason=${result.reason}',
-    );
+    final AttendanceType attendanceType;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('휴무 신청 내용을 확인했습니다. 현재는 API 연결 전입니다.'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    switch (result.leaveType) {
+      case LeaveType.annual:
+        attendanceType = AttendanceType.annualLeave;
+
+      case LeaveType.morningHalf:
+        attendanceType = AttendanceType.halfDayAm;
+
+      case LeaveType.afternoonHalf:
+        attendanceType = AttendanceType.halfDayPm;
+
+      case LeaveType.hourly:
+        attendanceType = AttendanceType.hourlyLeave;
+
+      case LeaveType.sickLeave:
+        attendanceType = AttendanceType.sickLeave;
+
+      case LeaveType.officialLeave:
+        attendanceType = AttendanceType.officialLeave;
+
+      case LeaveType.businessTrip:
+        attendanceType = AttendanceType.businessTrip;
+
+      case LeaveType.education:
+        attendanceType = AttendanceType.education;
+    }
+
+    final isAllDay =
+        result.leaveType != LeaveType.morningHalf &&
+        result.leaveType != LeaveType.afternoonHalf &&
+        result.leaveType != LeaveType.hourly;
+
+    try {
+      final apiClient = context.read<ApiClient>();
+
+      final service = AttendanceRequestService(apiClient: apiClient);
+
+      final createdRequest = await service.createRequest(
+        attendanceType: attendanceType,
+        startDate: result.startDate,
+        endDate: result.endDate,
+        isAllDay: isAllDay,
+        startTime: result.startTime,
+        endTime: result.endTime,
+        memo: null,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      debugPrint(
+        '[LEAVE REQUEST] 등록 성공 '
+        'id=${createdRequest.id}, '
+        'type=${createdRequest.attendanceType.apiValue}, '
+        'status=${createdRequest.status}',
+      );
+
+      // ========================================================
+      // 휴무 신청 목록 새로 조회
+      // LeaveRequestPanel을 새로 생성
+      // ========================================================
+
+      setState(() {
+        _leaveRequestRefreshVersion++;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('휴무 신청이 등록되었습니다.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } on DioException catch (error) {
+      final statusCode = error.response?.statusCode;
+      final responseData = error.response?.data;
+
+      debugPrint(
+        '[LEAVE REQUEST] 등록 실패 '
+        'status=$statusCode, '
+        'data=$responseData',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      String message = '휴무 신청을 등록하지 못했습니다.';
+
+      if (responseData is Map) {
+        final detail = responseData['detail'];
+
+        if (detail != null && detail.toString().trim().isNotEmpty) {
+          message = detail.toString();
+        } else if (responseData.isNotEmpty) {
+          message = responseData.values.first.toString();
+        }
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
+      );
+    }
   }
 
   // ============================================================
   // 휴무 신청 Tab
-  // 반드시 _openLeaveRequestDialog 밖에 있어야 함
   // ============================================================
 
   Widget _buildLeaveRequestTab() {
-    return LeaveRequestPanel(
-      // TODO:
-      // 실제 승인 권한 API 연결 예정
-      canApproveLeave: false,
+    final auth = context.watch<AuthProvider>();
 
+    debugPrint(
+      '[LEAVE PERMISSION] '
+      'user=${auth.userName}, '
+      'isDepartmentHead=${auth.isDepartmentHead}',
+    );
+
+    return LeaveRequestPanel(
+      key: ValueKey(_leaveRequestRefreshVersion),
+      canApproveLeave: auth.isDepartmentHead,
       onCreateRequest: _openLeaveRequestDialog,
     );
   }

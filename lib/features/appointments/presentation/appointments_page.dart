@@ -9,6 +9,8 @@ import '../../patients/data/services/patient_service.dart';
 import '../../patients/presentation/widgets/patient_detail_tabs.dart';
 
 import 'appointment_ui_model.dart';
+import 'appointment_doctor_ui_model.dart';
+import '../data/services/doctor_service.dart';
 import '../data/services/appointment_service.dart';
 import 'widgets/appointment_calendar_panel.dart';
 import 'widgets/appointment_day_timeline_panel.dart';
@@ -32,9 +34,32 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
   // 실제 /api/staff/reservations/ 응답 구조 기준
   // ============================================================
 
+  String? _buildDoctorScopeLabel(String? doctorName, String? departmentName) {
+    final parts = <String>[];
+
+    final name = doctorName?.trim() ?? '';
+    final department = departmentName?.trim() ?? '';
+
+    if (name.isNotEmpty) {
+      parts.add('$name 의사');
+    }
+
+    if (department.isNotEmpty) {
+      parts.add(department);
+    }
+
+    if (parts.isEmpty) {
+      return null;
+    }
+
+    return parts.join(' · ');
+  }
+
   List<AppointmentUiModel> _appointments = [];
 
   Map<int, PatientUiModel> _patientMap = {};
+
+  Map<int, AppointmentDoctorUiModel> _doctorMap = {};
 
   AppointmentStatusFilter _selectedFilter = AppointmentStatusFilter.all;
 
@@ -72,9 +97,33 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
         apiClient: auth.authService.apiClient,
       );
 
-      // 예약과 실제 환자 목록 조회를 동시에 시작
-      final appointmentsFuture = appointmentService.fetchAppointments();
+      final doctorService = DoctorService(
+        apiClient: auth.authService.apiClient,
+      );
+
+      // 간호사 → 전체 예약
+      // 의사 → 본인 doctor_id 예약만
+      final int? doctorId;
+
+      if (auth.isNurse) {
+        doctorId = null;
+      } else {
+        doctorId = auth.currentUser?.doctorId;
+
+        if (doctorId == null) {
+          throw StateError('현재 로그인 의사의 doctor_id를 확인할 수 없습니다.');
+        }
+      }
+
+      final appointmentsFuture = appointmentService.fetchAppointments(
+        doctorId: doctorId,
+      );
+
       final patientsFuture = _fetchAllPatients(patientService);
+
+      final doctorsFuture = auth.isNurse
+          ? doctorService.fetchDoctors()
+          : Future.value(<AppointmentDoctorUiModel>[]);
 
       final appointments = await appointmentsFuture;
 
@@ -84,13 +133,10 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
         return;
       }
 
-      // 예약 데이터는 먼저 화면에 표시
       setState(() {
         _appointments = appointments;
 
-        final filtered = _getFilteredAppointments(_selectedFilter);
-
-        if (filtered.isEmpty) {
+        if (_appointments.isEmpty) {
           _selectedAppointmentId = null;
           return;
         }
@@ -117,10 +163,11 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
 
       debugPrint(
         '[APPOINTMENTS] 예약 목록 조회 완료: '
-        '${appointments.length}건',
+        '${appointments.length}건 '
+        '/ scope=${auth.isNurse ? 'ALL' : 'MY'} '
+        '/ doctorId=${doctorId ?? '-'}',
       );
 
-      // 실제 환자 정보 연결
       try {
         final patients = await patientsFuture;
 
@@ -140,6 +187,32 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
         );
       } catch (error) {
         debugPrint('[APPOINTMENTS] 환자 정보 조회 실패: $error');
+      }
+      if (auth.isNurse) {
+        try {
+          final doctors = await doctorsFuture;
+
+          if (!mounted) {
+            return;
+          }
+
+          setState(() {
+            _doctorMap = {for (final doctor in doctors) doctor.id: doctor};
+          });
+
+          debugPrint(
+            '[APPOINTMENTS] 의료진 정보 연결 완료: '
+            '${doctors.length}명',
+          );
+        } catch (error) {
+          debugPrint('[APPOINTMENTS] 의료진 정보 조회 실패: $error');
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _doctorMap = {};
+          });
+        }
       }
     } catch (error) {
       debugPrint('[APPOINTMENTS] 예약 목록 조회 실패: $error');
@@ -360,30 +433,6 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
     });
   }
 
-  List<AppointmentUiModel> _getFilteredAppointments(
-    AppointmentStatusFilter filter,
-  ) {
-    switch (filter) {
-      case AppointmentStatusFilter.all:
-        return _appointments;
-
-      case AppointmentStatusFilter.requested:
-        return _appointments
-            .where((item) => item.status == AppointmentStatus.requested)
-            .toList();
-
-      case AppointmentStatusFilter.accepted:
-        return _appointments
-            .where((item) => item.status == AppointmentStatus.accepted)
-            .toList();
-
-      case AppointmentStatusFilter.canceled:
-        return _appointments
-            .where((item) => item.status == AppointmentStatus.canceled)
-            .toList();
-    }
-  }
-
   // ============================================================
   // STEP 8. 실제 예약 승인
   // POST /staff/reservations/{id}/accept/
@@ -529,6 +578,17 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
 
     final canManage = auth.hasPermission(AppPermission.appointmentManage);
 
+    final currentUser = auth.currentUser;
+
+    final reservationSummaryTitle = auth.isNurse ? '전체 예약 현황' : '내 예약 현황';
+
+    final doctorScopeLabel = auth.isNurse
+        ? null
+        : _buildDoctorScopeLabel(
+            currentUser?.name,
+            currentUser?.departmentName,
+          );
+
     return AppShell(
       pageTitle: '예약',
       selectedIndex: 2,
@@ -556,6 +616,8 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
                           child: AppointmentCalendarPanel(
                             appointments: _appointments,
                             selectedDate: _selectedDate,
+                            summaryTitle: reservationSummaryTitle,
+                            summarySubtitle: doctorScopeLabel,
                             onDateChanged: _changeDate,
                           ),
                         ),
@@ -570,6 +632,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
                         appointments: _filteredAppointments,
                         selectedDate: _selectedDate,
                         patientMap: _patientMap,
+                        doctorMap: _doctorMap,
                         selectedAppointmentId: _selectedAppointmentId,
                         onAppointmentSelected: _selectAppointment,
                         canManage: canManage,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_theme_context.dart';
 import '../examination_ui_models.dart';
 import 'examination_detail_panel.dart';
 import 'examination_progress_panel.dart';
@@ -379,9 +380,9 @@ class _ExaminationWorklistPanelState extends State<ExaminationWorklistPanel> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -390,13 +391,13 @@ class _ExaminationWorklistPanelState extends State<ExaminationWorklistPanel> {
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     '검사 Worklist',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
                 ),
@@ -438,11 +439,11 @@ class _ExaminationWorklistPanelState extends State<ExaminationWorklistPanel> {
                   hintText: '환자 · 검사명 · 오더번호 검색',
                   prefixIcon: const Icon(Icons.search_rounded, size: 17),
                   filled: true,
-                  fillColor: AppColors.background,
+                  fillColor: context.appBackground,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 10),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.border),
+                    borderSide: BorderSide(color: context.appBorder),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -503,16 +504,16 @@ class _ExaminationWorklistPanelState extends State<ExaminationWorklistPanel> {
 
           const SizedBox(height: 10),
 
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.appBorder),
 
           Expanded(
             child: orders.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       '조건에 맞는 검사가 없습니다.',
                       style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textSecondary,
+                        color: context.appTextSecondary,
                       ),
                     ),
                   )
@@ -520,7 +521,7 @@ class _ExaminationWorklistPanelState extends State<ExaminationWorklistPanel> {
                     padding: const EdgeInsets.all(10),
                     itemCount: orders.length,
                     separatorBuilder: (context, index) =>
-                        const Divider(height: 1, color: AppColors.border),
+                        Divider(height: 1, color: context.appBorder),
                     itemBuilder: (context, index) {
                       final order = orders[index];
                       final type = _typeFor(order);
@@ -659,7 +660,7 @@ class _WorklistItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? AppColors.surfaceSoft : AppColors.surface,
+      color: selected ? context.appSurfaceSoft : context.appSurface,
       child: InkWell(
         onTap: onTap,
         child: Container(
@@ -680,10 +681,10 @@ class _WorklistItem extends StatelessWidget {
                   Expanded(
                     child: Text(
                       patient.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                       ),
                     ),
                   ),
@@ -697,10 +698,10 @@ class _WorklistItem extends StatelessWidget {
                 type.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.textPrimary,
+                  color: context.appTextPrimary,
                 ),
               ),
 
@@ -709,9 +710,9 @@ class _WorklistItem extends StatelessWidget {
               Text(
                 '#${order.id} · '
                 '${formatExamDateTime(order.orderedAt)}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 9.5,
-                  color: AppColors.textSecondary,
+                  color: context.appTextSecondary,
                 ),
               ),
             ],
@@ -841,19 +842,19 @@ class _WorkflowHeader extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 13),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             '검사 Workflow',
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: context.appTextPrimary,
             ),
           ),
 
@@ -871,10 +872,10 @@ class _WorkflowHeader extends StatelessWidget {
                   ),
                 ),
                 if (i != labels.length - 1)
-                  const Icon(
+                  Icon(
                     Icons.chevron_right_rounded,
                     size: 18,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
               ],
             ],
@@ -884,9 +885,9 @@ class _WorkflowHeader extends StatelessWidget {
 
           Text(
             _stateText,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10.5,
-              color: AppColors.textSecondary,
+              color: context.appTextSecondary,
             ),
           ),
         ],
@@ -922,7 +923,7 @@ class _WorkflowStep extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: highlighted ? AppColors.navy : AppColors.surfaceSoft,
+            color: highlighted ? AppColors.navy : context.appSurfaceSoft,
           ),
           child: completed
               ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
@@ -931,7 +932,7 @@ class _WorkflowStep extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w700,
-                    color: active ? Colors.white : AppColors.textSecondary,
+                    color: active ? Colors.white : context.appTextSecondary,
                   ),
                 ),
         ),
@@ -943,7 +944,7 @@ class _WorkflowStep extends StatelessWidget {
           style: TextStyle(
             fontSize: 10.5,
             fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-            color: highlighted ? AppColors.navy : AppColors.textSecondary,
+            color: highlighted ? AppColors.navy : context.appTextSecondary,
           ),
         ),
       ],
@@ -968,16 +969,16 @@ class _FilterDropdown<T> extends StatelessWidget {
       height: 36,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
+        color: context.appSurfaceSoft,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<T>(
           value: value,
           isExpanded: true,
           iconSize: 18,
-          style: const TextStyle(fontSize: 10, color: AppColors.textPrimary),
+          style: TextStyle(fontSize: 10, color: context.appTextPrimary),
           items: items.entries
               .map(
                 (entry) => DropdownMenuItem<T>(
@@ -1004,14 +1005,14 @@ class _EmptyWorkflow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
-      child: const Center(
+      child: Center(
         child: Text(
           '검사를 선택해 주세요.',
-          style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 11.5, color: context.appTextSecondary),
         ),
       ),
     );

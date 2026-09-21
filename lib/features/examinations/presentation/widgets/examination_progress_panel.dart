@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_theme_context.dart';
 import '../examination_ui_models.dart';
 import 'examination_detail_panel.dart';
 import 'procedure_nursing_panel.dart';
@@ -121,14 +122,14 @@ class _ExaminationProgressPanelState extends State<ExaminationProgressPanel> {
           flex: 4,
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: context.appSurface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: context.appBorder),
             ),
             child: Column(
               children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(14, 14, 14, 10),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
@@ -136,7 +137,7 @@ class _ExaminationProgressPanelState extends State<ExaminationProgressPanel> {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                       ),
                     ),
                   ),
@@ -191,7 +192,7 @@ class _ExaminationProgressPanelState extends State<ExaminationProgressPanel> {
 
                 const SizedBox(height: 10),
 
-                const Divider(height: 1, color: AppColors.border),
+                Divider(height: 1, color: context.appBorder),
 
                 Expanded(
                   child: ListView.separated(
@@ -278,10 +279,10 @@ class _ProgressItem extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(11),
         decoration: BoxDecoration(
-          color: selected ? AppColors.surfaceSoft : AppColors.surface,
+          color: selected ? context.appSurfaceSoft : context.appSurface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: selected ? AppColors.primaryBlue : AppColors.border,
+            color: selected ? AppColors.primaryBlue : context.appBorder,
             width: selected ? 1.4 : 1,
           ),
         ),
@@ -293,10 +294,10 @@ class _ProgressItem extends StatelessWidget {
                 Expanded(
                   child: Text(
                     patient.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: context.appTextPrimary,
                     ),
                   ),
                 ),
@@ -311,10 +312,10 @@ class _ProgressItem extends StatelessWidget {
               type.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
             ),
 
@@ -322,9 +323,9 @@ class _ProgressItem extends StatelessWidget {
 
             Text(
               examination.location,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9.5,
-                color: AppColors.textSecondary,
+                color: context.appTextSecondary,
               ),
             ),
           ],
@@ -358,7 +359,7 @@ class _StatusFilter extends StatelessWidget {
           height: 30,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? AppColors.navy : AppColors.surfaceSoft,
+            color: selected ? AppColors.navy : context.appSurfaceSoft,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
@@ -366,7 +367,7 @@ class _StatusFilter extends StatelessWidget {
             style: TextStyle(
               fontSize: 9.5,
               fontWeight: FontWeight.w600,
-              color: selected ? Colors.white : AppColors.textSecondary,
+              color: selected ? Colors.white : context.appTextSecondary,
             ),
           ),
         ),
@@ -496,9 +497,9 @@ class _ProgressDetailAreaState extends State<_ProgressDetailArea> {
         Container(
           height: 42,
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: context.appSurface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.appBorder),
           ),
           child: Row(
             children: [
@@ -535,9 +536,9 @@ class _ProgressDetailAreaState extends State<_ProgressDetailArea> {
           child: _showNursingChart
               ? Container(
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: context.appSurface,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: context.appBorder),
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: ProcedureNursingPanel(
@@ -597,7 +598,7 @@ class _DetailTabButton extends StatelessWidget {
           style: TextStyle(
             fontSize: 10.5,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            color: selected ? AppColors.navy : AppColors.textSecondary,
+            color: selected ? AppColors.navy : context.appTextSecondary,
           ),
         ),
       ),

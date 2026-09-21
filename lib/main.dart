@@ -1,33 +1,22 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'dart:async';
 
 import 'core/auth/auth_provider.dart';
 import 'core/auth/auth_service.dart';
+import 'core/auth/auth_storage.dart';
+import 'core/security/app_security_guard.dart';
 import 'core/network/api_client.dart';
 import 'core/network/api_endpoints.dart';
 import 'core/router/app_router.dart';
+import 'core/router/app_routes.dart';
 import 'core/settings/text_scale_provider.dart';
 import 'core/settings/theme_mode_provider.dart';
 import 'core/theme/app_theme.dart';
-
 import 'features/calendar/data/services/schedule_service.dart';
-
-// ============================================================
-// STEP 0. 의료진 일정 사전 로딩
-// ============================================================
-
-Future<void> _prefetchSchedules(ApiClient apiClient) async {
-  try {
-    await ScheduleService(apiClient: apiClient).fetchSchedules();
-
-    debugPrint('[SCHEDULE PREFETCH] 완료');
-  } catch (error) {
-    // 일정 Prefetch 실패가 앱 실행 자체를 막으면 안 됨
-    debugPrint('[SCHEDULE PREFETCH] 실패: $error');
-  }
-}
+import 'features/notifications/providers/notification_provider.dart';
 
 // ============================================================
 // STEP 1. Application Entry Point
@@ -65,35 +54,69 @@ Future<void> main() async {
 
   final authService = AuthService(apiClient: apiClient);
 
-  final authProvider = AuthProvider(authService: authService);
+  final authStorage = AuthStorage();
+
+  final authProvider = AuthProvider(
+    authService: authService,
+    authStorage: authStorage,
+  );
 
   // ==========================================================
-  // 개발용 로그인 정보
+  // API 401 세션 만료 처리 연결
   // ==========================================================
 
-  const username = String.fromEnvironment('STAFF_USERNAME');
+  apiClient.configureAuthHandling(
+    onRefreshAccessToken: authProvider.refreshAccessToken,
 
-  const password = String.fromEnvironment('STAFF_PASSWORD');
+    onSessionExpired: () async {
+      debugPrint('[AUTH] 세션 만료 - 로그인 화면으로 이동');
 
+      await authProvider.logout();
+
+      appRouter.go(AppRoutes.login);
+    },
+  );
   // ==========================================================
-  // 의료진 로그인
+  // 저장된 Refresh Token을 이용한 자동 로그인
+  //
+  // 생체 로그인이 활성화된 경우:
+  // → 자동 복원하지 않음
+  // → 로그인 화면에서 생체인증 성공 후 세션 복원
   // ==========================================================
 
-  if (username.isNotEmpty && password.isNotEmpty) {
-    final success = await authProvider.login(
-      username: username,
-      password: password,
-    );
+  final preferences = await SharedPreferences.getInstance();
 
-    debugPrint(success ? '[AUTH] 의료진 로그인 성공' : '[AUTH] 의료진 로그인 실패');
+  final biometricLoginEnabled =
+      preferences.getBool('settings_biometric_login') ?? false;
 
-    if (success) {
-      unawaited(_prefetchSchedules(apiClient));
-    }
+  final bool sessionRestored;
+
+  if (biometricLoginEnabled) {
+    sessionRestored = false;
+
+    debugPrint('[AUTH] 생체 로그인 사용 중 - 로그인 화면에서 인증 대기');
   } else {
+    sessionRestored = await authProvider.restoreSession();
+
     debugPrint(
-      '[AUTH] STAFF_USERNAME / STAFF_PASSWORD가 '
-      '설정되지 않았습니다.',
+      sessionRestored ? '[AUTH] 저장된 세션 복원 성공' : '[AUTH] 저장된 세션 없음 또는 복원 실패',
+    );
+  }
+
+  // ==========================================================
+  // 자동 로그인 성공 후 의료진 일정 사전 로딩
+  // ==========================================================
+
+  if (sessionRestored) {
+    unawaited(
+      ScheduleService(apiClient: apiClient)
+          .fetchSchedules()
+          .then((_) {
+            debugPrint('[SCHEDULE PREFETCH] 자동 로그인 후 완료');
+          })
+          .catchError((Object error) {
+            debugPrint('[SCHEDULE PREFETCH] 자동 로그인 후 실패: $error');
+          }),
     );
   }
 
@@ -136,28 +159,25 @@ class CardioAiApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // ======================================================
         // API Client
-        // ======================================================
         Provider<ApiClient>.value(value: apiClient),
 
-        // ======================================================
         // Auth Provider
-        // ======================================================
         ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
 
-        // ======================================================
         // Text Scale Provider
-        // ======================================================
         ChangeNotifierProvider<TextScaleProvider>.value(
           value: textScaleProvider,
         ),
 
-        // ======================================================
         // Theme Mode Provider
-        // ======================================================
         ChangeNotifierProvider<ThemeModeProvider>.value(
           value: themeModeProvider,
+        ),
+
+        // Notification Provider
+        ChangeNotifierProvider<NotificationProvider>(
+          create: (_) => NotificationProvider(apiClient: apiClient),
         ),
       ],
 
@@ -166,7 +186,7 @@ class CardioAiApp extends StatelessWidget {
           return MaterialApp.router(
             debugShowCheckedModeBanner: false,
 
-            title: 'CardioAI',
+            title: 'DUGN',
 
             // ==================================================
             // Theme
@@ -183,33 +203,41 @@ class CardioAiApp extends StatelessWidget {
             routerConfig: appRouter,
 
             // ==================================================
-            // 앱 전체 Text Scale 적용
+            // 앱 전체 Builder
+            // - Text Scale
+            // - 자동 잠금
+            // - 백그라운드 화면 보호
             // ==================================================
             builder: (context, child) {
               if (child == null) {
                 return const SizedBox.shrink();
               }
 
-              // ================================================
-              // 시스템 글자 크기 사용
-              // ================================================
-
-              if (textScale.useSystemScale) {
-                return child;
-              }
-
-              final mediaQuery = MediaQuery.of(context);
+              Widget content = child;
 
               // ================================================
               // 앱 설정 글자 크기 사용
+              // 시스템 글자 크기 사용 시에는 그대로 유지
               // ================================================
 
-              return MediaQuery(
-                data: mediaQuery.copyWith(
-                  textScaler: TextScaler.linear(textScale.scale ?? 1.0),
-                ),
-                child: child,
-              );
+              if (!textScale.useSystemScale) {
+                final mediaQuery = MediaQuery.of(context);
+
+                content = MediaQuery(
+                  data: mediaQuery.copyWith(
+                    textScaler: TextScaler.linear(textScale.scale ?? 1.0),
+                  ),
+                  child: content,
+                );
+              }
+
+              // ================================================
+              // 앱 보안 Guard
+              // - 자동 잠금
+              // - 백그라운드 화면 보호
+              // ================================================
+
+              return AppSecurityGuard(child: content);
             },
           );
         },

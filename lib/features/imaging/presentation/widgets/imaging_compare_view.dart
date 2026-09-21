@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_theme_context.dart';
 import '../imaging_ui_models.dart';
 
 // ============================================================
@@ -36,13 +36,13 @@ class _ImagingCompareViewState extends State<ImagingCompareView> {
         // ======================================================
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
                 '이전 · 현재 영상 비교',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: context.appTextPrimary,
                 ),
               ),
             ),
@@ -50,11 +50,11 @@ class _ImagingCompareViewState extends State<ImagingCompareView> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   '동기화 이동',
                   style: TextStyle(
                     fontSize: 10,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
 

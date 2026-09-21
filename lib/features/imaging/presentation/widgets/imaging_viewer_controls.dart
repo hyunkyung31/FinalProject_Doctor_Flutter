@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_theme_context.dart';
 
 // ============================================================
 // STEP 1. Viewer Controls
@@ -67,9 +68,9 @@ class ImagingViewerControls extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         children: [
@@ -121,10 +122,10 @@ class ImagingViewerControls extends StatelessWidget {
                   isXa
                       ? 'Frame ${currentIndex + 1} / $totalCount'
                       : 'Slice ${currentIndex + 1} / $totalCount',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
+                    color: context.appTextSecondary,
                   ),
                 ),
               ),
@@ -162,15 +163,15 @@ class ImagingViewerControls extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceSoft,
+                      color: context.appSurfaceSoft,
                       borderRadius: BorderRadius.circular(7),
                     ),
                     child: Text(
                       '${playbackSpeed}x',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                        color: context.appTextPrimary,
                       ),
                     ),
                   ),
@@ -186,12 +187,12 @@ class ImagingViewerControls extends StatelessWidget {
           // ======================================================
           Row(
             children: [
-              const Text(
+              Text(
                 'Viewer',
                 style: TextStyle(
                   fontSize: 9.5,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textSecondary,
+                  color: context.appTextSecondary,
                 ),
               ),
 
@@ -273,13 +274,13 @@ class _ControlButton extends StatelessWidget {
           width: 30,
           height: 30,
           decoration: BoxDecoration(
-            color: selected ? AppColors.navy : AppColors.surfaceSoft,
+            color: selected ? AppColors.navy : context.appSurfaceSoft,
             borderRadius: BorderRadius.circular(7),
           ),
           child: Icon(
             icon,
             size: 16,
-            color: selected ? Colors.white : AppColors.navy,
+            color: selected ? Colors.white : context.appBrand,
           ),
         ),
       ),
@@ -315,7 +316,7 @@ class _ToolButton extends StatelessWidget {
         height: 29,
         padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.navy : AppColors.surfaceSoft,
+          color: selected ? AppColors.navy : context.appSurfaceSoft,
           borderRadius: BorderRadius.circular(7),
         ),
         child: Row(
@@ -324,7 +325,7 @@ class _ToolButton extends StatelessWidget {
             Icon(
               icon,
               size: 13,
-              color: selected ? Colors.white : AppColors.navy,
+              color: selected ? Colors.white : context.appBrand,
             ),
 
             const SizedBox(width: 4),
@@ -334,7 +335,7 @@ class _ToolButton extends StatelessWidget {
               style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : AppColors.textPrimary,
+                color: selected ? Colors.white : context.appTextPrimary,
               ),
             ),
           ],

@@ -7,12 +7,16 @@ import '../appointment_ui_model.dart';
 class AppointmentCalendarPanel extends StatefulWidget {
   final List<AppointmentUiModel> appointments;
   final DateTime selectedDate;
+  final String summaryTitle;
+  final String? summarySubtitle;
   final ValueChanged<DateTime> onDateChanged;
 
   const AppointmentCalendarPanel({
     super.key,
     required this.appointments,
     required this.selectedDate,
+    required this.summaryTitle,
+    this.summarySubtitle,
     required this.onDateChanged,
   });
 
@@ -314,11 +318,11 @@ class _AppointmentCalendarPanelState extends State<AppointmentCalendarPanel> {
                   children: [
                     Expanded(
                       child: Text(
-                        '전체 예약 현황',
-                        style: TextStyle(
+                        widget.summaryTitle,
+                        style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: context.appTextPrimary,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ),
@@ -334,6 +338,19 @@ class _AppointmentCalendarPanelState extends State<AppointmentCalendarPanel> {
                 ),
 
                 const SizedBox(height: 10),
+
+                if (widget.summarySubtitle != null) ...[
+                  const SizedBox(height: 4),
+
+                  Text(
+                    widget.summarySubtitle!,
+                    style: const TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
 
                 Row(
                   children: [
@@ -440,10 +457,7 @@ class _SummaryCount extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 8.5,
-              color: context.appTextSecondary,
-            ),
+            style: TextStyle(fontSize: 8.5, color: context.appTextSecondary),
           ),
         ],
       ),

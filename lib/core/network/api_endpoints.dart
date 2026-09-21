@@ -22,6 +22,10 @@ class ApiEndpoints {
 
   static const String staffMe = '/auth/staff/me/';
 
+  static const String doctors = '/doctors/';
+
+  static const String staffReauthenticate = '/staff/reauthenticate/';
+
   // ==========================================================
   // Staff Reservations
   // ==========================================================
@@ -44,6 +48,39 @@ class ApiEndpoints {
 
   static const String staffSchedules = '/staff/schedules/';
 
+  static const String staffAdminSchedules = '/staff/admin/schedules/';
+
+  // ==========================================================
+  // Staff Attendance Requests
+  // ==========================================================
+
+  static const String staffAttendanceRequests = '/staff/attendance-requests/';
+
+  static String staffAttendanceRequestCancel(int requestId) {
+    return '/staff/attendance-requests/$requestId/cancel/';
+  }
+
+  // ==========================================================
+  // Staff Admin Attendance Requests
+  // ==========================================================
+
+  static const String staffAdminAttendanceRequests =
+      '/staff/admin/attendance-requests/';
+
+  static String staffAdminAttendanceRequestApprove(int requestId) {
+    return '/staff/admin/attendance-requests/$requestId/approve/';
+  }
+
+  static String staffAdminAttendanceRequestReject(int requestId) {
+    return '/staff/admin/attendance-requests/$requestId/reject/';
+  }
+
+  // ==========================================================
+  // Leave Balance
+  // ==========================================================
+
+  static const String staffLeaveBalance = '/staff/leave-balance/';
+
   // ==========================================================
   // Todo
   // ==========================================================
@@ -63,6 +100,20 @@ class ApiEndpoints {
   static const String notifications = '/notifications/';
 
   static const String notificationUnreadCount = '/notifications/unread-count/';
+
+  static String notificationRead(int recipientId) {
+    return '/notifications/$recipientId/read/';
+  }
+
+  static const String notificationReadAll = '/notifications/read-all/';
+
+  static const String notificationPreferences = '/notification-preferences/';
+
+  static const String pushSubscriptions = '/push-subscriptions/';
+
+  static String pushSubscriptionDetail(int subscriptionId) {
+    return '/push-subscriptions/$subscriptionId/';
+  }
 
   // ==========================================================
   // Patients
@@ -107,4 +158,44 @@ class ApiEndpoints {
   // ============================================================
 
   static const String encounters = '/encounters/';
+
+  // ============================================================
+  // AI
+  // ============================================================
+
+  static const String aiAnalyses = '/ai-analyses/';
+
+  // ==========================================================
+  // AI Analysis
+  // ==========================================================
+
+  static String aiAnalysisDetail(int analysisId) {
+    return '/ai-analyses/$analysisId/';
+  }
+
+  static String aiAnalysisInputs(int analysisId) {
+    return '/ai-analyses/$analysisId/inputs/';
+  }
+
+  static String aiAnalysisJobs(int analysisId) {
+    return '/ai-analyses/$analysisId/jobs/';
+  }
+
+  // ==========================================================
+  // Consultations
+  // ==========================================================
+
+  static const String consultations = '/consultations/';
+
+  // ==========================================================
+  // Dashboard
+  // ==========================================================
+
+  static const String dashboardSummary = '/dashboard/summary/';
+
+  static const String dashboardAiStatus = '/dashboard/ai-status/';
+
+  static const String dashboardConsultations = '/dashboard/consultations/';
+
+  static const String dashboardWorkItems = '/dashboard/work-items/';
 }

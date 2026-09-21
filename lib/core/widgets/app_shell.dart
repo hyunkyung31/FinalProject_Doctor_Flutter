@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../settings/text_scale_provider.dart';
 import '../settings/theme_mode_provider.dart';
 import '../../features/chat/presentation/chat_top_bar_button.dart';
+import '../../features/notifications/presentation/widgets/notification_top_bar_button.dart';
 
 // ============================================================
 // STEP 1. Navigation Item Model
@@ -25,6 +26,12 @@ class AppNavigationItem {
     required this.permission,
   });
 }
+
+// ============================================================
+// STEP 1-1. Account Menu Action
+// ============================================================
+
+enum _AccountMenuAction { profile, settings, logout }
 
 // ============================================================
 // STEP 2. 공통 태블릿 Shell
@@ -305,8 +312,8 @@ class _AppLogo extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadius.medium),
           ),
           child: const Icon(
-            Icons.favorite_rounded,
-            color: Colors.white,
+            Icons.monitor_heart_rounded,
+            color: Color(0xFFE63E43),
             size: 24,
           ),
         ),
@@ -314,11 +321,12 @@ class _AppLogo extends StatelessWidget {
         const SizedBox(height: 7),
 
         const Text(
-          'CardioAI',
+          'DUGN',
           style: TextStyle(
             color: Colors.white,
             fontSize: 11,
             fontWeight: FontWeight.w700,
+            letterSpacing: 0.8,
           ),
         ),
       ],
@@ -468,6 +476,10 @@ class _BottomButton extends StatelessWidget {
 // STEP 8. Top Bar
 // ============================================================
 
+// ============================================================
+// STEP 8. Top Bar
+// ============================================================
+
 class _TopBar extends StatelessWidget {
   final String pageTitle;
 
@@ -534,24 +546,8 @@ class _TopBar extends StatelessWidget {
 
           const SizedBox(width: 6),
 
-          // ====================================================
           // Notification
-          // ====================================================
-          IconButton(
-            tooltip: '알림',
-            onPressed: () {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('알림 화면은 추후 연결합니다.')));
-            },
-            icon: Badge(
-              label: const Text('5'),
-              child: Icon(
-                Icons.notifications_none_rounded,
-                color: colorScheme.primary,
-              ),
-            ),
-          ),
+          const NotificationTopBarButton(),
 
           const SizedBox(width: 2),
 
@@ -566,44 +562,60 @@ class _TopBar extends StatelessWidget {
           // ====================================================
           // Profile
           // ====================================================
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: colorScheme.surfaceContainerHighest,
-            child: Icon(
-              Icons.person_outline_rounded,
-              color: colorScheme.primary,
-              size: 21,
+          _AccountMenu(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: colorScheme.surfaceContainerHighest,
+                    child: Icon(
+                      Icons.person_outline_rounded,
+                      color: colorScheme.primary,
+                      size: 21,
+                    ),
+                  ),
+
+                  const SizedBox(width: 10),
+
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${auth.userName} ${auth.displayPosition}',
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+
+                      const SizedBox(height: 2),
+
+                      Text(
+                        auth.department,
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(width: 4),
+
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 17,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
             ),
           ),
-
-          const SizedBox(width: 10),
-
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${auth.userName} ${auth.position}',
-                style: TextStyle(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
-              ),
-
-              const SizedBox(height: 2),
-
-              Text(
-                auth.department,
-                style: TextStyle(
-                  color: colorScheme.onSurfaceVariant,
-                  fontSize: 11,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(width: 5),
         ],
       ),
     );
@@ -623,7 +635,6 @@ class _TopBar extends StatelessWidget {
     return '${now.year}.$month.$day';
   }
 }
-
 // ============================================================
 // STEP 9. 글자 크기 순환 버튼
 // ============================================================
@@ -750,15 +761,13 @@ class _ProfileButton extends StatelessWidget {
         ? userName.substring(0, 1).toUpperCase()
         : '의';
 
-    return Tooltip(
-      message: '${auth.userName} ${auth.position}\n${auth.department}',
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadius.round),
-          onTap: () {
-            context.go(AppRoutes.settings);
-          },
+    return _AccountMenu(
+      child: Tooltip(
+        message:
+            '${auth.userName} ${auth.displayPosition}\n'
+            '${auth.department}',
+        child: Material(
+          color: Colors.transparent,
           child: Container(
             width: 42,
             height: 42,
@@ -779,6 +788,191 @@ class _ProfileButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+// ============================================================
+// STEP 1-2. 공통 로그아웃 처리
+// ============================================================
+
+Future<void> _handleLogout(BuildContext context) async {
+  final result = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: const Text('로그아웃'),
+        content: const Text('현재 계정에서 로그아웃하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop(false);
+            },
+            child: const Text('취소'),
+          ),
+
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop(true);
+            },
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            child: const Text('로그아웃'),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (result != true || !context.mounted) {
+    return;
+  }
+
+  await context.read<AuthProvider>().logout();
+
+  if (!context.mounted) {
+    return;
+  }
+
+  context.go(AppRoutes.login);
+}
+
+// ============================================================
+// STEP 12. Common Account Menu
+// ============================================================
+
+class _AccountMenu extends StatelessWidget {
+  final Widget child;
+
+  const _AccountMenu({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+
+    final theme = Theme.of(context);
+
+    return PopupMenuButton<_AccountMenuAction>(
+      tooltip: '계정 메뉴',
+      offset: const Offset(0, 46),
+      color: theme.colorScheme.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+
+      onSelected: (action) async {
+        switch (action) {
+          case _AccountMenuAction.profile:
+            context.go(AppRoutes.profile);
+            break;
+
+          case _AccountMenuAction.settings:
+            context.go(AppRoutes.settings);
+            break;
+
+          case _AccountMenuAction.logout:
+            await _handleLogout(context);
+            break;
+        }
+      },
+
+      itemBuilder: (context) {
+        return [
+          // ====================================================
+          // 현재 계정
+          // ====================================================
+          PopupMenuItem<_AccountMenuAction>(
+            enabled: false,
+            child: SizedBox(
+              width: 190,
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                    child: Icon(
+                      Icons.person_outline_rounded,
+                      size: 20,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+
+                  const SizedBox(width: 10),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${auth.userName} ${auth.displayPosition}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+
+                        const SizedBox(height: 2),
+
+                        Text(
+                          auth.department,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const PopupMenuDivider(),
+
+          // ====================================================
+          // 설정
+          // ====================================================
+          const PopupMenuItem<_AccountMenuAction>(
+            value: _AccountMenuAction.settings,
+            child: Row(
+              children: [
+                Icon(Icons.settings_outlined, size: 18),
+                SizedBox(width: 10),
+                Text('설정'),
+              ],
+            ),
+          ),
+
+          // 내 프로필
+          const PopupMenuItem<_AccountMenuAction>(
+            value: _AccountMenuAction.profile,
+            child: Row(
+              children: [
+                Icon(Icons.person_outline_rounded, size: 18),
+                SizedBox(width: 10),
+                Text('내 프로필'),
+              ],
+            ),
+          ),
+
+          // ====================================================
+          // 로그아웃
+          // ====================================================
+          const PopupMenuItem<_AccountMenuAction>(
+            value: _AccountMenuAction.logout,
+            child: Row(
+              children: [
+                Icon(Icons.logout_rounded, size: 18, color: AppColors.danger),
+                SizedBox(width: 10),
+                Text('로그아웃', style: TextStyle(color: AppColors.danger)),
+              ],
+            ),
+          ),
+        ];
+      },
+
+      child: child,
     );
   }
 }
