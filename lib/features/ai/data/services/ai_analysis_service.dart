@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/network/api_client.dart';
@@ -574,7 +575,9 @@ class AiAnalysisService {
   // Patient       → Age / Sex
   // Vital Signs   → BP / PR / Weight / Length / BMI
   // MedicalHistory→ 일부 병력 양성값
-  // Exam Result   → 혈액검사 / EF-TTE / Region RWMA
+  // Exam Result   → 현재 검사의 EF-TTE / Region RWMA
+  // Integrated    → clinical_feature_snapshot, lab_measurements
+  // Follow-up     → 환자 LAB 검사 측정값 (혈액검사 우선)
   // ==========================================================
 
   Future<ClinicalInputPrefillRecord> fetchClinicalInputPrefill(
@@ -781,7 +784,22 @@ class AiAnalysisService {
     }
 
     // ----------------------------------------------------------
-    // 4. 최신 Examination Result
+    // 4. 환자 통합 데이터
+    // clinical_feature_snapshot은 비어 있는 입력만 채운다.
+    // lab_measurements는 혈액검사 칸을 덮어쓴다.
+    // ----------------------------------------------------------
+
+    final integratedLabs = await _loadIntegratedLabMeasurements(
+      values,
+      patient.patientId,
+    );
+
+    if (integratedLabs.isNotEmpty) {
+      _applyLabMeasurements(values, integratedLabs, overwrite: true);
+    }
+
+    // ----------------------------------------------------------
+    // 5. 현재 검사 Result
     // ----------------------------------------------------------
 
     final examinationResultId = await fetchLatestExaminationResultId(
@@ -835,13 +853,25 @@ class AiAnalysisService {
       }
     }
 
+    // ----------------------------------------------------------
+    // 6. 환자 LAB 검사
+    // 선택한 검사가 혈액검사면 그 결과를, 아니면 가장 최근 LAB 결과를 사용한다.
+    // ----------------------------------------------------------
+
+    await _applyFollowUpLabResults(
+      values,
+      patientId: patient.patientId,
+      preferredExaminationId: examinationId,
+    );
+
     debugPrint(
       '[AI CLINICAL PREFILL] '
       'examinationId=$examinationId, '
       'patientId=${patient.patientId}, '
       'encounterId=${patient.encounterId}, '
       'resultId=$examinationResultId, '
-      'filled=${values.length}/54',
+      'filled=${values.length}/54, '
+      'labs=${_countFilledFields(values, _bloodClinicalFields)}/${_bloodClinicalFields.length}',
     );
 
     debugPrint('[AI CLINICAL PREFILL DATA] $values', wrapWidth: 1024);
@@ -851,6 +881,134 @@ class AiAnalysisService {
       examinationResultId: examinationResultId,
       values: values,
     );
+  }
+
+  Future<List<Map<String, dynamic>>> _loadIntegratedLabMeasurements(
+    Map<String, dynamic> values,
+    int patientId,
+  ) async {
+    try {
+      final response = await apiClient.dio.get(
+        ApiEndpoints.patientIntegratedData(patientId),
+      );
+
+      if (response.data is! Map) {
+        return [];
+      }
+
+      final data = Map<String, dynamic>.from(response.data as Map);
+      final snapshot = data['clinical_feature_snapshot'];
+
+      if (snapshot is Map) {
+        _applyClinicalSnapshot(values, Map<String, dynamic>.from(snapshot));
+      }
+
+      final labs = data['lab_measurements'];
+
+      if (labs is! List) {
+        return [];
+      }
+
+      return labs
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+    } on DioException catch (error) {
+      debugPrint(
+        '[AI CLINICAL INTEGRATED] patientId=$patientId, error=$error',
+      );
+
+      return [];
+    }
+  }
+
+  Future<void> _applyFollowUpLabResults(
+    Map<String, dynamic> values, {
+    required int patientId,
+    required int preferredExaminationId,
+  }) async {
+    try {
+      final response = await apiClient.dio.get(
+        '/patients/$patientId/follow-up-records/',
+      );
+
+      if (response.data is! Map) {
+        return;
+      }
+
+      final data = Map<String, dynamic>.from(response.data as Map);
+      final owner = data['patient'];
+
+      if (owner is Map) {
+        final ownerId = _toInt(owner['id']);
+
+        if (ownerId > 0 && ownerId != patientId) {
+          debugPrint(
+            '[AI CLINICAL LAB] follow-up patient mismatch '
+            'requested=$patientId, owner=$ownerId',
+          );
+
+          return;
+        }
+      }
+
+      final exams = _labExaminationsFromFollowUp(data);
+
+      if (exams.isEmpty) {
+        debugPrint('[AI CLINICAL LAB] patientId=$patientId, labExams=0');
+        return;
+      }
+
+      exams.sort(
+        (a, b) => _examinationSortDate(a).compareTo(_examinationSortDate(b)),
+      );
+
+      Map<String, dynamic>? selected;
+
+      for (final exam in exams) {
+        if (_toInt(exam['examination_id']) == preferredExaminationId) {
+          selected = exam;
+          break;
+        }
+      }
+
+      selected ??= exams.last;
+
+      var measurements = _measurementMaps(selected['result']);
+
+      if (measurements.isEmpty) {
+        final result = selected['result'];
+        final embeddedResultId = result is Map ? _toInt(result['id']) : 0;
+        final examinationId = _toInt(selected['examination_id']);
+        final resultId = embeddedResultId > 0
+            ? embeddedResultId
+            : await fetchLatestExaminationResultId(examinationId);
+
+        if (resultId != null && resultId > 0) {
+          final detailResponse = await apiClient.dio.get(
+            '/examinations/results/$resultId/',
+          );
+
+          if (detailResponse.data is Map) {
+            measurements = _measurementMaps(detailResponse.data);
+          }
+        }
+      }
+
+      _applyLabMeasurements(values, measurements, overwrite: true);
+      _applyClinicalInputJson(values, selected['clinical_input_json']);
+
+      debugPrint(
+        '[AI CLINICAL LAB] '
+        'patientId=$patientId, '
+        'labExams=${exams.length}, '
+        'selectedExam=${_toInt(selected['examination_id'])}, '
+        'measurements=${measurements.length}, '
+        'labs=${_countFilledFields(values, _bloodClinicalFields)}',
+      );
+    } catch (error) {
+      debugPrint('[AI CLINICAL LAB] patientId=$patientId, error=$error');
+    }
   }
 
   // ==========================================================
@@ -1015,6 +1173,378 @@ bool _containsAny(String source, List<String> keywords) {
 
 String _normalizeClinicalName(String value) {
   return value.trim().toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+}
+
+const _clinicalInputFieldNames = {
+  'Age',
+  'Weight',
+  'Length',
+  'Sex',
+  'BMI',
+  'DM',
+  'HTN',
+  'Current Smoker',
+  'EX-Smoker',
+  'FH',
+  'Obesity',
+  'CRF',
+  'CVA',
+  'Airway disease',
+  'Thyroid Disease',
+  'CHF',
+  'DLP',
+  'BP',
+  'PR',
+  'Edema',
+  'Weak Peripheral Pulse',
+  'Lung rales',
+  'Systolic Murmur',
+  'Diastolic Murmur',
+  'Typical Chest Pain',
+  'Dyspnea',
+  'Function Class',
+  'Atypical',
+  'Nonanginal',
+  'LowTH Ang',
+  'Q Wave',
+  'St Elevation',
+  'St Depression',
+  'Tinversion',
+  'LVH',
+  'Poor R Progression',
+  'BBB',
+  'EF-TTE',
+  'Region RWMA',
+  'VHD',
+  'FBS',
+  'CR',
+  'TG',
+  'LDL',
+  'HDL',
+  'BUN',
+  'ESR',
+  'HB',
+  'K',
+  'Na',
+  'WBC',
+  'Lymph',
+  'Neut',
+  'PLT',
+};
+
+const _clinicalStringFields = {'BBB', 'VHD'};
+
+const _bloodClinicalFields = {
+  'FBS',
+  'CR',
+  'TG',
+  'LDL',
+  'HDL',
+  'BUN',
+  'ESR',
+  'HB',
+  'K',
+  'Na',
+  'WBC',
+  'Lymph',
+  'Neut',
+  'PLT',
+};
+
+const _decimalLabFields = {'CR', 'HDL', 'HB', 'K'};
+
+void _applyClinicalSnapshot(
+  Map<String, dynamic> values,
+  Map<String, dynamic> snapshot,
+) {
+  for (final entry in snapshot.entries) {
+    if (values.containsKey(entry.key)) {
+      continue;
+    }
+
+    final coerced = _coerceClinicalValue(entry.key, entry.value);
+
+    if (coerced != null) {
+      values[entry.key] = coerced;
+    }
+  }
+}
+
+void _applyClinicalInputJson(Map<String, dynamic> values, dynamic raw) {
+  if (raw is! Map) {
+    return;
+  }
+
+  final input = Map<String, dynamic>.from(raw);
+
+  for (final entry in input.entries) {
+    final coerced = _coerceClinicalValue(entry.key, entry.value);
+
+    if (coerced != null) {
+      values[entry.key] = coerced;
+    }
+  }
+}
+
+dynamic _coerceClinicalValue(String key, dynamic raw) {
+  if (!_clinicalInputFieldNames.contains(key) || raw == null) {
+    return null;
+  }
+
+  if (raw is String && raw.trim().isEmpty) {
+    return null;
+  }
+
+  if (_clinicalStringFields.contains(key)) {
+    return raw.toString();
+  }
+
+  final number = _toNullableDouble(raw);
+
+  if (number == null) {
+    return null;
+  }
+
+  if (number == number.roundToDouble()) {
+    return number.toInt();
+  }
+
+  return number;
+}
+
+void _applyLabMeasurements(
+  Map<String, dynamic> values,
+  List<Map<String, dynamic>> measurements, {
+  required bool overwrite,
+}) {
+  final ranked = <String, ({dynamic value, DateTime at})>{};
+
+  for (final measurement in measurements) {
+    final field = _labFieldForMeasurement(measurement);
+
+    if (field == null) {
+      continue;
+    }
+
+    final numeric = _toNullableDouble(
+      measurement['value_numeric'] ?? measurement['value'],
+    );
+
+    if (numeric == null) {
+      continue;
+    }
+
+    final measuredAt =
+        DateTime.tryParse(measurement['measured_at']?.toString() ?? '') ??
+        DateTime.fromMillisecondsSinceEpoch(0);
+
+    final current = ranked[field];
+
+    if (current != null && measuredAt.isBefore(current.at)) {
+      continue;
+    }
+
+    ranked[field] = (value: _roundedLabValue(field, numeric), at: measuredAt);
+  }
+
+  for (final entry in ranked.entries) {
+    if (!overwrite && values.containsKey(entry.key)) {
+      continue;
+    }
+
+    values[entry.key] = entry.value.value;
+  }
+}
+
+String? _labFieldForMeasurement(Map<String, dynamic> measurement) {
+  final exact = _labModelName(measurement['code']?.toString() ?? '');
+
+  if (exact != null) {
+    return exact;
+  }
+
+  final keys = [
+    measurement['code'],
+    measurement['name'],
+    measurement['display_name'],
+  ].whereType<Object>().map((item) {
+    return _normalizeClinicalName(item.toString());
+  }).where((item) => item.isNotEmpty).toSet();
+
+  final field = _clinicalFieldForMeasurement(keys);
+
+  if (field != null &&
+      (_bloodClinicalFields.contains(field) || field == 'EF-TTE')) {
+    return field;
+  }
+
+  return null;
+}
+
+String? _labModelName(String code) {
+  switch (code.trim().toUpperCase()) {
+    case 'FBS':
+      return 'FBS';
+    case 'CR':
+    case 'CREATININE':
+    case 'CREA':
+      return 'CR';
+    case 'TG':
+    case 'TRIGLYCERIDE':
+    case 'TRIGLYCERIDES':
+      return 'TG';
+    case 'LDL':
+      return 'LDL';
+    case 'HDL':
+      return 'HDL';
+    case 'BUN':
+      return 'BUN';
+    case 'ESR':
+      return 'ESR';
+    case 'HB':
+    case 'HGB':
+    case 'HEMOGLOBIN':
+      return 'HB';
+    case 'K':
+    case 'POTASSIUM':
+      return 'K';
+    case 'NA':
+    case 'SODIUM':
+      return 'Na';
+    case 'WBC':
+      return 'WBC';
+    case 'LYMPH':
+    case 'LYMPHOCYTE':
+    case 'LYMPHOCYTES':
+      return 'Lymph';
+    case 'NEUT':
+    case 'NEUTROPHIL':
+    case 'NEUTROPHILS':
+      return 'Neut';
+    case 'PLT':
+    case 'PLATELET':
+    case 'PLATELETS':
+      return 'PLT';
+    case 'EF-TTE':
+    case 'EFTTE':
+    case 'EJECTION FRACTION':
+      return 'EF-TTE';
+    default:
+      return null;
+  }
+}
+
+dynamic _roundedLabValue(String field, double value) {
+  if (_decimalLabFields.contains(field) || field == 'EF-TTE') {
+    return value;
+  }
+
+  return value.round();
+}
+
+int _countFilledFields(Map<String, dynamic> values, Set<String> fields) {
+  var count = 0;
+
+  for (final field in fields) {
+    if (values.containsKey(field)) {
+      count += 1;
+    }
+  }
+
+  return count;
+}
+
+List<Map<String, dynamic>> _labExaminationsFromFollowUp(
+  Map<String, dynamic> data,
+) {
+  final visits = data['visits'];
+
+  if (visits is! List) {
+    return [];
+  }
+
+  final exams = <Map<String, dynamic>>[];
+
+  for (final visit in visits) {
+    if (visit is! Map) {
+      continue;
+    }
+
+    final rawExams = visit['examinations'];
+
+    if (rawExams is! List) {
+      continue;
+    }
+
+    for (final raw in rawExams) {
+      if (raw is! Map) {
+        continue;
+      }
+
+      final exam = Map<String, dynamic>.from(raw);
+
+      if (_isLabExamination(exam)) {
+        exams.add(exam);
+      }
+    }
+  }
+
+  return exams;
+}
+
+bool _isLabExamination(Map<String, dynamic> exam) {
+  final type = exam['examination_type'];
+  var code = '';
+  var category = '';
+
+  if (type is Map) {
+    code = type['code']?.toString() ?? '';
+    category = type['category']?.toString() ?? '';
+  }
+
+  final codeText = [
+    code,
+    exam['examination_type_code'],
+    exam['code'],
+  ].whereType<Object>().join(' ').toUpperCase();
+
+  category = category.toUpperCase();
+
+  final result = exam['result'];
+  final resultType = result is Map
+      ? result['result_type']?.toString().toUpperCase() ?? ''
+      : '';
+
+  return category.contains('LAB') ||
+      codeText.contains('LAB') ||
+      codeText.contains('BLOOD') ||
+      resultType == 'LAB_PANEL';
+}
+
+DateTime _examinationSortDate(Map<String, dynamic> exam) {
+  final result = exam['result'];
+  final collectedAt = result is Map ? result['collected_at'] : null;
+
+  return DateTime.tryParse(exam['performed_at']?.toString() ?? '') ??
+      DateTime.tryParse(collectedAt?.toString() ?? '') ??
+      DateTime.fromMillisecondsSinceEpoch(0);
+}
+
+List<Map<String, dynamic>> _measurementMaps(dynamic result) {
+  if (result is! Map) {
+    return [];
+  }
+
+  final raw = result['measurements'];
+
+  if (raw is! List) {
+    return [];
+  }
+
+  return raw
+      .whereType<Map>()
+      .map((item) => Map<String, dynamic>.from(item))
+      .toList();
 }
 
 String? _clinicalFieldForMeasurement(Set<String> keys) {
