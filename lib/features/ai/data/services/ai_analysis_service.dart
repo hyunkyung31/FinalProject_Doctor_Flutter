@@ -335,6 +335,47 @@ class ClinicalInputPrefillRecord {
 }
 
 // ============================================================
+// Clinical LAB reference / previous comparison
+// ============================================================
+
+class ClinicalLabReferenceRecord {
+  final String? unit;
+  final double? referenceMin;
+  final double? referenceMax;
+  final String? referenceText;
+  final String? abnormalFlag;
+  final String? validationStatus;
+
+  const ClinicalLabReferenceRecord({
+    required this.unit,
+    required this.referenceMin,
+    required this.referenceMax,
+    required this.referenceText,
+    required this.abnormalFlag,
+    required this.validationStatus,
+  });
+}
+
+class ClinicalLabComparisonRecord {
+  final int currentLabExaminationId;
+  final DateTime? currentLabExaminedAt;
+  final Map<String, ClinicalLabReferenceRecord> currentReferences;
+
+  final int? previousLabExaminationId;
+  final DateTime? previousLabExaminedAt;
+  final Map<String, dynamic> previousValues;
+
+  const ClinicalLabComparisonRecord({
+    required this.currentLabExaminationId,
+    required this.currentLabExaminedAt,
+    required this.currentReferences,
+    required this.previousLabExaminationId,
+    required this.previousLabExaminedAt,
+    required this.previousValues,
+  });
+}
+
+// ============================================================
 // STEP 6. AI Analysis Service
 // ============================================================
 
@@ -344,17 +385,17 @@ class AiAnalysisService {
   const AiAnalysisService({required this.apiClient});
 
   // ==========================================================
-  // AI 분석 요청
-  // POST /api/examinations/{examinationId}/ai-analyses/
+  // Clinical AI 분석 생성
+  // POST /examinations/{examinationId}/ai-analyses/
   // ==========================================================
 
-  Future<void> createAnalysis({
+  Future<int> createAnalysis({
     required int examinationId,
     required String analysisType,
     required List<int> modelVersionIds,
     required List<Map<String, dynamic>> inputRefs,
   }) async {
-    await apiClient.dio.post(
+    final response = await apiClient.dio.post(
       '/examinations/$examinationId/ai-analyses/',
       data: {
         'analysis_type': analysisType,
@@ -362,6 +403,41 @@ class AiAnalysisService {
         'input_refs': inputRefs,
       },
     );
+
+    debugPrint(
+      '[AI ANALYSIS CREATE RESPONSE] '
+      'status=${response.statusCode}, '
+      'data=${response.data}',
+      wrapWidth: 1024,
+    );
+
+    if (response.data is! Map) {
+      throw const FormatException('AI 분석 생성 응답 형식이 올바르지 않습니다.');
+    }
+
+    final data = Map<String, dynamic>.from(response.data as Map);
+
+    final analysisData = data['analysis'];
+
+    if (analysisData is! Map) {
+      throw const FormatException('AI 분석 생성 응답에 analysis 정보가 없습니다.');
+    }
+
+    final analysis = Map<String, dynamic>.from(analysisData);
+
+    final analysisId = _toInt(analysis['id']);
+
+    if (analysisId <= 0) {
+      throw const FormatException('생성된 AI Analysis ID가 올바르지 않습니다.');
+    }
+
+    debugPrint(
+      '[AI ANALYSIS CREATE] '
+      'analysisId=$analysisId, '
+      'status=${analysis['status']}',
+    );
+
+    return analysisId;
   }
 
   // ==========================================================
@@ -883,6 +959,191 @@ class AiAnalysisService {
     );
   }
 
+  // ==========================================================
+  // Clinical LAB 현재 참고범위 + 이전 검사 비교
+  // Follow-up LAB 선택 기준은 Clinical prefill과 동일하게 유지
+  // ==========================================================
+
+  Future<ClinicalLabComparisonRecord?> fetchClinicalLabComparison({
+    required int patientId,
+    required int preferredExaminationId,
+  }) async {
+    try {
+      final response = await apiClient.dio.get(
+        '/patients/$patientId/follow-up-records/',
+      );
+
+      if (response.data is! Map) {
+        return null;
+      }
+
+      final data = Map<String, dynamic>.from(response.data as Map);
+      final owner = data['patient'];
+
+      if (owner is Map) {
+        final ownerId = _toInt(owner['id']);
+
+        if (ownerId > 0 && ownerId != patientId) {
+          debugPrint(
+            '[AI CLINICAL LAB COMPARE] patient mismatch '
+            'requested=$patientId, owner=$ownerId',
+          );
+          return null;
+        }
+      }
+
+      final exams = _labExaminationsFromFollowUp(data);
+
+      if (exams.isEmpty) {
+        debugPrint(
+          '[AI CLINICAL LAB COMPARE] patientId=$patientId, labExams=0',
+        );
+        return null;
+      }
+
+      exams.sort(
+        (a, b) => _examinationSortDate(a).compareTo(_examinationSortDate(b)),
+      );
+
+      var currentIndex = exams.indexWhere(
+        (exam) => _toInt(exam['examination_id']) == preferredExaminationId,
+      );
+
+      if (currentIndex < 0) {
+        currentIndex = exams.length - 1;
+      }
+
+      final currentExam = exams[currentIndex];
+      final currentMeasurements = await _loadLabMeasurementsFromFollowUpExam(
+        currentExam,
+      );
+
+      final currentReferences = _labReferencesFromMeasurements(
+        currentMeasurements,
+      );
+
+      Map<String, dynamic> previousValues = const {};
+      int? previousExaminationId;
+      DateTime? previousExaminedAt;
+
+      for (var index = currentIndex - 1; index >= 0; index--) {
+        final previousExam = exams[index];
+        final previousMeasurements = await _loadLabMeasurementsFromFollowUpExam(
+          previousExam,
+        );
+
+        final candidateValues = <String, dynamic>{};
+
+        _applyLabMeasurements(
+          candidateValues,
+          previousMeasurements,
+          overwrite: true,
+        );
+        _applyClinicalInputJson(
+          candidateValues,
+          previousExam['clinical_input_json'],
+        );
+
+        final filtered = <String, dynamic>{};
+
+        for (final field in _bloodClinicalFields) {
+          final value = candidateValues[field];
+
+          if (value != null) {
+            filtered[field] = value;
+          }
+        }
+
+        if (filtered.isEmpty) {
+          continue;
+        }
+
+        previousValues = filtered;
+        previousExaminationId = _toInt(previousExam['examination_id']);
+
+        final sortDate = _examinationSortDate(previousExam);
+        previousExaminedAt = sortDate.millisecondsSinceEpoch == 0
+            ? null
+            : sortDate;
+
+        break;
+      }
+
+      final currentDate = _examinationSortDate(currentExam);
+      final currentExaminationId = _toInt(currentExam['examination_id']);
+
+      debugPrint(
+        '[AI CLINICAL LAB COMPARE] '
+        'patientId=$patientId, '
+        'currentLabExam=$currentExaminationId, '
+        'previousLabExam=$previousExaminationId, '
+        'references=${currentReferences.length}, '
+        'previousValues=${previousValues.length}',
+      );
+
+      return ClinicalLabComparisonRecord(
+        currentLabExaminationId: currentExaminationId,
+        currentLabExaminedAt: currentDate.millisecondsSinceEpoch == 0
+            ? null
+            : currentDate,
+        currentReferences: currentReferences,
+        previousLabExaminationId: previousExaminationId,
+        previousLabExaminedAt: previousExaminedAt,
+        previousValues: previousValues,
+      );
+    } catch (error) {
+      debugPrint(
+        '[AI CLINICAL LAB COMPARE] '
+        'patientId=$patientId, error=$error',
+      );
+      return null;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _loadLabMeasurementsFromFollowUpExam(
+    Map<String, dynamic> exam,
+  ) async {
+    final embeddedMeasurements = _measurementMaps(exam['result']);
+
+    final hasReferenceMetadata = embeddedMeasurements.any((measurement) {
+      return measurement['reference_min'] != null ||
+          measurement['reference_max'] != null ||
+          measurement['reference_text'] != null ||
+          measurement['abnormal_flag'] != null ||
+          measurement['unit'] != null;
+    });
+
+    if (embeddedMeasurements.isNotEmpty && hasReferenceMetadata) {
+      return embeddedMeasurements;
+    }
+
+    final result = exam['result'];
+    final embeddedResultId = result is Map ? _toInt(result['id']) : 0;
+    final examinationId = _toInt(exam['examination_id']);
+
+    final resultId = embeddedResultId > 0
+        ? embeddedResultId
+        : await fetchLatestExaminationResultId(examinationId);
+
+    if (resultId == null || resultId <= 0) {
+      return embeddedMeasurements;
+    }
+
+    final detailResponse = await apiClient.dio.get(
+      '/examinations/results/$resultId/',
+    );
+
+    if (detailResponse.data is! Map) {
+      return embeddedMeasurements;
+    }
+
+    final detailedMeasurements = _measurementMaps(detailResponse.data);
+
+    return detailedMeasurements.isNotEmpty
+        ? detailedMeasurements
+        : embeddedMeasurements;
+  }
+
   Future<List<Map<String, dynamic>>> _loadIntegratedLabMeasurements(
     Map<String, dynamic> values,
     int patientId,
@@ -914,9 +1175,7 @@ class AiAnalysisService {
           .map((item) => Map<String, dynamic>.from(item))
           .toList();
     } on DioException catch (error) {
-      debugPrint(
-        '[AI CLINICAL INTEGRATED] patientId=$patientId, error=$error',
-      );
+      debugPrint('[AI CLINICAL INTEGRATED] patientId=$patientId, error=$error');
 
       return [];
     }
@@ -1356,6 +1615,42 @@ void _applyLabMeasurements(
   }
 }
 
+Map<String, ClinicalLabReferenceRecord> _labReferencesFromMeasurements(
+  List<Map<String, dynamic>> measurements,
+) {
+  final ranked =
+      <String, ({ClinicalLabReferenceRecord reference, DateTime measuredAt})>{};
+
+  for (final measurement in measurements) {
+    final field = _labFieldForMeasurement(measurement);
+
+    if (field == null || !_bloodClinicalFields.contains(field)) {
+      continue;
+    }
+
+    final measuredAt =
+        DateTime.tryParse(measurement['measured_at']?.toString() ?? '') ??
+        DateTime.fromMillisecondsSinceEpoch(0);
+
+    final reference = ClinicalLabReferenceRecord(
+      unit: measurement['unit']?.toString(),
+      referenceMin: _toNullableDouble(measurement['reference_min']),
+      referenceMax: _toNullableDouble(measurement['reference_max']),
+      referenceText: measurement['reference_text']?.toString(),
+      abnormalFlag: measurement['abnormal_flag']?.toString(),
+      validationStatus: measurement['validation_status']?.toString(),
+    );
+
+    final current = ranked[field];
+
+    if (current == null || measuredAt.isAfter(current.measuredAt)) {
+      ranked[field] = (reference: reference, measuredAt: measuredAt);
+    }
+  }
+
+  return {for (final entry in ranked.entries) entry.key: entry.value.reference};
+}
+
 String? _labFieldForMeasurement(Map<String, dynamic> measurement) {
   final exact = _labModelName(measurement['code']?.toString() ?? '');
 
@@ -1363,13 +1658,14 @@ String? _labFieldForMeasurement(Map<String, dynamic> measurement) {
     return exact;
   }
 
-  final keys = [
-    measurement['code'],
-    measurement['name'],
-    measurement['display_name'],
-  ].whereType<Object>().map((item) {
-    return _normalizeClinicalName(item.toString());
-  }).where((item) => item.isNotEmpty).toSet();
+  final keys =
+      [measurement['code'], measurement['name'], measurement['display_name']]
+          .whereType<Object>()
+          .map((item) {
+            return _normalizeClinicalName(item.toString());
+          })
+          .where((item) => item.isNotEmpty)
+          .toSet();
 
   final field = _clinicalFieldForMeasurement(keys);
 

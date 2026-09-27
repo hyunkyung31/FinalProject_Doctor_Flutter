@@ -4,6 +4,10 @@ import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../ai_ui_models.dart';
 
+import '../../../imaging/presentation/ccta_viewer_page.dart';
+import '../report/ai_medical_report.dart';
+import 'clinical_ai_result_view.dart';
+
 // ============================================================
 // STEP 1. AI Result Panel
 // ============================================================
@@ -12,7 +16,7 @@ class AiResultPanel extends StatefulWidget {
   final List<AiResultUiModel> results;
 
   final ValueChanged<AiResultUiModel> onResultSelected;
-  final VoidCallback onOpenImaging;
+  final ValueChanged<AiResultUiModel> onOpenImaging;
 
   const AiResultPanel({
     super.key,
@@ -80,44 +84,7 @@ class _AiResultPanelState extends State<AiResultPanel> {
                           ),
                         ),
                       ),
-
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.warningBackground,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          'UI DEMO',
-                          style: TextStyle(
-                            fontSize: 8,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.warning,
-                          ),
-                        ),
-                      ),
                     ],
-                  ),
-                ),
-
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.symmetric(horizontal: 14),
-                  padding: const EdgeInsets.all(9),
-                  decoration: BoxDecoration(
-                    color: context.appSurfaceSoft,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '실제 AI Result가 아직 생성되지 않아 결과값은 UI 시연 데이터입니다.',
-                    style: TextStyle(
-                      fontSize: 9,
-                      height: 1.4,
-                      color: context.appTextSecondary,
-                    ),
                   ),
                 ),
 
@@ -253,6 +220,27 @@ class _ResultListItem extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 9.5, color: context.appTextSecondary),
             ),
+
+            if (result.executedAt != null) ...[
+              const SizedBox(height: 5),
+              Row(
+                children: [
+                  Icon(
+                    Icons.schedule_rounded,
+                    size: 12,
+                    color: context.appTextSecondary,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '실행 ${_formatResultDateTime(result.executedAt!)}',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: context.appTextSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -267,7 +255,7 @@ class _ResultListItem extends StatelessWidget {
 class _ResultDetail extends StatelessWidget {
   final AiResultUiModel result;
 
-  final VoidCallback onOpenImaging;
+  final ValueChanged<AiResultUiModel> onOpenImaging;
 
   const _ResultDetail({required this.result, required this.onOpenImaging});
 
@@ -322,7 +310,7 @@ class _ResultDetail extends StatelessWidget {
                             ),
                           ),
 
-                          if (result.isDemo) ...[const _DemoBadge()],
+                          if (result.isDemo) const _DemoBadge(),
                         ],
                       ),
 
@@ -339,14 +327,55 @@ class _ResultDetail extends StatelessWidget {
                   ),
                 ),
 
-                OutlinedButton.icon(
-                  onPressed: onOpenImaging,
-                  icon: const Icon(Icons.image_outlined, size: 15),
-                  label: const Text(
-                    '영상에서 보기',
-                    style: TextStyle(fontSize: 10.5),
+                if (result.analysisType == 'ANGIO_2D')
+                  OutlinedButton.icon(
+                    onPressed: () => onOpenImaging(result),
+                    icon: const Icon(Icons.image_outlined, size: 15),
+                    label: const Text(
+                      '영상에서 보기',
+                      style: TextStyle(fontSize: 10.5),
+                    ),
                   ),
-                ),
+
+                if (result.analysisType == 'CCTA') ...[
+                  OutlinedButton.icon(
+                    onPressed: result.id < 1
+                        ? null
+                        : () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => CctaViewerPage(result: result),
+                              ),
+                            );
+                          },
+                    icon: const Icon(Icons.view_in_ar_outlined, size: 15),
+                    label: const Text(
+                      'CCTA Viewer',
+                      style: TextStyle(fontSize: 10.5),
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                ],
+
+                if (result.analysisType == 'CCTA' ||
+                    result.analysisType == 'CLINICAL')
+                  FilledButton.icon(
+                    onPressed: result.id < 1
+                        ? null
+                        : () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) =>
+                                    AiMedicalReportPage(result: result),
+                              ),
+                            );
+                          },
+                    icon: const Icon(Icons.description_outlined, size: 15),
+                    label: const Text(
+                      '결과보고서',
+                      style: TextStyle(fontSize: 10.5),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -367,9 +396,8 @@ class _ResultDetail extends StatelessWidget {
 
                   if (result.analysisType == 'CCTA') _buildCctaResult(context),
 
-                  if (result.analysisType == 'CLINICAL' ||
-                      result.analysisType == 'LAB')
-                    _buildLabResult(context),
+                  if (result.analysisType == 'CLINICAL')
+                    ClinicalAiResultView(result: result),
                 ],
               ),
             ),
@@ -462,6 +490,65 @@ class _ResultDetail extends StatelessWidget {
       }
     }
 
+    Widget buildDetectionSummary() {
+      return _SectionCard(
+        title: '협착 탐지 요약',
+        icon: Icons.fact_check_outlined,
+        child: Column(
+          children: [
+            for (final side in sides)
+              Builder(
+                builder: (context) {
+                  final sideName = side['side']?.toString() ?? '-';
+                  final anyStenosis = toMap(side['any_stenosis']);
+                  final significantStenosis = toMap(
+                    side['significant_stenosis'],
+                  );
+                  final anyPrediction = toInt(anyStenosis['prediction']);
+                  final significantPrediction = toInt(
+                    significantStenosis['prediction'],
+                  );
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            sideLabel(sideName),
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: context.appTextPrimary,
+                            ),
+                          ),
+                        ),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          alignment: WrapAlignment.end,
+                          children: [
+                            _AngioStatusBadge(
+                              label: '협착 ${predictionLabel(anyPrediction)}',
+                              detected: anyPrediction == 1,
+                            ),
+                            _AngioStatusBadge(
+                              label:
+                                  '유의 협착 ${predictionLabel(significantPrediction)}',
+                              detected: significantPrediction == 1,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      );
+    }
+
     return Column(
       children: [
         if (sides.isEmpty)
@@ -473,6 +560,11 @@ class _ResultDetail extends StatelessWidget {
               style: TextStyle(fontSize: 10.5, color: context.appTextSecondary),
             ),
           ),
+
+        if (sides.isNotEmpty) ...[
+          buildDetectionSummary(),
+          const SizedBox(height: 12),
+        ],
 
         for (final side in sides) ...[
           Builder(
@@ -509,7 +601,7 @@ class _ResultDetail extends StatelessWidget {
                 child: Column(
                   children: [
                     _ValueRow(
-                      label: '전체 협착 AI score',
+                      label: '협착 탐지 AI score',
                       value: anyScore == null
                           ? '-'
                           : anyScore.toStringAsFixed(3),
@@ -517,7 +609,7 @@ class _ResultDetail extends StatelessWidget {
                     ),
 
                     _ValueRow(
-                      label: '전체 협착 판정',
+                      label: '협착 탐지 결과',
                       value: predictionLabel(anyPrediction),
                     ),
 
@@ -530,7 +622,7 @@ class _ResultDetail extends StatelessWidget {
                     ),
 
                     _ValueRow(
-                      label: '유의 협착 판정',
+                      label: '유의 협착 결과',
                       value: predictionLabel(significantPrediction),
                     ),
 
@@ -709,132 +801,6 @@ class _ResultDetail extends StatelessWidget {
       ],
     );
   }
-
-  // ============================================================
-  // STEP 6. Clinical
-  // ============================================================
-
-  Widget _buildLabResult(BuildContext context) {
-    double? toDouble(dynamic value) {
-      if (value is num) {
-        return value.toDouble();
-      }
-
-      if (value == null) {
-        return null;
-      }
-
-      return double.tryParse(value.toString());
-    }
-
-    int? toInt(dynamic value) {
-      if (value is int) {
-        return value;
-      }
-
-      if (value is num) {
-        return value.toInt();
-      }
-
-      if (value == null) {
-        return null;
-      }
-
-      return int.tryParse(value.toString());
-    }
-
-    final probability = toDouble(result.resultJson['probability']);
-
-    final threshold = toDouble(result.resultJson['threshold']);
-
-    final prediction = toInt(result.resultJson['prediction']);
-
-    final rawWarnings = result.resultJson['warnings'];
-
-    final warnings = rawWarnings is List
-        ? rawWarnings.map((item) => item.toString()).toList()
-        : <String>[];
-
-    final predictionLabel = switch (prediction) {
-      1 => '위험 신호 감지',
-      0 => '위험 신호 없음',
-      _ => '결과 없음',
-    };
-
-    return Column(
-      children: [
-        _SectionCard(
-          title: '혈액·임상 AI 결과',
-          icon: Icons.biotech_outlined,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _ValueRow(label: '예측 결과', value: predictionLabel, bold: true),
-
-              if (probability != null)
-                _ValueRow(
-                  label: '위험 확률',
-                  value: '${(probability * 100).toStringAsFixed(1)}%',
-                ),
-
-              if (threshold != null)
-                _ValueRow(
-                  label: '판정 임계값',
-                  value: '${(threshold * 100).toStringAsFixed(1)}%',
-                ),
-
-              if (result.confidence != null)
-                _ValueRow(
-                  label: 'Confidence',
-                  value: '${(result.confidence! * 100).toStringAsFixed(1)}%',
-                ),
-            ],
-          ),
-        ),
-
-        if (warnings.isNotEmpty) ...[
-          const SizedBox(height: 12),
-
-          _SectionCard(
-            title: '입력 데이터 경고',
-            icon: Icons.warning_amber_rounded,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final warning in warnings)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 7),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          Icons.info_outline_rounded,
-                          size: 15,
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-
-                        const SizedBox(width: 7),
-
-                        Expanded(
-                          child: Text(
-                            warning,
-                            style: TextStyle(
-                              fontSize: 10,
-                              height: 1.5,
-                              color: context.appTextSecondary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
 }
 
 // ============================================================
@@ -1000,6 +966,36 @@ class _ValueRow extends StatelessWidget {
   }
 }
 
+// ============================================================
+// STEP 9. ANGIO Status Badge
+// ============================================================
+
+class _AngioStatusBadge extends StatelessWidget {
+  final String label;
+  final bool detected;
+
+  const _AngioStatusBadge({required this.label, required this.detected});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: detected ? AppColors.warningBackground : context.appSurfaceSoft,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 8.5,
+          fontWeight: FontWeight.w700,
+          color: detected ? AppColors.warning : context.appTextSecondary,
+        ),
+      ),
+    );
+  }
+}
+
 class _ResultTypeBadge extends StatelessWidget {
   final String type;
 
@@ -1067,6 +1063,16 @@ class _EmptyResult extends StatelessWidget {
       ),
     );
   }
+}
+
+String _formatResultDateTime(DateTime value) {
+  final local = value.toLocal();
+  final month = local.month.toString().padLeft(2, '0');
+  final day = local.day.toString().padLeft(2, '0');
+  final hour = local.hour.toString().padLeft(2, '0');
+  final minute = local.minute.toString().padLeft(2, '0');
+
+  return '${local.year}.$month.$day $hour:$minute';
 }
 
 String _resultTypeLabel(String type) {

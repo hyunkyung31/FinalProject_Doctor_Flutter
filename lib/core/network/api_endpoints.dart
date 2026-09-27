@@ -116,6 +116,16 @@ class ApiEndpoints {
   }
 
   // ==========================================================
+  // Announcements
+  // ==========================================================
+
+  static const String announcements = '/announcements/';
+
+  static String announcementDetail(int announcementId) {
+    return '/announcements/$announcementId/';
+  }
+
+  // ==========================================================
   // Patients
   // ==========================================================
 

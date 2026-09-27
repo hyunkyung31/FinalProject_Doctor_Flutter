@@ -7,19 +7,14 @@ import '../../data/models/dashboard_overview_data.dart';
 import 'dashboard_section_card.dart';
 
 // ============================================================
-// STEP 1. Received Consultations Card
-// DashboardOverviewData.consultations 사용
-// 자체 API 호출 없음
+// Received Consultations Card
+// 운영/EMR 스타일의 리스트 패널
 // ============================================================
 
 class ReceivedConsultationsCard extends StatelessWidget {
   final List<DashboardConsultationData> data;
 
   const ReceivedConsultationsCard({super.key, required this.data});
-
-  // ============================================================
-  // STEP 2. 상태별 건수
-  // ============================================================
 
   int get _requestedCount {
     return data.where((item) {
@@ -37,10 +32,6 @@ class ReceivedConsultationsCard extends StatelessWidget {
     }).length;
   }
 
-  // ============================================================
-  // STEP 3. UI
-  // ============================================================
-
   @override
   Widget build(BuildContext context) {
     return DashboardSectionCard(
@@ -49,17 +40,14 @@ class ReceivedConsultationsCard extends StatelessWidget {
       onAction: () {
         context.go('/consult');
       },
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(13, 10, 13, 12),
-        child: _buildContent(context),
-      ),
+      child: _buildContent(context),
     );
   }
 
   Widget _buildContent(BuildContext context) {
     if (data.isEmpty) {
       return SizedBox(
-        height: 170,
+        height: 184,
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -69,9 +57,7 @@ class ReceivedConsultationsCard extends StatelessWidget {
                 size: 24,
                 color: context.appTextSecondary,
               ),
-
               const SizedBox(height: 7),
-
               Text(
                 '현재 받은 협진이 없습니다.',
                 style: TextStyle(
@@ -87,38 +73,45 @@ class ReceivedConsultationsCard extends StatelessWidget {
 
     return Column(
       children: [
-        Row(
-          children: [
-            _CountBadge(
-              label: '요청',
-              count: _requestedCount,
-              color: AppColors.warning,
-              background: AppColors.warningBackground,
-            ),
-
-            const SizedBox(width: 6),
-
-            _CountBadge(
-              label: '진행',
-              count: _inProgressCount,
-              color: AppColors.primaryBlue,
-              background: AppColors.surfaceSoft,
-            ),
-
-            const Spacer(),
-
-            Text(
-              '총 ${data.length}건',
-              style: TextStyle(
-                fontSize: 8.8,
-                fontWeight: FontWeight.w700,
-                color: context.appTextSecondary,
+        // ========================================================
+        // Summary Row
+        // ========================================================
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: context.appBorder)),
+          ),
+          child: Row(
+            children: [
+              _CountBadge(
+                label: '요청',
+                count: _requestedCount,
+                color: AppColors.warning,
+                background: AppColors.warningBackground,
               ),
-            ),
-          ],
-        ),
 
-        const SizedBox(height: 8),
+              const SizedBox(width: 5),
+
+              _CountBadge(
+                label: '진행',
+                count: _inProgressCount,
+                color: AppColors.primaryBlue,
+                background: AppColors.surfaceSoft,
+              ),
+
+              const Spacer(),
+
+              Text(
+                '총 ${data.length}건',
+                style: TextStyle(
+                  fontSize: 8.5,
+                  fontWeight: FontWeight.w700,
+                  color: context.appTextSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
 
         for (final item in data.take(4)) _ConsultationRow(item: item),
       ],
@@ -127,7 +120,7 @@ class ReceivedConsultationsCard extends StatelessWidget {
 }
 
 // ============================================================
-// STEP 4. Count Badge
+// Count Badge
 // ============================================================
 
 class _CountBadge extends StatelessWidget {
@@ -146,10 +139,10 @@ class _CountBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -157,18 +150,16 @@ class _CountBadge extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 8,
+              fontSize: 7.8,
               fontWeight: FontWeight.w600,
               color: color,
             ),
           ),
-
-          const SizedBox(width: 4),
-
+          const SizedBox(width: 3),
           Text(
             '$count',
             style: TextStyle(
-              fontSize: 9,
+              fontSize: 8.5,
               fontWeight: FontWeight.w800,
               color: color,
             ),
@@ -180,7 +171,7 @@ class _CountBadge extends StatelessWidget {
 }
 
 // ============================================================
-// STEP 5. Consultation Row
+// Consultation Row
 // ============================================================
 
 class _ConsultationRow extends StatelessWidget {
@@ -198,101 +189,92 @@ class _ConsultationRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = item.status.trim().toUpperCase();
 
-    return InkWell(
-      onTap: () {
-        context.go('/consult');
-      },
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 7),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: _isUrgent
-                    ? AppColors.dangerBackground
-                    : context.appBackground,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                Icons.groups_outlined,
-                size: 15,
-                color: _isUrgent ? AppColors.danger : context.appBrand,
-              ),
-            ),
-
-            const SizedBox(width: 9),
-
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.subject,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w700,
-                      color: context.appTextPrimary,
-                    ),
-                  ),
-
-                  const SizedBox(height: 2),
-
-                  Text(
-                    _subtitle(item),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 8,
-                      color: context.appTextSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(width: 6),
-
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-              decoration: BoxDecoration(
-                color: _statusBackground(status),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                _statusLabel(status),
-                style: TextStyle(
-                  fontSize: 8,
-                  fontWeight: FontWeight.w700,
-                  color: _statusColor(status),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          context.go('/consult');
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: context.appBorder)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: _isUrgent ? AppColors.danger : _statusColor(status),
+                  shape: BoxShape.circle,
                 ),
               ),
-            ),
 
-            const SizedBox(width: 3),
+              const SizedBox(width: 9),
 
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 15,
-              color: context.appTextSecondary,
-            ),
-          ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.subject,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: context.appTextPrimary,
+                      ),
+                    ),
+
+                    const SizedBox(height: 2),
+
+                    Text(
+                      _subtitle(item),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 8,
+                        color: context.appTextSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 7),
+
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: _statusBackground(status),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Text(
+                  _statusLabel(status),
+                  style: TextStyle(
+                    fontSize: 7.8,
+                    fontWeight: FontWeight.w700,
+                    color: _statusColor(status),
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 4),
+
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 15,
+                color: context.appTextSecondary,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
-
-// ============================================================
-// STEP 6. Subtitle
-// overview API에 requesterName / department가 없으므로
-// 환자 정보 + 기한으로 구성
-// ============================================================
 
 String _subtitle(DashboardConsultationData item) {
   final patientName = item.patientName.trim().isEmpty
@@ -301,14 +283,10 @@ String _subtitle(DashboardConsultationData item) {
 
   final dueText = item.dueAt == null
       ? ''
-      : ' · 기한 ${_formatDateTime(item.dueAt!)}';
+      : ' · ${_formatDateTime(item.dueAt!)}';
 
   return '$patientName · 환자 #${item.patientId}$dueText';
 }
-
-// ============================================================
-// STEP 7. Status
-// ============================================================
 
 String _statusLabel(String status) {
   switch (status) {
@@ -380,15 +358,10 @@ Color _statusBackground(String status) {
   }
 }
 
-// ============================================================
-// STEP 8. Date Format
-// ============================================================
-
 String _formatDateTime(DateTime date) {
   final month = date.month.toString().padLeft(2, '0');
-  final day = date.day.toString().padLeft(2, '0');
-  final hour = date.hour.toString().padLeft(2, '0');
-  final minute = date.minute.toString().padLeft(2, '0');
 
-  return '$month.$day $hour:$minute';
+  final day = date.day.toString().padLeft(2, '0');
+
+  return '$month.$day';
 }

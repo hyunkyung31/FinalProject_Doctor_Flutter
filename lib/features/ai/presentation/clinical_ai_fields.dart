@@ -216,7 +216,7 @@ const clinicalAiFields = <ClinicalFieldDefinition>[
   // ----------------------------------------------------------
   ClinicalFieldDefinition(
     name: 'BP',
-    label: '수축기 혈압',
+    label: '혈압',
     group: '진찰 및 증상',
     type: ClinicalFieldType.number,
   ),

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
-import '../../../../core/theme/app_theme.dart';
-
 // ============================================================
 // STEP 1. Dashboard Common Section Card
-// Dashboard 내부 여러 영역에서 공통으로 사용하는 카드
+// Dashboard 하단/중단 공통 카드
 // ============================================================
 
 class DashboardSectionCard extends StatelessWidget {
@@ -20,8 +18,8 @@ class DashboardSectionCard extends StatelessWidget {
   const DashboardSectionCard({
     super.key,
     required this.title,
-    this.subtitle,
     required this.child,
+    this.subtitle,
     this.actionLabel,
     this.onAction,
   });
@@ -31,73 +29,103 @@ class DashboardSectionCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: context.appSurface,
-        borderRadius: BorderRadius.circular(AppRadius.large),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: context.appBorder),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ======================================================
           // Header
           // ======================================================
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              14,
-              5, // 위 여백
-              8,
-              5, // 아래 여백
-            ),
-            child: Row(
-              children: [
-                // ==================================================
-                // Title
-                // ==================================================
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      color: context.appTextPrimary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                ),
-
-                // ==================================================
-                // Optional Action
-                // ==================================================
-                if (actionLabel != null)
-                  TextButton(
-                    onPressed: onAction,
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 3,
-                      ),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: Row(
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 36),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 6, 7, 6),
+              child: Row(
+                children: [
+                  // ================================================
+                  // Title / Subtitle
+                  // ================================================
+                  Expanded(
+                    child: Column(
                       mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          actionLabel!,
-                          style: const TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: context.appTextPrimary,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.1,
                           ),
                         ),
-                        const SizedBox(width: 2),
-                        const Icon(Icons.chevron_right_rounded, size: 14),
+
+                        if (subtitle != null &&
+                            subtitle!.trim().isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: context.appTextSecondary,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
-              ],
+
+                  // ================================================
+                  // Action
+                  // ================================================
+                  if (actionLabel != null)
+                    TextButton(
+                      onPressed: onAction,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 3,
+                        ),
+                        minimumSize: const Size(0, 26),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            actionLabel!,
+                            style: TextStyle(
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w600,
+                              color: context.appTextSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: 1),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            size: 13,
+                            color: context.appTextSecondary,
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
 
-          const Divider(height: 1),
+          // ======================================================
+          // Divider
+          // ======================================================
+          Divider(height: 1, thickness: 1, color: context.appBorder),
 
           // ======================================================
           // Content

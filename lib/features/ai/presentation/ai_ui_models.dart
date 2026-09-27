@@ -249,8 +249,31 @@ class AiCacScoreUiModel {
 }
 
 // ============================================================
-// STEP 7. AI Result
-// 현재 실제 Result 미생성 → UI DEMO Model
+// STEP 7. Clinical Lab Reference
+// Backend Measurement reference range / abnormal flag
+// ============================================================
+
+class ClinicalLabReferenceUiModel {
+  final String? unit;
+  final double? referenceMin;
+  final double? referenceMax;
+  final String? referenceText;
+  final String? abnormalFlag;
+  final String? validationStatus;
+
+  const ClinicalLabReferenceUiModel({
+    required this.unit,
+    required this.referenceMin,
+    required this.referenceMax,
+    required this.referenceText,
+    required this.abnormalFlag,
+    required this.validationStatus,
+  });
+}
+
+// ============================================================
+// STEP 8. AI Result
+// 실제 Result + Clinical 비교 정보
 // ============================================================
 
 class AiResultUiModel {
@@ -267,6 +290,10 @@ class AiResultUiModel {
   final String summary;
   final String modelLabel;
 
+  // AI 결과 실행/생성 시각
+  // Result generatedAt 우선, 없으면 Analysis completed/requested 시각 사용
+  final DateTime? executedAt;
+
   final List<AiDetectionUiModel> detections;
   final List<AiLesionUiModel> lesions;
   final List<AiSegmentationUiModel> segmentations;
@@ -280,6 +307,14 @@ class AiResultUiModel {
   final String resultType;
   final double? confidence;
   final Map<String, dynamic> resultJson;
+  final Map<String, dynamic> inputSnapshot;
+
+  final Map<String, ClinicalLabReferenceUiModel> labReferences;
+  final int? currentLabExaminationId;
+  final DateTime? currentLabExaminedAt;
+  final Map<String, dynamic> previousLabSnapshot;
+  final int? previousLabExaminationId;
+  final DateTime? previousLabExaminedAt;
 
   final int? modelVersionId;
 
@@ -295,6 +330,7 @@ class AiResultUiModel {
     required this.status,
     required this.summary,
     required this.modelLabel,
+    this.executedAt,
     required this.detections,
     required this.lesions,
     required this.segmentations,
@@ -304,6 +340,13 @@ class AiResultUiModel {
     this.resultType = '',
     this.confidence,
     this.resultJson = const {},
+    this.inputSnapshot = const {},
+    this.labReferences = const {},
+    this.currentLabExaminationId,
+    this.currentLabExaminedAt,
+    this.previousLabSnapshot = const {},
+    this.previousLabExaminationId,
+    this.previousLabExaminedAt,
     this.modelVersionId,
     this.segmentationDetails = const [],
 
