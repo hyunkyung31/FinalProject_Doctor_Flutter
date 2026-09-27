@@ -8,35 +8,46 @@ import '../../data/services/todo_service.dart';
 import 'dashboard_section_card.dart';
 
 class MyTodoSection extends StatefulWidget {
-  final int refreshVersion;
+  final List<StaffTodo> items;
+  final bool loadFailed;
 
-  const MyTodoSection({super.key, this.refreshVersion = 0});
+  const MyTodoSection({
+    super.key,
+    required this.items,
+    required this.loadFailed,
+  });
 
   @override
   State<MyTodoSection> createState() => _MyTodoSectionState();
 }
 
 class _MyTodoSectionState extends State<MyTodoSection> {
-  List<StaffTodo> _items = [];
+  late List<StaffTodo> _items;
 
-  bool _isLoading = true;
+  bool _isLoading = false;
   bool _isMutating = false;
+  late bool _loadFailed;
 
   @override
   void initState() {
     super.initState();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadTodos();
-    });
+    _items = List<StaffTodo>.of(widget.items);
+
+    _loadFailed = widget.loadFailed;
   }
 
   @override
   void didUpdateWidget(covariant MyTodoSection oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.refreshVersion != widget.refreshVersion) {
-      _loadTodos();
+    if (!identical(oldWidget.items, widget.items) ||
+        oldWidget.loadFailed != widget.loadFailed) {
+      setState(() {
+        _items = List<StaffTodo>.of(widget.items);
+
+        _loadFailed = widget.loadFailed;
+      });
     }
   }
 
@@ -47,6 +58,7 @@ class _MyTodoSectionState extends State<MyTodoSection> {
 
     setState(() {
       _isLoading = true;
+      _loadFailed = false;
     });
 
     try {
@@ -61,9 +73,13 @@ class _MyTodoSectionState extends State<MyTodoSection> {
       setState(() {
         _items = items;
         _isLoading = false;
+        _loadFailed = false;
       });
 
-      debugPrint('[TODO] 목록 조회 완료: ${items.length}건');
+      debugPrint(
+        '[TODO] 목록 조회 완료: '
+        '${items.length}건',
+      );
     } catch (error) {
       debugPrint('[TODO] 목록 조회 실패: $error');
 
@@ -73,6 +89,7 @@ class _MyTodoSectionState extends State<MyTodoSection> {
 
       setState(() {
         _isLoading = false;
+        _loadFailed = true;
       });
 
       _showMessage('To-do 목록을 불러오지 못했습니다.');
@@ -94,7 +111,7 @@ class _MyTodoSectionState extends State<MyTodoSection> {
     final remainingCount = _items.where((item) => !item.isCompleted).length;
 
     return DashboardSectionCard(
-      title: 'MY TODO',
+      title: '오늘 To-do',
       actionLabel: '새로고침',
       onAction: _isLoading ? null : _loadTodos,
       child: LayoutBuilder(
@@ -147,7 +164,7 @@ class _MyTodoSectionState extends State<MyTodoSection> {
             disabled: _isMutating,
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 5),
 
           _buildTodoContent(),
         ],
@@ -167,6 +184,18 @@ class _MyTodoSectionState extends State<MyTodoSection> {
               strokeWidth: 1.8,
               color: AppColors.primaryBlue,
             ),
+          ),
+        ),
+      );
+    }
+
+    if (_loadFailed) {
+      return const SizedBox(
+        height: 98,
+        child: Center(
+          child: Text(
+            'To-do 목록을 불러오지 못했습니다.',
+            style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
           ),
         ),
       );
@@ -663,12 +692,16 @@ class _TodoAddButton extends StatelessWidget {
   }
 }
 
+// ============================================================
+// Todo List
+// 운영/EMR 스타일의 Divider 기반 목록
+// ============================================================
+
 class _TodoList extends StatelessWidget {
   final List<StaffTodo> items;
   final bool disabled;
 
   final ValueChanged<StaffTodo> onToggle;
-
   final ValueChanged<StaffTodo> onDelete;
 
   const _TodoList({
@@ -680,19 +713,25 @@ class _TodoList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final visibleItems = items.take(5).toList();
+
     return Column(
       children: [
-        for (final item in items.take(5))
+        for (int index = 0; index < visibleItems.length; index++) ...[
           _TodoRow(
-            data: item,
+            data: visibleItems[index],
             disabled: disabled,
             onTap: () {
-              onToggle(item);
+              onToggle(visibleItems[index]);
             },
             onDelete: () {
-              onDelete(item);
+              onDelete(visibleItems[index]);
             },
           ),
+
+          if (index < visibleItems.length - 1)
+            const Divider(height: 1, thickness: 1, color: AppColors.border),
+        ],
       ],
     );
   }
@@ -719,9 +758,8 @@ class _TodoRow extends StatelessWidget {
 
     return InkWell(
       onTap: disabled ? null : onTap,
-      borderRadius: BorderRadius.circular(AppRadius.small),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
         child: Row(
           children: [
             AnimatedContainer(
@@ -784,37 +822,41 @@ class _TodoRow extends StatelessWidget {
 
             const SizedBox(width: 3),
 
-            PopupMenuButton<String>(
-              tooltip: 'To-do 메뉴',
-              padding: EdgeInsets.zero,
-              iconSize: 17,
-              icon: const Icon(
-                Icons.more_vert_rounded,
-                color: AppColors.textSecondary,
-              ),
-              onSelected: (value) {
-                if (value == 'delete') {
-                  onDelete();
-                }
-              },
-              itemBuilder: (context) {
-                return const [
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.delete_outline,
-                          size: 17,
-                          color: AppColors.danger,
-                        ),
-                        SizedBox(width: 7),
-                        Text('삭제'),
-                      ],
+            SizedBox(
+              width: 28,
+              height: 28,
+              child: PopupMenuButton<String>(
+                tooltip: 'To-do 메뉴',
+                padding: EdgeInsets.zero,
+                iconSize: 17,
+                icon: const Icon(
+                  Icons.more_vert_rounded,
+                  color: AppColors.textSecondary,
+                ),
+                onSelected: (value) {
+                  if (value == 'delete') {
+                    onDelete();
+                  }
+                },
+                itemBuilder: (context) {
+                  return const [
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.delete_outline,
+                            size: 17,
+                            color: AppColors.danger,
+                          ),
+                          SizedBox(width: 7),
+                          Text('삭제'),
+                        ],
+                      ),
                     ),
-                  ),
-                ];
-              },
+                  ];
+                },
+              ),
             ),
           ],
         ),

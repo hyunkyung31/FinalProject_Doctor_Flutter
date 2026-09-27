@@ -258,10 +258,7 @@ class _AssessmentListItem extends StatelessWidget {
 
             Text(
               'AI Result ${assessment.aiResultIds.length}건 · ${assessment.rulesetVersion}',
-              style: TextStyle(
-                fontSize: 9.5,
-                color: context.appTextSecondary,
-              ),
+              style: TextStyle(fontSize: 9.5, color: context.appTextSecondary),
             ),
           ],
         ),
@@ -786,10 +783,7 @@ class _ValueRow extends StatelessWidget {
             width: 100,
             child: Text(
               label,
-              style: TextStyle(
-                fontSize: 9.5,
-                color: context.appTextSecondary,
-              ),
+              style: TextStyle(fontSize: 9.5, color: context.appTextSecondary),
             ),
           ),
 

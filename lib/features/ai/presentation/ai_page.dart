@@ -60,10 +60,81 @@ class _AiPageState extends State<AiPage> {
   }
 
   // ============================================================
-  // STEP 3. 실제 AI 분석 목록 조회
-  // GET /api/ai-analyses/
+  // STEP. AI 결과 → 영상 Viewer
   // ============================================================
 
+  void _openImagingFromResult(AiResultUiModel result) {
+    final analysisType = result.analysisType.toUpperCase();
+
+    // ==========================================================
+    // ANGIO
+    // ==========================================================
+
+    if (analysisType == 'ANGIO_2D') {
+      final backendContextData = result.resultJson['backend_context'];
+
+      final backendContext = backendContextData is Map
+          ? Map<String, dynamic>.from(backendContextData)
+          : <String, dynamic>{};
+
+      int? patientId;
+
+      final backendPatientValue = backendContext['backend_patient_id'];
+
+      if (backendPatientValue is int) {
+        patientId = backendPatientValue;
+      } else if (backendPatientValue is num) {
+        patientId = backendPatientValue.toInt();
+      } else {
+        patientId = int.tryParse(backendPatientValue?.toString() ?? '');
+      }
+
+      // Result 상세가 아직 로딩 전이면
+      // Examination → Patient cache 사용
+      patientId ??= _patientContextCache[result.examinationId]?.patientId;
+
+      if (patientId == null) {
+        _showMessage('ANGIO 영상에 연결할 환자 ID를 찾지 못했습니다.');
+        return;
+      }
+
+      final uri = Uri(
+        path: AppRoutes.imaging,
+        queryParameters: {
+          'analysisType': 'ANGIO_2D',
+          'examinationId': result.examinationId.toString(),
+          'analysisId': result.analysisId.toString(),
+          'patientId': patientId.toString(),
+        },
+      );
+
+      debugPrint(
+        '[AI → IMAGING] '
+        'ANGIO navigation: '
+        '$uri',
+      );
+
+      context.go(uri.toString());
+
+      return;
+    }
+
+    // ==========================================================
+    // CCTA
+    // 기존 Imaging Page 사용
+    // ==========================================================
+
+    final uri = Uri(
+      path: AppRoutes.imaging,
+      queryParameters: {
+        'analysisType': result.analysisType,
+        'examinationId': result.examinationId.toString(),
+        'analysisId': result.analysisId.toString(),
+      },
+    );
+
+    context.go(uri.toString());
+  }
   // ============================================================
   // STEP 3. 실제 AI 분석 목록 조회
   // GET /api/ai-analyses/
@@ -120,6 +191,7 @@ class _AiPageState extends State<AiPage> {
               status: 'READY',
               summary: '결과를 선택하면 실제 AI 결과를 불러옵니다.',
               modelLabel: '모델 정보 조회 전',
+              executedAt: analysis.completedAt ?? analysis.requestedAt,
               detections: const [],
               lesions: const [],
               segmentations: const [],
@@ -245,6 +317,18 @@ class _AiPageState extends State<AiPage> {
         return;
       }
 
+      debugPrint(
+        '[AI RESULT DATA] '
+        'analysisId=${analysis.id}, '
+        'resultId=${latestResult.id}, '
+        'resultType=${latestResult.resultType}, '
+        'status=${latestResult.status}, '
+        'confidence=${latestResult.confidence}, '
+        'summary=${latestResult.summaryText}, '
+        'resultJson=${latestResult.resultJson}',
+        wrapWidth: 1024,
+      );
+
       // ----------------------------------------------------------
       // 4. 환자 정보
       // 기존 Cache 사용
@@ -290,6 +374,56 @@ class _AiPageState extends State<AiPage> {
         return;
       }
 
+      // ============================================================
+      // Clinical 입력 Snapshot
+      // ============================================================
+
+      Map<String, dynamic> inputSnapshot = const {};
+
+      for (final input in detail.inputs) {
+        if (input.inputType.toUpperCase() == 'CLINICAL_DATA') {
+          inputSnapshot = input.inputSnapshot;
+          break;
+        }
+      }
+
+      // ============================================================
+      // Clinical LAB 참고범위 / 이전 검사 비교
+      // ============================================================
+
+      ClinicalLabComparisonRecord? labComparison;
+      final labReferences = <String, ClinicalLabReferenceUiModel>{};
+
+      if (analysis.analysisType == 'CLINICAL') {
+        final patientContext = _patientContextCache[analysis.examinationId];
+
+        if (patientContext != null) {
+          labComparison = await service.fetchClinicalLabComparison(
+            patientId: patientContext.patientId,
+            preferredExaminationId: analysis.examinationId,
+          );
+
+          if (labComparison != null) {
+            for (final entry in labComparison.currentReferences.entries) {
+              final reference = entry.value;
+
+              labReferences[entry.key] = ClinicalLabReferenceUiModel(
+                unit: reference.unit,
+                referenceMin: reference.referenceMin,
+                referenceMax: reference.referenceMax,
+                referenceText: reference.referenceText,
+                abnormalFlag: reference.abnormalFlag,
+                validationStatus: reference.validationStatus,
+              );
+            }
+          }
+        }
+      }
+
+      if (!mounted) {
+        return;
+      }
+
       // ----------------------------------------------------------
       // 6. 실제 Result UI Model 생성
       // ----------------------------------------------------------
@@ -306,6 +440,11 @@ class _AiPageState extends State<AiPage> {
         modelLabel: latestJob == null
             ? '모델 버전 정보 없음'
             : 'Model Version #${latestJob.aiModelVersion}',
+        executedAt:
+            latestResult.generatedAt ??
+            analysis.completedAt ??
+            analysis.requestedAt,
+
         detections: const [],
         lesions: const [],
         segmentations: const [],
@@ -317,6 +456,15 @@ class _AiPageState extends State<AiPage> {
         resultJson: latestResult.resultJson,
         modelVersionId: latestJob?.aiModelVersion,
         segmentationDetails: segmentationDetails,
+
+        inputSnapshot: inputSnapshot,
+
+        labReferences: labReferences,
+        currentLabExaminationId: labComparison?.currentLabExaminationId,
+        currentLabExaminedAt: labComparison?.currentLabExaminedAt,
+        previousLabSnapshot: labComparison?.previousValues ?? const {},
+        previousLabExaminationId: labComparison?.previousLabExaminationId,
+        previousLabExaminedAt: labComparison?.previousLabExaminedAt,
 
         isDemo: false,
       );
@@ -740,9 +888,7 @@ class _AiPageState extends State<AiPage> {
         return AiResultPanel(
           results: _results,
           onResultSelected: _loadResultDetail,
-          onOpenImaging: () {
-            context.go(AppRoutes.imaging);
-          },
+          onOpenImaging: _openImagingFromResult,
         );
 
       case AiSection.integratedAssessment:
@@ -1071,8 +1217,12 @@ class _AiPageState extends State<AiPage> {
   }
 
   // ============================================================
-  // TEMP. Clinical AI 자동 입력 데이터 확인
-  // 실제 POST 전 prefill 검증용
+  // Clinical AI 입력 준비
+  //
+  // 1. 저장된 Clinical 데이터 자동 수집
+  // 2. 의료진이 누락값 확인 / 입력
+  // 3. 54개 입력 완료
+  // 4. 실제 Clinical AI 분석 요청
   // ============================================================
 
   Future<void> _debugClinicalInputPrefill(int examinationId) async {
@@ -1081,11 +1231,19 @@ class _AiPageState extends State<AiPage> {
 
       final service = AiAnalysisService(apiClient: auth.authService.apiClient);
 
+      // ----------------------------------------------------------
+      // 1. 저장된 Clinical 데이터 자동 수집
+      // ----------------------------------------------------------
+
       final prefill = await service.fetchClinicalInputPrefill(examinationId);
 
       if (!mounted) {
         return;
       }
+
+      // ----------------------------------------------------------
+      // 2. 누락 데이터 의료진 입력
+      // ----------------------------------------------------------
 
       final clinicalInput = await showDialog<Map<String, dynamic>>(
         context: context,
@@ -1102,6 +1260,10 @@ class _AiPageState extends State<AiPage> {
         return;
       }
 
+      // ----------------------------------------------------------
+      // 3. 최종 입력 검증
+      // ----------------------------------------------------------
+
       debugPrint(
         '[AI CLINICAL INPUT READY] '
         'count=${clinicalInput.length}, '
@@ -1109,102 +1271,291 @@ class _AiPageState extends State<AiPage> {
         wrapWidth: 1024,
       );
 
-      debugPrint(
-        '[AI CLINICAL PREFILL CHECK] '
-        'examinationId=$examinationId, '
-        'patientId=${prefill.patient.patientId}, '
-        'encounterId=${prefill.patient.encounterId}, '
-        'resultId=${prefill.examinationResultId}, '
-        'filled=${prefill.values.length}/54',
+      if (clinicalInput.length != 54) {
+        if (mounted) {
+          _showMessage(
+            'Clinical AI 입력값이 부족합니다. '
+            '${clinicalInput.length}/54',
+          );
+        }
+
+        return;
+      }
+
+      // ----------------------------------------------------------
+      // 4. 실제 Clinical AI 분석 요청
+      // ----------------------------------------------------------
+
+      final analysisId = await _requestClinicalAnalysis(
+        examinationId,
+        clinicalInput,
       );
 
-      if (mounted) {
-        _showMessage('Clinical 자동 입력 ${prefill.values.length}/54개를 확인했습니다.');
+      if (!mounted) {
+        return;
       }
+
+      _showMessage('Clinical AI 분석을 진행하고 있습니다.');
+
+      final status = await _waitForAnalysisCompletion(analysisId);
+
+      if (!mounted) {
+        return;
+      }
+
+      if (status == 'SUCCEEDED') {
+        _showMessage('Clinical AI 분석이 완료되었습니다.');
+
+        await _loadAnalyses();
+
+        if (!mounted) {
+          return;
+        }
+
+        final resultIndex = _results.indexWhere(
+          (item) => item.analysisId == analysisId,
+        );
+
+        setState(() {
+          _selectedSection = AiSection.results;
+        });
+
+        if (resultIndex >= 0) {
+          await _loadResultDetail(_results[resultIndex]);
+        } else {
+          debugPrint(
+            '[AI RESULT] 완료된 분석 결과 후보를 찾지 못함: '
+            'analysisId=$analysisId',
+          );
+        }
+
+        return;
+      }
+
+      if (status == 'FAILED') {
+        _showMessage('Clinical AI 분석에 실패했습니다.');
+        await _loadAnalyses();
+        return;
+      }
+
+      if (status == 'CANCELED') {
+        _showMessage('Clinical AI 분석이 취소되었습니다.');
+        await _loadAnalyses();
+        return;
+      }
+
+      _showMessage('분석이 계속 진행 중입니다. 잠시 후 다시 확인해주세요.');
+
+      await _loadAnalyses();
     } catch (error) {
       debugPrint(
-        '[AI CLINICAL PREFILL ERROR] '
+        '[AI CLINICAL REQUEST FLOW ERROR] '
         'examinationId=$examinationId, '
         'error=$error',
       );
+    }
+  }
 
-      if (mounted) {
-        _showMessage('Clinical 입력 데이터를 불러오지 못했습니다.');
+  Future<String> _waitForAnalysisCompletion(int analysisId) async {
+    final auth = context.read<AuthProvider>();
+
+    final service = AiAnalysisService(apiClient: auth.authService.apiClient);
+
+    for (var attempt = 0; attempt < 60; attempt++) {
+      if (!mounted) {
+        return 'CANCELED';
       }
 
-      rethrow;
+      final detail = await service.fetchAnalysisDetail(analysisId);
+
+      final status = detail.analysis.status.toUpperCase();
+
+      debugPrint(
+        '[AI ANALYSIS POLLING] '
+        'analysisId=$analysisId, '
+        'attempt=${attempt + 1}/60, '
+        'status=$status',
+      );
+
+      if (status == 'SUCCEEDED' || status == 'FAILED' || status == 'CANCELED') {
+        return status;
+      }
+
+      await Future<void>.delayed(const Duration(seconds: 1));
     }
+
+    return 'TIMEOUT';
   }
 
   // ============================================================
   // 실제 Clinical AI 분석 요청
   // ============================================================
 
-  // TEMP: prefill 검증 후 다시 연결 예정
-  // ignore: unused_element
-  Future<void> _requestClinicalAnalysis(int examinationId) async {
+  Future<int> _requestClinicalAnalysis(
+    int examinationId,
+    Map<String, dynamic> clinicalInput,
+  ) async {
     try {
       final auth = context.read<AuthProvider>();
 
       final service = AiAnalysisService(apiClient: auth.authService.apiClient);
 
-      // ----------------------------------------------------------
-      // 1. 검사 결과 확인
-      // ----------------------------------------------------------
+      // ============================================================
+      // Backend 타입 정규화
+      // ============================================================
 
-      final examinationResultId = await service.fetchLatestExaminationResultId(
-        examinationId,
-      );
+      final normalizedInput = Map<String, dynamic>.from(clinicalInput);
 
-      if (examinationResultId == null) {
-        if (mounted) {
-          _showMessage('이 검사에는 AI 분석에 사용할 결과가 없습니다.');
+      const integerFields = <String>{
+        'Age',
+        'Weight',
+        'Length',
+        'Sex',
+        'DM',
+        'HTN',
+        'Current Smoker',
+        'EX-Smoker',
+        'FH',
+        'Obesity',
+        'CRF',
+        'CVA',
+        'Airway disease',
+        'Thyroid Disease',
+        'CHF',
+        'DLP',
+        'BP',
+        'PR',
+        'Edema',
+        'Weak Peripheral Pulse',
+        'Lung rales',
+        'Systolic Murmur',
+        'Diastolic Murmur',
+        'Typical Chest Pain',
+        'Dyspnea',
+        'Function Class',
+        'Atypical',
+        'Nonanginal',
+        'LowTH Ang',
+        'Q Wave',
+        'St Elevation',
+        'St Depression',
+        'Tinversion',
+        'LVH',
+        'Poor R Progression',
+        'FBS',
+        'TG',
+        'LDL',
+        'BUN',
+        'ESR',
+        'Na',
+        'WBC',
+        'Lymph',
+        'Neut',
+        'PLT',
+        'EF-TTE',
+        'Region RWMA',
+      };
+
+      const decimalFields = <String>{'BMI', 'CR', 'HDL', 'HB', 'K'};
+
+      for (final fieldName in integerFields) {
+        final value = normalizedInput[fieldName];
+
+        if (value is num) {
+          normalizedInput[fieldName] = value.round();
+          continue;
         }
 
-        throw StateError('Examination Result 없음');
+        if (value != null) {
+          final parsedValue = double.tryParse(value.toString());
+
+          if (parsedValue != null) {
+            normalizedInput[fieldName] = parsedValue.round();
+          }
+        }
       }
 
+      for (final fieldName in decimalFields) {
+        final value = normalizedInput[fieldName];
+
+        if (value is num) {
+          normalizedInput[fieldName] = value.toDouble();
+          continue;
+        }
+
+        if (value != null) {
+          final parsedValue = double.tryParse(value.toString());
+
+          if (parsedValue != null) {
+            normalizedInput[fieldName] = parsedValue;
+          }
+        }
+      }
+
+      normalizedInput['BBB'] = normalizedInput['BBB']?.toString();
+
+      normalizedInput['VHD'] = normalizedInput['VHD']?.toString();
+
+      debugPrint(
+        '[AI CLINICAL NORMALIZE] '
+        'inputCount=${normalizedInput.length}, '
+        'FBS=${clinicalInput['FBS']}'
+        '→${normalizedInput['FBS']}, '
+        'TG=${clinicalInput['TG']}'
+        '→${normalizedInput['TG']}, '
+        'LDL=${clinicalInput['LDL']}'
+        '→${normalizedInput['LDL']}, '
+        'EF-TTE=${clinicalInput['EF-TTE']}'
+        '→${normalizedInput['EF-TTE']}',
+      );
+
       // ----------------------------------------------------------
-      // 2. 실제 분석 요청
+      // TEMP
       //
-      // TEMP:
       // doctor 계정에서 AI Model 관리 API 접근 불가
       // 현재 확인된 Clinical Model Version #2 사용
+      //
+      // 추후 Backend에서 ACTIVE 모델 자동 선택 구조로 변경 예정
       // ----------------------------------------------------------
 
-      await service.createAnalysis(
+      final analysisId = await service.createAnalysis(
         examinationId: examinationId,
         analysisType: 'CLINICAL',
         modelVersionIds: const [2],
         inputRefs: [
           {
             'input_type': 'CLINICAL_DATA',
-            'examination_result_id': examinationResultId,
+            'examination_result_id': null,
             'imaging_study_id': null,
             'imaging_series_id': null,
             'file_asset_id': null,
-            'input_snapshot_json': null,
+            'input_snapshot_json': normalizedInput,
           },
         ],
       );
 
       debugPrint(
         '[AI ANALYSIS] CLINICAL 요청 완료: '
+        'analysisId=$analysisId, '
         'examinationId=$examinationId, '
-        'examinationResultId=$examinationResultId, '
+        'inputCount=${clinicalInput.length}, '
         'modelVersionId=2',
       );
+
+      return analysisId;
     } on DioException catch (error) {
       debugPrint(
         '[AI ANALYSIS] CLINICAL 요청 실패 응답: '
         'status=${error.response?.statusCode}, '
         'data=${error.response?.data}',
+        wrapWidth: 1024,
       );
 
       debugPrint(
         '[AI ANALYSIS] CLINICAL 요청 정보: '
         'examinationId=$examinationId, '
         'analysisType=CLINICAL, '
+        'inputCount=${clinicalInput.length}, '
         'modelVersionIds=[2]',
       );
 

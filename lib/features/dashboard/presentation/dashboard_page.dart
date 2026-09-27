@@ -4,22 +4,29 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/auth/auth_provider.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_shell.dart';
+import '../../notifications/providers/notification_provider.dart';
+import '../../examinations/data/services/examination_service.dart';
+import '../../examinations/presentation/examination_ui_models.dart';
+import '../../patients/data/services/patient_service.dart';
+import '../../patients/presentation/widgets/patient_detail_tabs.dart';
+
 import '../data/services/dashboard_metric_service.dart';
 import '../data/services/today_hub_service.dart';
 import '../data/models/dashboard_overview_data.dart';
 import '../data/services/dashboard_overview_service.dart';
+import '../data/models/staff_todo.dart';
+import '../data/services/todo_service.dart';
+import '../data/models/dashboard_announcement.dart';
+import '../data/services/announcement_service.dart';
 
 import 'widgets/dashboard_metric_grid.dart';
 import 'widgets/my_todo_section.dart';
 import 'widgets/today_hub_card.dart';
-import 'widgets/examination_status_card.dart';
-import 'widgets/ai_analysis_status_card.dart';
-import 'widgets/review_queue_card.dart';
 import 'widgets/recent_patients_card.dart';
 import 'widgets/received_consultations_card.dart';
-import 'widgets/dashboard_notification_card.dart';
+import 'widgets/dashboard_work_status_panel.dart';
+import 'widgets/dashboard_announcement_card.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -30,7 +37,6 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   Future<_DashboardPageData>? _dashboardFuture;
-  int _refreshVersion = 0;
 
   @override
   void didChangeDependencies() {
@@ -41,25 +47,54 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<_DashboardPageData> _loadDashboard() async {
     final auth = context.read<AuthProvider>();
-
     final apiClient = auth.authService.apiClient;
+
+    final notificationProvider = context.read<NotificationProvider>();
 
     final overviewService = DashboardOverviewService(apiClient: apiClient);
 
     final metricService = DashboardMetricService(apiClient: apiClient);
 
-    // 이 Future 하나를 상단/하단에서 공유
+    final examinationService = ExaminationService(apiClient: apiClient);
+
+    final todayHubService = TodayHubService(apiClient: apiClient);
+
+    final patientService = PatientService(apiClient: apiClient);
+
+    final todoService = TodoService(apiClient: apiClient);
+
+    final announcementService = AnnouncementService(apiClient: apiClient);
+
+    // ============================================================
+    // 요청 시작
+    // ============================================================
+
     final overviewFuture = overviewService.fetchOverview(
       date: dashboardNowKst(),
     );
 
-    // overviewFuture와 동시에
-    // 예약 / 검사 / 알림 요청도 시작됨
-    final summaryFuture = metricService.fetchSummary(
+    final examinationOrdersFuture = examinationService.fetchExaminationOrders();
+
+    final todayHubFuture = todayHubService.fetchToday(
       isNurse: auth.isNurse,
       doctorId: auth.currentUser?.doctorId,
+    );
+
+    final notificationFuture = notificationProvider.loadNotifications();
+
+    final summaryFuture = metricService.fetchSummary(
       overviewFuture: overviewFuture,
     );
+
+    final recentPatientsFuture = patientService.fetchRecentPatients(page: 1);
+
+    final todoFuture = todoService.fetchTodos();
+
+    final announcementsFuture = announcementService.fetchAnnouncements();
+
+    // ============================================================
+    // STEP 2. Overview
+    // ============================================================
 
     DashboardOverviewData overview;
 
@@ -71,21 +106,129 @@ class _DashboardPageState extends State<DashboardPage> {
       overview = DashboardOverviewData.empty();
     }
 
-    final summary = await summaryFuture;
+    // ============================================================
+    // STEP 3. Examination
+    // 검사 오더만 조회
+    // ============================================================
 
-    return _DashboardPageData(summary: summary, overview: overview);
-  }
+    List<ExaminationOrderUiModel> examinationOrders = [];
 
-  void _reload() {
-    setState(() {
-      _dashboardFuture = _loadDashboard();
-      _refreshVersion += 1;
-    });
+    var examinationErrorCount = 0;
+
+    try {
+      examinationOrders = await examinationOrdersFuture;
+    } catch (error) {
+      examinationErrorCount += 1;
+
+      debugPrint('[DASHBOARD] 검사 현황 조회 실패: $error');
+    }
+
+    // ============================================================
+    // STEP 4. Today Hub
+    // ============================================================
+
+    TodayHubData todayHub;
+
+    try {
+      todayHub = await todayHubFuture;
+    } catch (error) {
+      debugPrint('[DASHBOARD] Today Hub 조회 실패: $error');
+
+      todayHub = TodayHubData.empty;
+    }
+
+    // ============================================================
+    // 최근 본 환자
+    // ============================================================
+
+    List<PatientUiModel> recentPatients = [];
+    int recentPatientTotal = 0;
+    bool recentPatientsLoadFailed = false;
+    var recentPatientsErrorCount = 0;
+
+    try {
+      final result = await recentPatientsFuture;
+
+      recentPatients = result.patients;
+      recentPatientTotal = result.count;
+    } catch (error) {
+      recentPatientsLoadFailed = true;
+      recentPatientsErrorCount += 1;
+
+      debugPrint('[DASHBOARD] 최근 본 환자 조회 실패: $error');
+    }
+
+    // ============================================================
+    // STEP. My Todo
+    // ============================================================
+
+    List<StaffTodo> todos = [];
+    bool todosLoadFailed = false;
+    var todosErrorCount = 0;
+
+    try {
+      todos = await todoFuture;
+    } catch (error) {
+      todosLoadFailed = true;
+      todosErrorCount += 1;
+
+      debugPrint('[DASHBOARD] To-do 목록 조회 실패: $error');
+    }
+
+    // ============================================================
+    // STEP 5. Summary 병합
+    // ============================================================
+
+    final baseSummary = await summaryFuture;
+
+    final summary = DashboardMetricSummary(
+      todayReservations: todayHub.reservations.length,
+      examinationProgress: baseSummary.examinationProgress,
+      aiPending: baseSummary.aiPending,
+      consultationPending: baseSummary.consultationPending,
+      signoffPending: baseSummary.signoffPending,
+      importantNotifications: baseSummary.importantNotifications,
+      errorCount:
+          baseSummary.errorCount +
+          examinationErrorCount +
+          todayHub.errorCount +
+          recentPatientsErrorCount +
+          todosErrorCount,
+    );
+
+    // 알림 목록 로딩 완료
+    await notificationFuture;
+
+    // Announcements : 공지사항 전용 API
+    List<DashboardAnnouncement> announcements = [];
+    var announcementsLoadFailed = false;
+
+    try {
+      announcements = await announcementsFuture;
+    } catch (error) {
+      announcementsLoadFailed = true;
+
+      debugPrint('[DASHBOARD] 공지사항 조회 실패: $error');
+    }
+
+    return _DashboardPageData(
+      summary: summary,
+      overview: overview,
+      todayHub: todayHub,
+      examinationOrders: examinationOrders,
+      recentPatients: recentPatients,
+      recentPatientTotal: recentPatientTotal,
+      recentPatientsLoadFailed: recentPatientsLoadFailed,
+      todos: todos,
+      todosLoadFailed: todosLoadFailed,
+      announcements: announcements,
+      announcementsLoadFailed: announcementsLoadFailed,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
+    final notificationProvider = context.watch<NotificationProvider>();
 
     return AppShell(
       pageTitle: '대시보드',
@@ -99,8 +242,29 @@ class _DashboardPageState extends State<DashboardPage> {
 
             final summary = data.summary;
             final overview = data.overview;
+            final todayHub = data.todayHub;
 
-            final loading = snapshot.connectionState == ConnectionState.waiting;
+            final examinationOrders = data.examinationOrders;
+
+            final announcements = data.announcements;
+            final announcementsLoadFailed = data.announcementsLoadFailed;
+
+            final recentPatients = data.recentPatients;
+            final recentPatientTotal = data.recentPatientTotal;
+            final recentPatientsLoadFailed = data.recentPatientsLoadFailed;
+
+            final todos = data.todos;
+            final todosLoadFailed = data.todosLoadFailed;
+
+            final metricSummary = DashboardMetricSummary(
+              todayReservations: summary.todayReservations,
+              examinationProgress: summary.examinationProgress,
+              aiPending: summary.aiPending,
+              consultationPending: summary.consultationPending,
+              signoffPending: summary.signoffPending,
+              importantNotifications: notificationProvider.unreadCount,
+              errorCount: summary.errorCount,
+            );
 
             return SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
@@ -115,17 +279,11 @@ class _DashboardPageState extends State<DashboardPage> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _DashboardHeader(
-                        clinicianName: auth.currentUser?.name ?? '',
-                        errorCount: summary.errorCount,
-                        loading: loading,
-                        onRefresh: _reload,
-                      ),
-
-                      const SizedBox(height: 14),
-
+                      // ==========================================================
+                      // 1. Top KPI
+                      // ==========================================================
                       DashboardMetricGrid(
-                        summary: summary,
+                        summary: metricSummary,
                         onReservationsTap: () {
                           context.go('/appointments');
                         },
@@ -140,21 +298,44 @@ class _DashboardPageState extends State<DashboardPage> {
                         },
                       ),
 
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 10),
 
-                      _PrimaryDashboardGrid(
+                      // ==========================================================
+                      // 2. Today / Recent / Todo
+                      // ==========================================================
+                      _DashboardMainRow(
                         width: constraints.maxWidth,
                         isLargeText: isLargeText,
-                        refreshVersion: _refreshVersion,
+                        todayHub: todayHub,
+                        recentPatients: recentPatients,
+                        recentPatientTotal: recentPatientTotal,
+                        recentPatientsLoadFailed: recentPatientsLoadFailed,
+                        todos: todos,
+                        todosLoadFailed: todosLoadFailed,
                       ),
 
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 10),
 
-                      _DashboardBottomGrid(
+                      // ==========================================================
+                      // 3. Notice / Consultation
+                      // ==========================================================
+                      _DashboardSupportRow(
                         width: constraints.maxWidth,
                         isLargeText: isLargeText,
-                        refreshVersion: _refreshVersion,
-                        overview: overview,
+                        consultations: overview.consultations,
+                        announcements: announcements,
+                        announcementsLoadFailed: announcementsLoadFailed,
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // ==========================================================
+                      // 4. Work Status
+                      // ==========================================================
+                      DashboardWorkStatusPanel(
+                        examinationOrders: examinationOrders,
+                        aiStatus: overview.aiStatus,
+                        workItems: overview.workItems,
                       ),
                     ],
                   );
@@ -168,287 +349,171 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
-class _DashboardHeader extends StatelessWidget {
-  final String clinicianName;
-  final int errorCount;
-  final bool loading;
-  final VoidCallback onRefresh;
-
-  const _DashboardHeader({
-    required this.clinicianName,
-    required this.errorCount,
-    required this.loading,
-    required this.onRefresh,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final now = dashboardNowKst();
-
-    final name = clinicianName.trim().isEmpty ? '의료진' : clinicianName.trim();
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'CLINICAL OPERATIONS',
-                style: TextStyle(
-                  fontSize: 8.5,
-                  letterSpacing: 1.1,
-                  fontWeight: FontWeight.w700,
-                  color: context.appTextSecondary,
-                ),
-              ),
-
-              const SizedBox(height: 4),
-
-              Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 10,
-                runSpacing: 3,
-                children: [
-                  Text(
-                    '오늘의 업무',
-                    style: TextStyle(
-                      fontSize: 21,
-                      fontWeight: FontWeight.w800,
-                      color: context.appTextPrimary,
-                    ),
-                  ),
-                  Text(
-                    '$name님, 오늘 확인할 업무를 정리했습니다.',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w500,
-                      color: context.appTextSecondary,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 5),
-
-              Text(
-                _formatToday(now),
-                style: TextStyle(
-                  fontSize: 9.5,
-                  color: context.appTextSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(width: 16),
-
-        if (errorCount > 0) ...[
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.warningBackground,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.warning_amber_rounded,
-                  size: 14,
-                  color: AppColors.warning,
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  '일부 API $errorCount건 연결 대기',
-                  style: const TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.warning,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 8),
-        ],
-
-        OutlinedButton.icon(
-          onPressed: loading ? null : onRefresh,
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(94, 36),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            side: BorderSide(color: context.appBorder),
-            foregroundColor: context.appTextPrimary,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          icon: loading
-              ? SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 1.6,
-                    color: context.appBrand,
-                  ),
-                )
-              : const Icon(Icons.refresh_rounded, size: 16),
-          label: const Text(
-            '새로고침',
-            style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PrimaryDashboardGrid extends StatelessWidget {
-  final double width;
-  final bool isLargeText;
-  final int refreshVersion;
-
-  const _PrimaryDashboardGrid({
-    required this.width,
-    required this.isLargeText,
-    required this.refreshVersion,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (width >= 900 && !isLargeText) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 5,
-            child: TodayHubCard(refreshVersion: refreshVersion),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            flex: 3,
-            child: MyTodoSection(refreshVersion: refreshVersion),
-          ),
-        ],
-      );
-    }
-
-    return Column(
-      children: [
-        TodayHubCard(refreshVersion: refreshVersion),
-        const SizedBox(height: 14),
-        MyTodoSection(refreshVersion: refreshVersion),
-      ],
-    );
-  }
-}
-
-String _formatToday(DateTime date) {
-  const weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
-
-  return '${date.year}년 '
-      '${date.month}월 '
-      '${date.day}일 '
-      '${weekdays[date.weekday - 1]}';
-}
-
-class _DashboardBottomGrid extends StatelessWidget {
-  final double width;
-  final bool isLargeText;
-  final int refreshVersion;
-  final DashboardOverviewData overview;
-
-  const _DashboardBottomGrid({
-    required this.width,
-    required this.isLargeText,
-    required this.refreshVersion,
-    required this.overview,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final examinationCard = ExaminationStatusCard(
-      refreshVersion: refreshVersion,
-    );
-
-    final aiCard = AiAnalysisStatusCard(data: overview.aiStatus);
-
-    final reviewCard = ReviewQueueCard(data: overview.workItems);
-
-    final recentPatientsCard = RecentPatientsCard(
-      refreshVersion: refreshVersion,
-    );
-
-    final receivedConsultationsCard = ReceivedConsultationsCard(
-      data: overview.consultations,
-    );
-
-    final notificationCard = DashboardNotificationCard(
-      refreshVersion: refreshVersion,
-    );
-
-    if (width >= 900 && !isLargeText) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: examinationCard),
-              const SizedBox(width: 14),
-              Expanded(child: aiCard),
-              const SizedBox(width: 14),
-              Expanded(child: reviewCard),
-            ],
-          ),
-
-          const SizedBox(height: 14),
-
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: recentPatientsCard),
-              const SizedBox(width: 14),
-              Expanded(child: receivedConsultationsCard),
-              const SizedBox(width: 14),
-              Expanded(child: notificationCard),
-            ],
-          ),
-        ],
-      );
-    }
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        examinationCard,
-        const SizedBox(height: 14),
-        aiCard,
-        const SizedBox(height: 14),
-        reviewCard,
-        const SizedBox(height: 14),
-        recentPatientsCard,
-        const SizedBox(height: 14),
-        receivedConsultationsCard,
-        const SizedBox(height: 14),
-        notificationCard,
-      ],
-    );
-  }
-}
-
 class _DashboardPageData {
   final DashboardMetricSummary summary;
   final DashboardOverviewData overview;
+  final TodayHubData todayHub;
 
-  const _DashboardPageData({required this.summary, required this.overview});
+  final List<ExaminationOrderUiModel> examinationOrders;
+  final List<PatientUiModel> recentPatients;
+  final List<DashboardAnnouncement> announcements;
+  final bool announcementsLoadFailed;
+  final int recentPatientTotal;
+  final bool recentPatientsLoadFailed;
+
+  final List<StaffTodo> todos;
+  final bool todosLoadFailed;
+
+  const _DashboardPageData({
+    required this.summary,
+    required this.overview,
+    required this.todayHub,
+    required this.examinationOrders,
+    required this.recentPatients,
+    required this.recentPatientTotal,
+    required this.recentPatientsLoadFailed,
+    required this.todos,
+    required this.todosLoadFailed,
+    required this.announcements,
+    required this.announcementsLoadFailed,
+  });
 
   static final empty = _DashboardPageData(
     summary: DashboardMetricSummary.empty,
     overview: DashboardOverviewData.empty(),
+    todayHub: TodayHubData.empty,
+    examinationOrders: const [],
+    recentPatients: const [],
+    recentPatientTotal: 0,
+    recentPatientsLoadFailed: false,
+    todos: const [],
+    todosLoadFailed: false,
+    announcements: const [],
+    announcementsLoadFailed: false,
   );
+}
+
+// ============================================================
+// Dashboard Main Row
+// 오늘 일정 / 최근 본 환자 / 오늘 To-do
+// ============================================================
+
+class _DashboardMainRow extends StatelessWidget {
+  final double width;
+  final bool isLargeText;
+
+  final TodayHubData todayHub;
+
+  final List<PatientUiModel> recentPatients;
+
+  final int recentPatientTotal;
+
+  final bool recentPatientsLoadFailed;
+
+  final List<StaffTodo> todos;
+  final bool todosLoadFailed;
+
+  const _DashboardMainRow({
+    required this.width,
+    required this.isLargeText,
+    required this.todayHub,
+    required this.recentPatients,
+    required this.recentPatientTotal,
+    required this.recentPatientsLoadFailed,
+    required this.todos,
+    required this.todosLoadFailed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final todayCard = TodayHubCard(data: todayHub);
+
+    final recentCard = RecentPatientsCard(
+      patients: recentPatients,
+      totalCount: recentPatientTotal,
+      loadFailed: recentPatientsLoadFailed,
+    );
+
+    final todoCard = MyTodoSection(items: todos, loadFailed: todosLoadFailed);
+
+    if (width >= 900 && !isLargeText) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(flex: 7, child: todayCard),
+
+          const SizedBox(width: 10),
+
+          Expanded(flex: 2, child: recentCard),
+
+          const SizedBox(width: 10),
+
+          Expanded(flex: 3, child: todoCard),
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        todayCard,
+
+        const SizedBox(height: 10),
+
+        recentCard,
+
+        const SizedBox(height: 10),
+
+        todoCard,
+      ],
+    );
+  }
+}
+
+// ============================================================
+// Dashboard Support Row
+// 공지사항 / 받은 협진
+// ============================================================
+
+class _DashboardSupportRow extends StatelessWidget {
+  final double width;
+  final bool isLargeText;
+
+  final List<DashboardConsultationData> consultations;
+  final List<DashboardAnnouncement> announcements;
+  final bool announcementsLoadFailed;
+
+  const _DashboardSupportRow({
+    required this.width,
+    required this.isLargeText,
+    required this.consultations,
+    required this.announcements,
+    required this.announcementsLoadFailed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final noticeCard = DashboardAnnouncementCard(
+      announcements: announcements,
+      loadFailed: announcementsLoadFailed,
+    );
+
+    final consultationCard = ReceivedConsultationsCard(data: consultations);
+
+    if (width >= 900 && !isLargeText) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(flex: 3, child: noticeCard),
+
+          const SizedBox(width: 10),
+
+          Expanded(flex: 2, child: consultationCard),
+        ],
+      );
+    }
+
+    return Column(
+      children: [noticeCard, const SizedBox(height: 10), consultationCard],
+    );
+  }
 }

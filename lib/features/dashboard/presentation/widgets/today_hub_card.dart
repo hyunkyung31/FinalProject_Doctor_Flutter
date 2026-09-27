@@ -1,162 +1,115 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 
-import '../../../../core/auth/auth_provider.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../appointments/presentation/appointment_ui_model.dart';
 import '../../data/services/today_hub_service.dart';
 
-class TodayHubCard extends StatefulWidget {
-  final int refreshVersion;
+// ============================================================
+// STEP 1. Today Hub Card
+// DashboardPage에서 공유받은 데이터만 사용
+// 자체 API 호출 없음
+// ============================================================
 
-  const TodayHubCard({super.key, this.refreshVersion = 0});
+class TodayHubCard extends StatelessWidget {
+  final TodayHubData data;
 
-  @override
-  State<TodayHubCard> createState() => _TodayHubCardState();
-}
-
-class _TodayHubCardState extends State<TodayHubCard> {
-  Future<TodayHubData>? _future;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    _future ??= _load();
-  }
-
-  @override
-  void didUpdateWidget(covariant TodayHubCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    if (oldWidget.refreshVersion != widget.refreshVersion) {
-      _future = _load();
-    }
-  }
-
-  Future<TodayHubData> _load() {
-    final auth = context.read<AuthProvider>();
-
-    final service = TodayHubService(apiClient: auth.authService.apiClient);
-
-    return service.fetchToday(
-      isNurse: auth.isNurse,
-      doctorId: auth.currentUser?.doctorId,
-    );
-  }
+  const TodayHubCard({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<TodayHubData>(
-      future: _future,
-      builder: (context, snapshot) {
-        final data = snapshot.data ?? TodayHubData.empty;
-
-        final loading = snapshot.connectionState == ConnectionState.waiting;
-
-        return Container(
-          decoration: BoxDecoration(
-            color: context.appSurface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: context.appBorder),
+    return Container(
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: context.appBorder),
+      ),
+      child: Column(
+        children: [
+          _Header(
+            count: data.schedules.length + data.reservations.length,
+            onTap: () {
+              context.go('/calendar');
+            },
           ),
-          child: Column(
-            children: [
-              _Header(
-                count: data.schedules.length + data.reservations.length,
-                loading: loading,
-                onTap: () {
-                  context.go('/calendar');
-                },
-              ),
-              Divider(height: 1, color: context.appBorder),
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (constraints.maxWidth >= 650) {
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(width: 188, child: _MiniCalendar()),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _ScheduleSection(items: data.schedules),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _ReservationSection(
-                              items: data.reservations,
-                            ),
-                          ),
-                        ],
-                      );
-                    }
 
-                    return Column(
-                      children: [
-                        const _MiniCalendar(),
-                        const SizedBox(height: 12),
-                        _ScheduleSection(items: data.schedules),
-                        const SizedBox(height: 12),
-                        _ReservationSection(items: data.reservations),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ],
+          Divider(height: 1, color: context.appBorder),
+
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth >= 480) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(width: 188, child: _MiniCalendar()),
+
+                      const SizedBox(width: 10),
+
+                      Expanded(child: _ScheduleSection(items: data.schedules)),
+
+                      const SizedBox(width: 10),
+
+                      Expanded(
+                        child: _ReservationSection(items: data.reservations),
+                      ),
+                    ],
+                  );
+                }
+
+                return Column(
+                  children: [
+                    const _MiniCalendar(),
+
+                    const SizedBox(height: 12),
+
+                    _ScheduleSection(items: data.schedules),
+
+                    const SizedBox(height: 12),
+
+                    _ReservationSection(items: data.reservations),
+                  ],
+                );
+              },
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }
 
 class _Header extends StatelessWidget {
   final int count;
-  final bool loading;
   final VoidCallback onTap;
 
-  const _Header({
-    required this.count,
-    required this.loading,
-    required this.onTap,
-  });
+  const _Header({required this.count, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
-      child: Row(
-        children: [
-          Icon(
-            Icons.calendar_month_outlined,
-            size: 16,
-            color: context.appBrand,
-          ),
-          const SizedBox(width: 7),
-          Text(
-            '오늘 일정',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              color: context.appTextPrimary,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 36),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 6, 7, 6),
+        child: Row(
+          children: [
+            Icon(
+              Icons.calendar_month_outlined,
+              size: 14,
+              color: context.appBrand,
             ),
-          ),
-          const SizedBox(width: 7),
-          if (loading)
-            SizedBox(
-              width: 12,
-              height: 12,
-              child: CircularProgressIndicator(
-                strokeWidth: 1.4,
-                color: context.appBrand,
+            const SizedBox(width: 7),
+            Text(
+              '오늘 일정',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: context.appTextPrimary,
               ),
-            )
-          else
+            ),
+            const SizedBox(width: 7),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
               decoration: BoxDecoration(
@@ -172,36 +125,42 @@ class _Header extends StatelessWidget {
                 ),
               ),
             ),
-          const Spacer(),
-          TextButton(
-            onPressed: onTap,
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 7),
-              minimumSize: const Size(0, 28),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  '일정',
-                  style: TextStyle(
-                    fontSize: 9,
+            const Spacer(),
+            TextButton(
+              onPressed: onTap,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+                minimumSize: const Size(0, 26),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    '일정',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: context.appTextSecondary,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 15,
                     color: context.appTextSecondary,
                   ),
-                ),
-                const SizedBox(width: 2),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 15,
-                  color: context.appTextSecondary,
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
+
+// ============================================================
+// Mini Calendar
+// ============================================================
 
 class _MiniCalendar extends StatelessWidget {
   const _MiniCalendar();
@@ -214,7 +173,21 @@ class _MiniCalendar extends StatelessWidget {
 
     final start = first.subtract(Duration(days: first.weekday % 7));
 
-    final days = List.generate(42, (index) => start.add(Duration(days: index)));
+    // ============================================================
+    // 실제 필요한 주까지만 표시
+    // 5주짜리 달은 35칸, 6주짜리 달은 42칸
+    // ============================================================
+
+    final last = DateTime(today.year, today.month + 1, 0);
+
+    final end = last.add(Duration(days: 6 - (last.weekday % 7)));
+
+    final dayCount = end.difference(start).inDays + 1;
+
+    final days = List.generate(
+      dayCount,
+      (index) => start.add(Duration(days: index)),
+    );
 
     const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -222,37 +195,49 @@ class _MiniCalendar extends StatelessWidget {
       onTap: () {
         context.go('/calendar');
       },
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.all(10),
+        // 위쪽은 적당히 유지,
+        // 아래쪽 불필요한 공간만 축소
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
         decoration: BoxDecoration(
           color: context.appBackground,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           children: [
-            Row(
-              children: [
-                Text(
-                  '${today.year}년 ${today.month}월',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: context.appTextPrimary,
+            // Calendar Header
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${today.year}년 ${today.month}월',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: context.appTextPrimary,
+                    ),
                   ),
-                ),
-                const Spacer(),
-                Text(
-                  '오늘',
-                  style: TextStyle(
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.w700,
-                    color: context.appBrand,
+
+                  const SizedBox(width: 8),
+
+                  Text(
+                    '오늘',
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w700,
+                      color: context.appBrand,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(height: 9),
+
+            const SizedBox(height: 5),
+
+            // Weekdays
             Row(
               children: [
                 for (final weekday in weekdays)
@@ -270,13 +255,16 @@ class _MiniCalendar extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 5),
+
+            const SizedBox(height: 3),
+
+            // Days
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 7,
-                mainAxisExtent: 21,
+                mainAxisExtent: 20,
               ),
               itemCount: days.length,
               itemBuilder: (context, index) {
@@ -334,6 +322,7 @@ class _ScheduleSection extends StatelessWidget {
       dotColor: AppColors.primaryBlue,
       emptyText: '오늘 등록된 일정이 없습니다.',
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (final item in items.take(4))
             _HubRow(
@@ -435,10 +424,10 @@ class _HubSection extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 7),
+        const SizedBox(height: 5),
         if (count == 0)
           Container(
-            height: 74,
+            height: 66,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: context.appBackground,
@@ -479,7 +468,7 @@ class _HubRow extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(7),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+          padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
           child: Row(
             children: [
               SizedBox(

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 
-import '../../../../core/theme/app_theme.dart';
 import '../../data/services/dashboard_metric_service.dart';
+
+// ============================================================
+// Dashboard Metric Grid
+// 상단 Compact KPI Strip
+// ============================================================
 
 class DashboardMetricGrid extends StatelessWidget {
   final DashboardMetricSummary summary;
@@ -11,8 +15,6 @@ class DashboardMetricGrid extends StatelessWidget {
   final VoidCallback? onExaminationsTap;
   final VoidCallback? onAiTap;
   final VoidCallback? onConsultationsTap;
-  final VoidCallback? onSignoffTap;
-  final VoidCallback? onNotificationsTap;
 
   const DashboardMetricGrid({
     super.key,
@@ -21,92 +23,69 @@ class DashboardMetricGrid extends StatelessWidget {
     this.onExaminationsTap,
     this.onAiTap,
     this.onConsultationsTap,
-    this.onSignoffTap,
-    this.onNotificationsTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final items = [
-      _MetricItem(
-        icon: Icons.calendar_month_outlined,
+      _MetricData(
         title: '오늘 예약',
         value: summary.todayReservations,
-        description: '당일 예약 환자',
-        color: AppColors.primaryBlue,
+        icon: Icons.calendar_today_outlined,
         onTap: onReservationsTap,
+        emphasized: true,
       ),
-      _MetricItem(
-        icon: Icons.science_outlined,
+      _MetricData(
         title: '검사 진행',
         value: summary.examinationProgress,
-        description: '예정·진행 검사',
-        color: AppColors.success,
+        icon: Icons.science_outlined,
         onTap: onExaminationsTap,
       ),
-      _MetricItem(
-        icon: Icons.auto_awesome_outlined,
+      _MetricData(
         title: 'AI 대기·진행',
         value: summary.aiPending,
-        description: '검토 전 분석',
-        color: AppColors.primaryBlue,
+        icon: Icons.auto_awesome_outlined,
         onTap: onAiTap,
       ),
-      _MetricItem(
-        icon: Icons.medical_services_outlined,
+      _MetricData(
         title: '처리 대기 협진',
         value: summary.consultationPending,
-        description: '수락·의견 필요',
-        color: AppColors.warning,
+        icon: Icons.medical_services_outlined,
         onTap: onConsultationsTap,
       ),
-      _MetricItem(
-        icon: Icons.fact_check_outlined,
+      _MetricData(
         title: '승인 대기',
         value: summary.signoffPending,
-        description: '검토·서명 보고서',
-        color: AppColors.navy,
-        onTap: onSignoffTap,
+        icon: Icons.assignment_turned_in_outlined,
       ),
-      _MetricItem(
-        icon: Icons.notifications_none_rounded,
+      _MetricData(
         title: '주요 알림',
         value: summary.importantNotifications,
-        description: '확인이 필요한 알림',
-        color: AppColors.danger,
-        onTap: onNotificationsTap,
+        icon: Icons.notifications_none_rounded,
       ),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final textScaler = MediaQuery.textScalerOf(context);
+        final columnCount = constraints.maxWidth >= 980
+            ? 6
+            : constraints.maxWidth >= 620
+            ? 3
+            : 2;
 
-        final textScale = textScaler.scale(16) / 16;
+        const gap = 8.0;
 
-        final int columnCount;
-
-        if (constraints.maxWidth >= 1000 && textScale < 1.25) {
-          columnCount = 6;
-        } else if (constraints.maxWidth >= 680) {
-          columnCount = 3;
-        } else {
-          columnCount = 2;
-        }
-
-        const spacing = 10.0;
-
-        final width =
-            (constraints.maxWidth - spacing * (columnCount - 1)) / columnCount;
+        final cardWidth =
+            (constraints.maxWidth - gap * (columnCount - 1)) / columnCount;
 
         return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
+          spacing: gap,
+          runSpacing: gap,
           children: [
             for (final item in items)
               SizedBox(
-                width: width,
-                child: _MetricCard(item: item),
+                width: cardWidth,
+                child: _MetricCard(data: item),
               ),
           ],
         );
@@ -115,97 +94,80 @@ class DashboardMetricGrid extends StatelessWidget {
   }
 }
 
-class _MetricItem {
-  final IconData icon;
+// ============================================================
+// Metric Data
+// ============================================================
+
+class _MetricData {
   final String title;
   final int value;
-  final String description;
-  final Color color;
+  final IconData icon;
   final VoidCallback? onTap;
+  final bool emphasized;
 
-  const _MetricItem({
-    required this.icon,
+  const _MetricData({
     required this.title,
     required this.value,
-    required this.description,
-    required this.color,
-    required this.onTap,
+    required this.icon,
+    this.onTap,
+    this.emphasized = false,
   });
 }
 
-class _MetricCard extends StatelessWidget {
-  final _MetricItem item;
+// ============================================================
+// Metric Card
+// ============================================================
 
-  const _MetricCard({required this.item});
+class _MetricCard extends StatelessWidget {
+  final _MetricData data;
+
+  const _MetricCard({required this.data});
 
   @override
   Widget build(BuildContext context) {
+    final borderColor = data.emphasized ? context.appBrand : context.appBorder;
+
     return Material(
       color: context.appSurface,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(7),
       child: InkWell(
-        onTap: item.onTap,
-        borderRadius: BorderRadius.circular(12),
+        onTap: data.onTap,
+        borderRadius: BorderRadius.circular(7),
         child: Container(
-          height: 100,
-          padding: const EdgeInsets.fromLTRB(13, 12, 13, 11),
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: context.appBorder),
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(color: borderColor),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: item.color.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(item.icon, size: 16, color: item.color),
+              Icon(data.icon, size: 15, color: context.appBrand),
+
+              const SizedBox(width: 8),
+
+              Expanded(
+                child: Text(
+                  data.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    color: context.appTextPrimary,
                   ),
-
-                  const SizedBox(width: 9),
-
-                  Expanded(
-                    child: Text(
-                      item.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                        color: context.appTextPrimary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const Spacer(),
-
-              Text(
-                '${item.value}',
-                style: TextStyle(
-                  fontSize: 20,
-                  height: 1,
-                  fontWeight: FontWeight.w800,
-                  color: context.appTextPrimary,
                 ),
               ),
 
-              const SizedBox(height: 4),
+              const SizedBox(width: 6),
 
               Text(
-                item.description,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                '${data.value}',
                 style: TextStyle(
-                  fontSize: 8.5,
-                  color: context.appTextSecondary,
+                  fontSize: 16,
+                  height: 1,
+                  fontWeight: FontWeight.w800,
+                  color: context.appTextPrimary,
                 ),
               ),
             ],

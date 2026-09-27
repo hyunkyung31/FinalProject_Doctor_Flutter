@@ -16,6 +16,7 @@ import '../../features/imaging/presentation/imaging_page.dart';
 import '../../features/ai/presentation/ai_page.dart';
 import '../../features/consult/presentation/consultation_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
+import '../../features/imaging/presentation/angio_viewer_page.dart';
 
 import '../auth/auth_provider.dart';
 import '../network/api_client.dart';
@@ -186,6 +187,35 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.imaging,
       builder: (context, state) {
+        final query = state.uri.queryParameters;
+
+        final analysisType = query['analysisType'];
+
+        final examinationId = int.tryParse(query['examinationId'] ?? '');
+
+        final analysisId = int.tryParse(query['analysisId'] ?? '');
+
+        final patientId = int.tryParse(query['patientId'] ?? '');
+
+        // ========================================================
+        // ANGIO 실제 Frame Viewer
+        // ========================================================
+
+        if (analysisType == 'ANGIO_2D' &&
+            examinationId != null &&
+            patientId != null) {
+          return AngioViewerPage(
+            examinationId: examinationId,
+            patientId: patientId,
+            analysisId: analysisId,
+          );
+        }
+
+        // ========================================================
+        // 기존 영상 화면
+        // Sidebar 직접 진입 / CCTA
+        // ========================================================
+
         return const ImagingPage();
       },
     ),
