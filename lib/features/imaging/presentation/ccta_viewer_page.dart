@@ -12,6 +12,7 @@ import '../../ai/data/services/ai_analysis_service.dart';
 import '../../ai/presentation/ai_ui_models.dart';
 import '../../ai/presentation/report/ai_medical_report.dart';
 import '../data/services/imaging_service.dart';
+import 'widgets/anatomy_model_view.dart';
 
 // ============================================================
 // STEP 1. CCTA 전용 Viewer
@@ -58,6 +59,7 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
   String? _pageError;
   String? _dicomMessage;
   String? _meshMessage;
+  String _anatomyViewMode = 'VESSEL_CALCIFICATION';
 
   @override
   void didChangeDependencies() {
@@ -479,7 +481,7 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
               () => setState(() => _mode = _ViewerMode.dicom),
             ),
             _Mode(
-              '3D 석회화',
+              anatomyWebViewerAvailable ? '3D 렌더링' : '3D 석회화',
               Icons.view_in_ar_outlined,
               _mode == _ViewerMode.mesh,
               () => setState(() => _mode = _ViewerMode.mesh),
@@ -672,10 +674,97 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
   }
 
   // ==========================================================
-  // STEP 6. 3D STL
+  // STEP 6. 3D anatomy (web) / STL fallback
+  // 웹 clinician MedicalModelViewer와 같은 GLB를 표시한다.
   // ==========================================================
 
+  Widget _anatomyViewer() {
+    const modes = <(String, String)>[
+      ('VESSEL', '혈관'),
+      ('CALCIFICATION', '석회화'),
+      ('VESSEL_CALCIFICATION', '혈관 + 석회화'),
+    ];
+
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: context.appSurface,
+            border: Border(bottom: BorderSide(color: context.appBorder)),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.view_in_ar_outlined,
+                size: 17,
+                color: context.appTextPrimary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'CCTA 3D 렌더링',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: context.appTextPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '심장 · 대동맥 · 관상동맥 · 석회화',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: context.appTextSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: context.appSurface,
+            border: Border(bottom: BorderSide(color: context.appBorder)),
+          ),
+          child: Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: [
+              for (final mode in modes)
+                ChoiceChip(
+                  label: Text(mode.$2, style: const TextStyle(fontSize: 11)),
+                  selected: _anatomyViewMode == mode.$1,
+                  onSelected: (_) =>
+                      setState(() => _anatomyViewMode = mode.$1),
+                ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: AnatomyModelView(
+            sourceUrl: 'test/anatomy.glb',
+            format: 'GLB',
+            viewMode: _anatomyViewMode,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _meshViewer() {
+    if (anatomyWebViewerAvailable) {
+      return _anatomyViewer();
+    }
+
     final candidates = widget.result.segmentationDetails
         .where((e) => e.meshFileAssetId != null)
         .toList();
@@ -715,7 +804,8 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
                     const SizedBox(height: 2),
 
                     Text(
-                      'AI가 분할한 석회화 영역을 3D로 표시합니다.',
+                      '이 실행 파일에는 WebGL이 없어 석회화 STL만 표시됩니다. '
+                      '심장 모형은 Chrome으로 연 Flutter web에서 웹과 같이 나옵니다.',
                       style: TextStyle(
                         fontSize: 9,
                         color: context.appTextSecondary,
@@ -928,7 +1018,9 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
                 });
               },
               icon: const Icon(Icons.view_in_ar_outlined, size: 17),
-              label: const Text('3D 석회화에서 위치 확인'),
+              label: Text(
+                anatomyWebViewerAvailable ? '3D 렌더링에서 보기' : '3D 석회화에서 위치 확인',
+              ),
             ),
           ),
         ],
