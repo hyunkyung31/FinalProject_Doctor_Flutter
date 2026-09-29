@@ -3,9 +3,17 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/auth/auth_provider.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_theme_context.dart';
 import '../../data/models/staff_todo.dart';
 import '../../data/services/todo_service.dart';
 import 'dashboard_section_card.dart';
+
+// ============================================================
+// 오늘 To-do
+// - DashboardPage에서 전달받은 실제 To-do 데이터 사용
+// - 홈에서는 오늘 기준 To-do만 표시
+// - + 버튼을 누르면 Dialog 대신 카드 내부 Inline Composer 표시
+// ============================================================
 
 class MyTodoSection extends StatefulWidget {
   final List<StaffTodo> items;
@@ -23,18 +31,29 @@ class MyTodoSection extends StatefulWidget {
 
 class _MyTodoSectionState extends State<MyTodoSection> {
   late List<StaffTodo> _items;
+  late bool _loadFailed;
 
   bool _isLoading = false;
   bool _isMutating = false;
-  late bool _loadFailed;
+
+  // ============================================================
+  // Inline To-do Composer State
+  // ============================================================
+
+  final _quickTodoController = TextEditingController();
+  final _quickTodoFocusNode = FocusNode();
+
+  bool _isComposing = false;
+  String _composerPriority = 'NORMAL';
+  late DateTime _composerDate;
 
   @override
   void initState() {
     super.initState();
 
     _items = List<StaffTodo>.of(widget.items);
-
     _loadFailed = widget.loadFailed;
+    _composerDate = _nowKst();
   }
 
   @override
@@ -45,10 +64,27 @@ class _MyTodoSectionState extends State<MyTodoSection> {
         oldWidget.loadFailed != widget.loadFailed) {
       setState(() {
         _items = List<StaffTodo>.of(widget.items);
-
         _loadFailed = widget.loadFailed;
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _quickTodoController.dispose();
+    _quickTodoFocusNode.dispose();
+
+    super.dispose();
+  }
+
+  // ============================================================
+  // Service
+  // ============================================================
+
+  TodoService _todoService() {
+    final auth = context.read<AuthProvider>();
+
+    return TodoService(apiClient: auth.authService.apiClient);
   }
 
   Future<void> _loadTodos() async {
@@ -62,9 +98,7 @@ class _MyTodoSectionState extends State<MyTodoSection> {
     });
 
     try {
-      final service = _todoService();
-
-      final items = await service.fetchTodos();
+      final items = await _todoService().fetchTodos();
 
       if (!mounted) {
         return;
@@ -76,10 +110,7 @@ class _MyTodoSectionState extends State<MyTodoSection> {
         _loadFailed = false;
       });
 
-      debugPrint(
-        '[TODO] 목록 조회 완료: '
-        '${items.length}건',
-      );
+      debugPrint('[TODO] 목록 조회 완료: ${items.length}건');
     } catch (error) {
       debugPrint('[TODO] 목록 조회 실패: $error');
 
@@ -96,10 +127,43 @@ class _MyTodoSectionState extends State<MyTodoSection> {
     }
   }
 
-  TodoService _todoService() {
-    final auth = context.read<AuthProvider>();
+  // ============================================================
+  // 오늘 표시 대상
+  // React 홈과 같은 날짜 기준
+  // ============================================================
 
-    return TodoService(apiClient: auth.authService.apiClient);
+  List<StaffTodo> _todayItems() {
+    final today = _nowKst();
+
+    final items = _items.where((item) {
+      final dueAt = item.dueAt;
+
+      // 기한이 있으면 오늘 기한인 항목만 홈에 표시
+      if (dueAt != null) {
+        return _isSameDay(dueAt, today);
+      }
+
+      // 기한이 없는 미완료 항목은 계속 표시
+      if (!item.isCompleted) {
+        return true;
+      }
+
+      // 기한이 없는 완료 항목은 오늘 완료한 경우만 표시
+      final completedAt = item.completedAt;
+
+      return completedAt != null && _isSameDay(completedAt, today);
+    }).toList();
+
+    // 미완료를 먼저 표시
+    items.sort((a, b) {
+      if (a.isCompleted == b.isCompleted) {
+        return 0;
+      }
+
+      return a.isCompleted ? 1 : -1;
+    });
+
+    return items;
   }
 
   @override
@@ -108,7 +172,9 @@ class _MyTodoSectionState extends State<MyTodoSection> {
 
     final textScale = textScaler.scale(16) / 16;
 
-    final remainingCount = _items.where((item) => !item.isCompleted).length;
+    final todayItems = _todayItems();
+
+    final remainingCount = todayItems.where((item) => !item.isCompleted).length;
 
     return DashboardSectionCard(
       title: '오늘 To-do',
@@ -119,16 +185,23 @@ class _MyTodoSectionState extends State<MyTodoSection> {
           final horizontal = constraints.maxWidth >= 760 && textScale < 1.25;
 
           if (horizontal) {
-            return _buildHorizontalLayout(remainingCount);
+            return _buildHorizontalLayout(remainingCount, todayItems);
           }
 
-          return _buildVerticalLayout(remainingCount);
+          return _buildVerticalLayout(remainingCount, todayItems);
         },
       ),
     );
   }
 
-  Widget _buildHorizontalLayout(int remainingCount) {
+  // ============================================================
+  // Layout
+  // ============================================================
+
+  Widget _buildHorizontalLayout(
+    int remainingCount,
+    List<StaffTodo> todayItems,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       child: Row(
@@ -145,13 +218,13 @@ class _MyTodoSectionState extends State<MyTodoSection> {
 
           const SizedBox(width: 18),
 
-          Expanded(child: _buildTodoContent()),
+          Expanded(child: _buildTodoArea(todayItems)),
         ],
       ),
     );
   }
 
-  Widget _buildVerticalLayout(int remainingCount) {
+  Widget _buildVerticalLayout(int remainingCount, List<StaffTodo> todayItems) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       child: Column(
@@ -166,13 +239,47 @@ class _MyTodoSectionState extends State<MyTodoSection> {
 
           const SizedBox(height: 5),
 
-          _buildTodoContent(),
+          _buildTodoArea(todayItems),
         ],
       ),
     );
   }
 
-  Widget _buildTodoContent() {
+  // ============================================================
+  // Inline Composer + 오늘 목록
+  // ============================================================
+
+  Widget _buildTodoArea(List<StaffTodo> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_isComposing) ...[
+          _InlineTodoComposer(
+            controller: _quickTodoController,
+            focusNode: _quickTodoFocusNode,
+            selectedDate: _composerDate,
+            priority: _composerPriority,
+            disabled: _isMutating,
+            onPickDate: _pickTodoDate,
+            onPriorityChanged: (value) {
+              setState(() {
+                _composerPriority = value;
+              });
+            },
+            onSubmit: _submitInlineTodo,
+            onCancel: _cancelTodoComposer,
+          ),
+
+          if (items.isNotEmpty)
+            const Divider(height: 1, thickness: 1, color: AppColors.border),
+        ],
+
+        if (!_isComposing || items.isNotEmpty) _buildTodoContent(items),
+      ],
+    );
+  }
+
+  Widget _buildTodoContent(List<StaffTodo> items) {
     if (_isLoading) {
       return const SizedBox(
         height: 98,
@@ -201,7 +308,7 @@ class _MyTodoSectionState extends State<MyTodoSection> {
       );
     }
 
-    if (_items.isEmpty) {
+    if (items.isEmpty) {
       return const SizedBox(
         height: 98,
         child: Center(
@@ -214,12 +321,16 @@ class _MyTodoSectionState extends State<MyTodoSection> {
     }
 
     return _TodoList(
-      items: _items,
+      items: items,
       disabled: _isMutating,
       onToggle: _toggleTodo,
       onDelete: _deleteTodo,
     );
   }
+
+  // ============================================================
+  // To-do 상태 변경
+  // ============================================================
 
   Future<void> _toggleTodo(StaffTodo todo) async {
     if (_isMutating) {
@@ -249,6 +360,10 @@ class _MyTodoSectionState extends State<MyTodoSection> {
     }
   }
 
+  // ============================================================
+  // To-do 삭제
+  // ============================================================
+
   Future<void> _deleteTodo(StaffTodo todo) async {
     if (_isMutating) {
       return;
@@ -267,6 +382,7 @@ class _MyTodoSectionState extends State<MyTodoSection> {
               },
               child: const Text('취소'),
             ),
+
             FilledButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop(true);
@@ -304,21 +420,101 @@ class _MyTodoSectionState extends State<MyTodoSection> {
     }
   }
 
-  Future<void> _addTodo() async {
+  // ============================================================
+  // Inline To-do 추가 열기 / 취소
+  // ============================================================
+
+  void _addTodo() {
     if (_isMutating) {
       return;
     }
 
-    final result = await showDialog<_TodoFormResult>(
-      context: context,
-      builder: (context) {
-        return const _AddTodoDialog();
-      },
-    );
+    if (_isComposing) {
+      _quickTodoFocusNode.requestFocus();
 
-    if (result == null || !mounted) {
       return;
     }
+
+    _quickTodoController.clear();
+
+    setState(() {
+      _isComposing = true;
+
+      _composerPriority = 'NORMAL';
+
+      _composerDate = _nowKst();
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _quickTodoFocusNode.requestFocus();
+      }
+    });
+  }
+
+  void _cancelTodoComposer() {
+    _quickTodoController.clear();
+
+    _quickTodoFocusNode.unfocus();
+
+    setState(() {
+      _isComposing = false;
+
+      _composerPriority = 'NORMAL';
+
+      _composerDate = _nowKst();
+    });
+  }
+
+  // ============================================================
+  // 날짜 선택
+  // ============================================================
+
+  Future<void> _pickTodoDate() async {
+    final now = _nowKst();
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _composerDate,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 5),
+    );
+
+    if (picked == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _composerDate = DateTime(picked.year, picked.month, picked.day);
+    });
+  }
+
+  // ============================================================
+  // 실제 API To-do 생성
+  // ============================================================
+
+  Future<void> _submitInlineTodo() async {
+    if (_isMutating) {
+      return;
+    }
+
+    final title = _quickTodoController.text.trim();
+
+    if (title.isEmpty) {
+      _showMessage('할 일을 입력해주세요.');
+
+      _quickTodoFocusNode.requestFocus();
+
+      return;
+    }
+
+    final dueAt = DateTime(
+      _composerDate.year,
+      _composerDate.month,
+      _composerDate.day,
+      23,
+      59,
+    );
 
     setState(() {
       _isMutating = true;
@@ -326,11 +522,27 @@ class _MyTodoSectionState extends State<MyTodoSection> {
 
     try {
       await _todoService().createTodo(
-        title: result.title,
-        priority: result.priority,
-        dueAt: result.dueAt,
-        description: result.description,
+        title: title,
+        priority: _composerPriority,
+        dueAt: dueAt,
+        description: '',
       );
+
+      if (!mounted) {
+        return;
+      }
+
+      _quickTodoController.clear();
+
+      _quickTodoFocusNode.unfocus();
+
+      setState(() {
+        _isComposing = false;
+
+        _composerPriority = 'NORMAL';
+
+        _composerDate = _nowKst();
+      });
 
       await _loadTodos();
     } catch (error) {
@@ -359,191 +571,251 @@ class _MyTodoSectionState extends State<MyTodoSection> {
   }
 }
 
-class _TodoFormResult {
-  final String title;
+// ============================================================
+// Inline To-do Composer
+// iOS Reminders 스타일의 빠른 입력 영역
+// ============================================================
+
+class _InlineTodoComposer extends StatelessWidget {
+  final TextEditingController controller;
+  final FocusNode focusNode;
+
+  final DateTime selectedDate;
   final String priority;
-  final DateTime dueAt;
-  final String description;
+  final bool disabled;
 
-  const _TodoFormResult({
-    required this.title,
+  final VoidCallback onPickDate;
+  final ValueChanged<String> onPriorityChanged;
+  final VoidCallback onSubmit;
+  final VoidCallback onCancel;
+
+  const _InlineTodoComposer({
+    required this.controller,
+    required this.focusNode,
+    required this.selectedDate,
     required this.priority,
-    required this.dueAt,
-    required this.description,
+    required this.disabled,
+    required this.onPickDate,
+    required this.onPriorityChanged,
+    required this.onSubmit,
+    required this.onCancel,
   });
-}
-
-class _AddTodoDialog extends StatefulWidget {
-  const _AddTodoDialog();
-
-  @override
-  State<_AddTodoDialog> createState() => _AddTodoDialogState();
-}
-
-class _AddTodoDialogState extends State<_AddTodoDialog> {
-  final _titleController = TextEditingController();
-
-  final _descriptionController = TextEditingController();
-
-  String _priority = 'NORMAL';
-  TimeOfDay? _selectedTime;
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
-    final displayTime = _selectedTime == null
-        ? '오늘'
-        : _formatTime(_selectedTime!);
+    final isHighPriority = priority == 'HIGH';
 
-    return AlertDialog(
-      title: const Text(
-        'To-do 추가',
-        style: TextStyle(
-          color: AppColors.textPrimary,
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      content: SizedBox(
-        width: 380,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _titleController,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: '할 일',
-                hintText: '예: 검사 결과 확인',
-                border: OutlineInputBorder(),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 1, 2, 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ====================================================
+          // STEP 1. 할 일 입력
+          // ============================================================
+          Row(
+            children: [
+              Container(
+                width: 16,
+                height: 16,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isHighPriority
+                        ? AppColors.warning
+                        : AppColors.textDisabled,
+                    width: 1.4,
+                  ),
+                ),
               ),
-            ),
 
-            const SizedBox(height: 12),
+              const SizedBox(width: 8),
 
-            TextField(
-              controller: _descriptionController,
-              minLines: 2,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: '설명',
-                hintText: '선택 입력',
-                border: OutlineInputBorder(),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _priority,
-                    decoration: const InputDecoration(
-                      labelText: '우선순위',
-                      border: OutlineInputBorder(),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  enabled: !disabled,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) {
+                    if (!disabled) {
+                      onSubmit();
+                    }
+                  },
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: '할 일을 입력하세요',
+                    hintStyle: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w400,
+                      color: AppColors.textSecondary,
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 'NORMAL', child: Text('일반')),
-                      DropdownMenuItem(value: 'HIGH', child: Text('중요')),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) {
-                        return;
-                      }
+                    isDense: true,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(vertical: 5),
+                  ),
+                ),
+              ),
 
-                      setState(() {
-                        _priority = value;
-                      });
-                    },
+              const SizedBox(width: 4),
+
+              Tooltip(
+                message: '추가',
+                child: InkWell(
+                  onTap: disabled ? null : onSubmit,
+                  borderRadius: BorderRadius.circular(20),
+                  child: const Padding(
+                    padding: EdgeInsets.all(3),
+                    child: Icon(
+                      Icons.check_circle_rounded,
+                      size: 19,
+                      color: AppColors.primaryBlue,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 2),
+
+          // ====================================================
+          // STEP 2. 날짜 / 우선순위 / 취소
+          // ============================================================
+          Padding(
+            padding: const EdgeInsets.only(left: 24),
+            child: Row(
+              children: [
+                // 날짜
+                _TodoComposerChip(
+                  icon: Icons.calendar_today_outlined,
+                  label: _formatComposerDate(selectedDate),
+                  highlighted: false,
+                  onTap: disabled ? null : onPickDate,
+                ),
+
+                const SizedBox(width: 5),
+
+                // 우선순위
+                PopupMenuButton<String>(
+                  tooltip: '우선순위',
+                  enabled: !disabled,
+                  initialValue: priority,
+                  onSelected: onPriorityChanged,
+                  itemBuilder: (context) {
+                    return const [
+                      PopupMenuItem(value: 'NORMAL', child: Text('일반')),
+                      PopupMenuItem(value: 'HIGH', child: Text('중요')),
+                    ];
+                  },
+                  child: _TodoComposerChip(
+                    icon: Icons.flag_outlined,
+                    label: isHighPriority ? '중요' : '일반',
+                    highlighted: isHighPriority,
                   ),
                 ),
 
-                const SizedBox(width: 10),
+                const Spacer(),
 
-                OutlinedButton.icon(
-                  onPressed: _pickTime,
-                  icon: const Icon(Icons.schedule_rounded, size: 17),
-                  label: Text(displayTime),
+                Tooltip(
+                  message: '취소',
+                  child: InkWell(
+                    onTap: disabled ? null : onCancel,
+                    borderRadius: BorderRadius.circular(20),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: 15,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: const Text('취소'),
-        ),
-        FilledButton(onPressed: _submit, child: const Text('추가')),
-      ],
-    );
-  }
-
-  Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _selectedTime ?? TimeOfDay.now(),
-    );
-
-    if (picked == null || !mounted) {
-      return;
-    }
-
-    setState(() {
-      _selectedTime = picked;
-    });
-  }
-
-  void _submit() {
-    final title = _titleController.text.trim();
-
-    if (title.isEmpty) {
-      return;
-    }
-
-    final now = DateTime.now().toUtc().add(const Duration(hours: 9));
-
-    final selectedTime = _selectedTime;
-
-    final dueAt = selectedTime == null
-        ? DateTime(now.year, now.month, now.day, 23, 59)
-        : DateTime(
-            now.year,
-            now.month,
-            now.day,
-            selectedTime.hour,
-            selectedTime.minute,
-          );
-
-    Navigator.of(context).pop(
-      _TodoFormResult(
-        title: title,
-        priority: _priority,
-        dueAt: dueAt,
-        description: _descriptionController.text.trim(),
+          ),
+        ],
       ),
     );
-  }
-
-  String _formatTime(TimeOfDay time) {
-    final hour = time.hour.toString().padLeft(2, '0');
-
-    final minute = time.minute.toString().padLeft(2, '0');
-
-    return '$hour:$minute';
   }
 }
+
+// ============================================================
+// Inline Composer 작은 옵션 버튼
+// ============================================================
+
+class _TodoComposerChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool highlighted;
+  final VoidCallback? onTap;
+
+  const _TodoComposerChip({
+    required this.icon,
+    required this.label,
+    required this.highlighted,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Container(
+      height: 24,
+      padding: const EdgeInsets.symmetric(horizontal: 7),
+      decoration: BoxDecoration(
+        color: highlighted
+            ? AppColors.warningBackground
+            : AppColors.surfaceSoft,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: highlighted ? AppColors.warning : AppColors.border,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 11,
+            color: highlighted ? AppColors.warning : AppColors.textSecondary,
+          ),
+
+          const SizedBox(width: 4),
+
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 8.5,
+              fontWeight: FontWeight.w600,
+              color: highlighted ? AppColors.warning : AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (onTap == null) {
+      return content;
+    }
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: content,
+    );
+  }
+}
+
+// ============================================================
+// To-do Summary
+// ============================================================
 
 class _TodoSummary extends StatelessWidget {
   final int count;
@@ -564,31 +836,25 @@ class _TodoSummary extends StatelessWidget {
       return Row(
         children: [
           const _TodoIcon(),
-
           const SizedBox(width: 8),
-
           Text(
             '$count',
-            style: const TextStyle(
-              color: AppColors.navy,
+            style: TextStyle(
+              color: context.appTextPrimary,
               fontSize: 22,
               fontWeight: FontWeight.w800,
             ),
           ),
-
           const SizedBox(width: 6),
-
-          const Text(
+          Text(
             'To-do',
             style: TextStyle(
-              color: AppColors.primaryBlue,
+              color: context.appBrand,
               fontSize: 10,
               fontWeight: FontWeight.w700,
             ),
           ),
-
           const Spacer(),
-
           _TodoAddButton(onTap: onAdd, disabled: disabled),
         ],
       );
@@ -600,31 +866,25 @@ class _TodoSummary extends StatelessWidget {
         Row(
           children: [
             const _TodoIcon(),
-
             const SizedBox(width: 6),
-
             _TodoAddButton(onTap: onAdd, disabled: disabled),
           ],
         ),
-
         const SizedBox(height: 7),
-
         Text(
           '$count',
-          style: const TextStyle(
-            color: AppColors.navy,
+          style: TextStyle(
+            color: context.appTextPrimary,
             fontSize: 24,
             height: 1,
             fontWeight: FontWeight.w800,
           ),
         ),
-
         const SizedBox(height: 3),
-
-        const Text(
+        Text(
           'To-do',
           style: TextStyle(
-            color: AppColors.primaryBlue,
+            color: context.appBrand,
             fontSize: 10,
             fontWeight: FontWeight.w700,
           ),
@@ -633,6 +893,10 @@ class _TodoSummary extends StatelessWidget {
     );
   }
 }
+
+// ============================================================
+// To-do Icon
+// ============================================================
 
 class _TodoIcon extends StatelessWidget {
   const _TodoIcon();
@@ -643,18 +907,19 @@ class _TodoIcon extends StatelessWidget {
       width: 23,
       height: 23,
       alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceSoft,
+      decoration: BoxDecoration(
+        color: context.appBackground,
         shape: BoxShape.circle,
+        border: Border.all(color: context.appBorder),
       ),
-      child: const Icon(
-        Icons.push_pin_outlined,
-        size: 12,
-        color: AppColors.primaryBlue,
-      ),
+      child: Icon(Icons.push_pin_outlined, size: 12, color: context.appBrand),
     );
   }
 }
+
+// ============================================================
+// To-do Add Button
+// ============================================================
 
 class _TodoAddButton extends StatelessWidget {
   final VoidCallback onTap;
@@ -676,15 +941,11 @@ class _TodoAddButton extends StatelessWidget {
             height: 23,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.surfaceSoft,
+              color: context.appBackground,
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: context.appBorder),
             ),
-            child: const Icon(
-              Icons.add_rounded,
-              size: 15,
-              color: AppColors.primaryBlue,
-            ),
+            child: Icon(Icons.add_rounded, size: 15, color: context.appBrand),
           ),
         ),
       ),
@@ -693,49 +954,8 @@ class _TodoAddButton extends StatelessWidget {
 }
 
 // ============================================================
-// Todo List
-// 운영/EMR 스타일의 Divider 기반 목록
+// To-do Row
 // ============================================================
-
-class _TodoList extends StatelessWidget {
-  final List<StaffTodo> items;
-  final bool disabled;
-
-  final ValueChanged<StaffTodo> onToggle;
-  final ValueChanged<StaffTodo> onDelete;
-
-  const _TodoList({
-    required this.items,
-    required this.disabled,
-    required this.onToggle,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final visibleItems = items.take(5).toList();
-
-    return Column(
-      children: [
-        for (int index = 0; index < visibleItems.length; index++) ...[
-          _TodoRow(
-            data: visibleItems[index],
-            disabled: disabled,
-            onTap: () {
-              onToggle(visibleItems[index]);
-            },
-            onDelete: () {
-              onDelete(visibleItems[index]);
-            },
-          ),
-
-          if (index < visibleItems.length - 1)
-            const Divider(height: 1, thickness: 1, color: AppColors.border),
-        ],
-      ],
-    );
-  }
-}
 
 class _TodoRow extends StatelessWidget {
   final StaffTodo data;
@@ -753,7 +973,6 @@ class _TodoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final completed = data.isCompleted;
-
     final isHigh = data.isHighPriority;
 
     return InkWell(
@@ -768,13 +987,13 @@ class _TodoRow extends StatelessWidget {
               height: 17,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: completed ? AppColors.primaryBlue : Colors.transparent,
+                color: completed ? context.appBrand : Colors.transparent,
                 border: Border.all(
                   color: completed
-                      ? AppColors.primaryBlue
+                      ? context.appBrand
                       : isHigh
                       ? AppColors.warning
-                      : AppColors.textDisabled,
+                      : context.appTextSecondary,
                   width: 1.5,
                 ),
               ),
@@ -796,8 +1015,8 @@ class _TodoRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: completed
-                      ? AppColors.textDisabled
-                      : AppColors.textPrimary,
+                      ? context.appTextSecondary
+                      : context.appTextPrimary,
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                   decoration: completed ? TextDecoration.lineThrough : null,
@@ -811,10 +1030,10 @@ class _TodoRow extends StatelessWidget {
               _formatDueAt(data.dueAt),
               style: TextStyle(
                 color: completed
-                    ? AppColors.textDisabled
+                    ? context.appTextSecondary
                     : isHigh
                     ? AppColors.warning
-                    : AppColors.textSecondary,
+                    : context.appTextSecondary,
                 fontSize: 9,
                 fontWeight: FontWeight.w600,
               ),
@@ -829,9 +1048,9 @@ class _TodoRow extends StatelessWidget {
                 tooltip: 'To-do 메뉴',
                 padding: EdgeInsets.zero,
                 iconSize: 17,
-                icon: const Icon(
+                icon: Icon(
                   Icons.more_vert_rounded,
-                  color: AppColors.textSecondary,
+                  color: context.appTextSecondary,
                 ),
                 onSelected: (value) {
                   if (value == 'delete') {
@@ -865,15 +1084,78 @@ class _TodoRow extends StatelessWidget {
   }
 }
 
+// ============================================================
+// To-do List
+// ============================================================
+
+class _TodoList extends StatelessWidget {
+  final List<StaffTodo> items;
+
+  final bool disabled;
+
+  final ValueChanged<StaffTodo> onToggle;
+
+  final ValueChanged<StaffTodo> onDelete;
+
+  const _TodoList({
+    required this.items,
+    required this.disabled,
+    required this.onToggle,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleItems = items.take(5).toList();
+
+    return Column(
+      children: [
+        for (int index = 0; index < visibleItems.length; index++) ...[
+          _TodoRow(
+            data: visibleItems[index],
+            disabled: disabled,
+            onTap: () {
+              onToggle(visibleItems[index]);
+            },
+            onDelete: () {
+              onDelete(visibleItems[index]);
+            },
+          ),
+
+          if (index < visibleItems.length - 1)
+            Divider(height: 1, thickness: 1, color: context.appBorder),
+        ],
+      ],
+    );
+  }
+}
+
+// ============================================================
+// Format Helpers
+// ============================================================
+
+String _formatComposerDate(DateTime date) {
+  final today = _nowKst();
+
+  if (_isSameDay(date, today)) {
+    return '오늘';
+  }
+
+  final month = date.month.toString().padLeft(2, '0');
+
+  final day = date.day.toString().padLeft(2, '0');
+
+  return '$month.$day';
+}
+
 String _formatDueAt(DateTime? date) {
   if (date == null) {
     return '-';
   }
 
-  final now = DateTime.now().toUtc().add(const Duration(hours: 9));
+  final now = _nowKst();
 
-  final isToday =
-      date.year == now.year && date.month == now.month && date.day == now.day;
+  final isToday = _isSameDay(date, now);
 
   final hour = date.hour.toString().padLeft(2, '0');
 
@@ -892,4 +1174,21 @@ String _formatDueAt(DateTime? date) {
   final day = date.day.toString().padLeft(2, '0');
 
   return '$month.$day';
+}
+
+DateTime _nowKst() {
+  final kst = DateTime.now().toUtc().add(const Duration(hours: 9));
+
+  return DateTime(
+    kst.year,
+    kst.month,
+    kst.day,
+    kst.hour,
+    kst.minute,
+    kst.second,
+  );
+}
+
+bool _isSameDay(DateTime a, DateTime b) {
+  return a.year == b.year && a.month == b.month && a.day == b.day;
 }

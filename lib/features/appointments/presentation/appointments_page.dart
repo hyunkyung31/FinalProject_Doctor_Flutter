@@ -7,18 +7,19 @@ import '../../../core/auth/auth_provider.dart';
 import '../../../core/widgets/app_shell.dart';
 import '../../patients/data/services/patient_service.dart';
 import '../../patients/presentation/widgets/patient_detail_tabs.dart';
+import '../data/services/doctor_service.dart';
+import '../data/services/appointment_service.dart';
+
+import 'widgets/appointment_calendar_panel.dart';
+import 'widgets/appointment_day_timeline_panel.dart';
+import 'widgets/appointment_questionnaire_panel.dart';
+import 'widgets/appointment_status_filter.dart';
 
 import 'appointment_ui_model.dart';
 import 'appointment_doctor_ui_model.dart';
-import '../data/services/doctor_service.dart';
-import '../data/services/appointment_service.dart';
-import 'widgets/appointment_calendar_panel.dart';
-import 'widgets/appointment_day_timeline_panel.dart';
-import 'widgets/appointment_status_filter.dart';
 
 // ============================================================
 // STEP 1. Appointments Page
-// 실제 Backend 구조 기반 Mock UI
 // ============================================================
 
 class AppointmentsPage extends StatefulWidget {
@@ -38,6 +39,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
     final parts = <String>[];
 
     final name = doctorName?.trim() ?? '';
+
     final department = departmentName?.trim() ?? '';
 
     if (name.isNotEmpty) {
@@ -56,16 +58,16 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
   }
 
   List<AppointmentUiModel> _appointments = [];
-
   Map<int, PatientUiModel> _patientMap = {};
-
   Map<int, AppointmentDoctorUiModel> _doctorMap = {};
-
   AppointmentStatusFilter _selectedFilter = AppointmentStatusFilter.all;
 
   int? _selectedAppointmentId;
 
   DateTime _selectedDate = DateTime.now();
+
+  // 간호사 계정에서만 사용하는 예약 내부 탭
+  _AppointmentSection _selectedSection = _AppointmentSection.schedule;
 
   // ============================================================
   // STEP 3. Init
@@ -138,21 +140,25 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
 
         if (_appointments.isEmpty) {
           _selectedAppointmentId = null;
+
           return;
         }
 
         _selectedDate = _resolveDateForAppointments(
           _appointments,
+
           _selectedDate,
         );
 
         final appointmentsOnDate = _appointmentsOnDate(
           _appointments,
+
           _selectedDate,
         );
 
         final filteredAppointments = _filterAppointments(
           appointmentsOnDate,
+
           _selectedFilter,
         );
 
@@ -188,6 +194,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
       } catch (error) {
         debugPrint('[APPOINTMENTS] 환자 정보 조회 실패: $error');
       }
+
       if (auth.isNurse) {
         try {
           final doctors = await doctorsFuture;
@@ -226,6 +233,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
         ..showSnackBar(
           const SnackBar(
             content: Text('예약 목록을 불러오지 못했습니다.'),
+
             duration: Duration(seconds: 2),
           ),
         );
@@ -238,6 +246,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
     final patients = <PatientUiModel>[];
 
     var page = 1;
+
     var hasNext = true;
 
     while (hasNext) {
@@ -246,6 +255,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
       patients.addAll(result.patients);
 
       hasNext = result.hasNext;
+
       page++;
     }
 
@@ -266,6 +276,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
 
   List<AppointmentUiModel> _filterAppointments(
     List<AppointmentUiModel> source,
+
     AppointmentStatusFilter filter,
   ) {
     switch (filter) {
@@ -304,11 +315,13 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
 
     final appointmentsOnDate = _appointmentsOnDate(
       _appointments,
+
       normalizedDate,
     );
 
     final filteredAppointments = _filterAppointments(
       appointmentsOnDate,
+
       _selectedFilter,
     );
 
@@ -318,6 +331,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
 
     setState(() {
       _selectedDate = normalizedDate;
+
       _selectedAppointmentId = nextSelectedAppointmentId;
     });
 
@@ -332,6 +346,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
 
   List<AppointmentUiModel> _appointmentsOnDate(
     List<AppointmentUiModel> appointments,
+
     DateTime date,
   ) {
     return appointments.where((appointment) {
@@ -369,11 +384,14 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
 
   DateTime _resolveDateForAppointments(
     List<AppointmentUiModel> appointments,
+
     DateTime preferredDate,
   ) {
     final preferred = DateTime(
       preferredDate.year,
+
       preferredDate.month,
+
       preferredDate.day,
     );
 
@@ -416,11 +434,13 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
   void _changeFilter(AppointmentStatusFilter filter) {
     final appointmentsOnDate = _appointmentsOnDate(
       _appointments,
+
       _selectedDate,
     );
 
     final filteredAppointments = _filterAppointments(
       appointmentsOnDate,
+
       filter,
     );
 
@@ -452,6 +472,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
         ..showSnackBar(
           const SnackBar(
             content: Text('현재 계정에는 예약 승인 권한이 없습니다.'),
+
             duration: Duration(seconds: 2),
           ),
         );
@@ -469,6 +490,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
         ..showSnackBar(
           const SnackBar(
             content: Text('승인 대기 상태의 예약만 승인할 수 있습니다.'),
+
             duration: Duration(seconds: 2),
           ),
         );
@@ -489,6 +511,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
         ..showSnackBar(
           const SnackBar(
             content: Text('담당 의사 정보가 없어 예약을 승인할 수 없습니다.'),
+
             duration: Duration(seconds: 2),
           ),
         );
@@ -507,6 +530,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
 
       await appointmentService.acceptAppointment(
         reservationId: appointment.id,
+
         doctorId: doctorId,
       );
 
@@ -525,6 +549,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
         ..showSnackBar(
           const SnackBar(
             content: Text('예약이 승인되었습니다.'),
+
             duration: Duration(seconds: 2),
           ),
         );
@@ -546,6 +571,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
         ..showSnackBar(
           const SnackBar(
             content: Text('예약 승인에 실패했습니다.'),
+
             duration: Duration(seconds: 2),
           ),
         );
@@ -578,6 +604,14 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
 
     final canManage = auth.hasPermission(AppPermission.appointmentManage);
 
+    // 간호사 업무 탭 노출 기준
+    // role 문자열보다 실제 RBAC 권한을 우선 사용
+    final canUseQuestionnaire = auth.isNurse || canManage;
+
+    final activeSection = canUseQuestionnaire
+        ? _selectedSection
+        : _AppointmentSection.schedule;
+
     final currentUser = auth.currentUser;
 
     final reservationSummaryTitle = auth.isNurse ? '전체 예약 현황' : '내 예약 현황';
@@ -586,38 +620,70 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
         ? null
         : _buildDoctorScopeLabel(
             currentUser?.name,
+
             currentUser?.departmentName,
           );
 
     return AppShell(
       pageTitle: '예약',
+
       selectedIndex: 2,
+
       body: Material(
         color: context.appBackground,
+
         child: Container(
           color: context.appBackground,
+
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+
             children: [
+              // ==================================================
+              // 간호사 계정: 예약 일정 / 문진 관리
+              // ==================================================
+              if (canUseQuestionnaire) ...[
+                _AppointmentSectionTabs(
+                  selectedSection: activeSection,
+
+                  onChanged: (section) {
+                    setState(() {
+                      _selectedSection = section;
+                    });
+                  },
+                ),
+
+                const SizedBox(height: 12),
+              ],
+
               // ==================================================
               // Main Content
               // ==================================================
               Expanded(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
+
                   children: [
                     Expanded(
                       flex: 3,
+
                       child: Align(
                         alignment: Alignment.topCenter,
+
                         child: SizedBox(
                           width: double.infinity,
+
                           child: AppointmentCalendarPanel(
                             appointments: _appointments,
+
                             selectedDate: _selectedDate,
+
                             summaryTitle: reservationSummaryTitle,
+
                             summarySubtitle: doctorScopeLabel,
+
                             onDateChanged: _changeDate,
                           ),
                         ),
@@ -628,33 +694,156 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
 
                     Expanded(
                       flex: 7,
-                      child: AppointmentDayTimelinePanel(
-                        appointments: _filteredAppointments,
-                        selectedDate: _selectedDate,
-                        patientMap: _patientMap,
-                        doctorMap: _doctorMap,
-                        selectedAppointmentId: _selectedAppointmentId,
-                        onAppointmentSelected: _selectAppointment,
-                        canManage: canManage,
-                        onAccept: _acceptAppointment,
-                        filterBar: AppointmentStatusFilterBar(
-                          selectedFilter: _selectedFilter,
-                          totalCount: _selectedDateAppointments.length,
-                          requestedCount: _countStatus(
-                            AppointmentStatus.requested,
-                          ),
-                          acceptedCount: _countStatus(
-                            AppointmentStatus.accepted,
-                          ),
-                          canceledCount: _countStatus(
-                            AppointmentStatus.canceled,
-                          ),
-                          canManage: canManage,
-                          onChanged: _changeFilter,
-                        ),
-                      ),
+
+                      child: activeSection == _AppointmentSection.questionnaire
+                          ? AppointmentQuestionnairePanel(
+                              appointments: _selectedDateAppointments,
+
+                              selectedDate: _selectedDate,
+                            )
+                          : AppointmentDayTimelinePanel(
+                              appointments: _filteredAppointments,
+
+                              selectedDate: _selectedDate,
+
+                              patientMap: _patientMap,
+
+                              doctorMap: _doctorMap,
+
+                              selectedAppointmentId: _selectedAppointmentId,
+
+                              onAppointmentSelected: _selectAppointment,
+
+                              canManage: canManage,
+
+                              onAccept: _acceptAppointment,
+
+                              filterBar: AppointmentStatusFilterBar(
+                                selectedFilter: _selectedFilter,
+
+                                totalCount: _selectedDateAppointments.length,
+
+                                requestedCount: _countStatus(
+                                  AppointmentStatus.requested,
+                                ),
+
+                                acceptedCount: _countStatus(
+                                  AppointmentStatus.accepted,
+                                ),
+
+                                canceledCount: _countStatus(
+                                  AppointmentStatus.canceled,
+                                ),
+
+                                canManage: canManage,
+
+                                onChanged: _changeFilter,
+                              ),
+                            ),
                     ),
                   ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+// ============================================================
+// STEP 11. 예약 내부 Section Tab
+// 간호사 계정에만 노출
+// ============================================================
+
+enum _AppointmentSection { schedule, questionnaire }
+
+class _AppointmentSectionTabs extends StatelessWidget {
+  final _AppointmentSection selectedSection;
+  final ValueChanged<_AppointmentSection> onChanged;
+
+  const _AppointmentSectionTabs({
+    required this.selectedSection,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: colors.outlineVariant),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _AppointmentSectionButton(
+            icon: Icons.calendar_month_outlined,
+            label: '예약 일정',
+            selected: selectedSection == _AppointmentSection.schedule,
+            onTap: () {
+              onChanged(_AppointmentSection.schedule);
+            },
+          ),
+          const SizedBox(width: 4),
+          _AppointmentSectionButton(
+            icon: Icons.assignment_outlined,
+            label: '문진 관리',
+            selected: selectedSection == _AppointmentSection.questionnaire,
+            onTap: () {
+              onChanged(_AppointmentSection.questionnaire);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AppointmentSectionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _AppointmentSectionButton({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Material(
+      color: selected ? colors.primary : Colors.transparent,
+      borderRadius: BorderRadius.circular(7),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(7),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: selected ? colors.onPrimary : colors.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? colors.onPrimary : colors.onSurfaceVariant,
                 ),
               ),
             ],

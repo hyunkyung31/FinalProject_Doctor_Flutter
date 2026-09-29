@@ -89,18 +89,14 @@ class ReceivedConsultationsCard extends StatelessWidget {
                 color: AppColors.warning,
                 background: AppColors.warningBackground,
               ),
-
               const SizedBox(width: 5),
-
               _CountBadge(
                 label: '진행',
                 count: _inProgressCount,
                 color: AppColors.primaryBlue,
                 background: AppColors.surfaceSoft,
               ),
-
               const Spacer(),
-
               Text(
                 '총 ${data.length}건',
                 style: TextStyle(
@@ -189,6 +185,25 @@ class _ConsultationRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = item.status.trim().toUpperCase();
 
+    // ============================================================
+    // React 의료진 웹과 동일한 상태 표시 기준
+    //
+    // 현재 의료진이 아직 의견을 작성하지 않았다면
+    // 실제 협진 status보다 "의견 필요"를 우선 표시한다.
+    // ============================================================
+
+    final needsResponse = !item.hasResponse;
+
+    final displayStatusLabel = needsResponse ? '의견 필요' : _statusLabel(status);
+
+    final displayStatusColor = needsResponse
+        ? AppColors.warning
+        : _statusColor(status);
+
+    final displayStatusBackground = needsResponse
+        ? AppColors.warningBackground
+        : _statusBackground(status);
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -206,7 +221,7 @@ class _ConsultationRow extends StatelessWidget {
                 width: 6,
                 height: 6,
                 decoration: BoxDecoration(
-                  color: _isUrgent ? AppColors.danger : _statusColor(status),
+                  color: _isUrgent ? AppColors.danger : displayStatusColor,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -248,15 +263,15 @@ class _ConsultationRow extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                 decoration: BoxDecoration(
-                  color: _statusBackground(status),
+                  color: displayStatusBackground,
                   borderRadius: BorderRadius.circular(5),
                 ),
                 child: Text(
-                  _statusLabel(status),
+                  displayStatusLabel,
                   style: TextStyle(
                     fontSize: 7.8,
                     fontWeight: FontWeight.w700,
-                    color: _statusColor(status),
+                    color: displayStatusColor,
                   ),
                 ),
               ),
@@ -276,6 +291,10 @@ class _ConsultationRow extends StatelessWidget {
   }
 }
 
+// ============================================================
+// Subtitle
+// ============================================================
+
 String _subtitle(DashboardConsultationData item) {
   final patientName = item.patientName.trim().isEmpty
       ? '환자명 미확인'
@@ -287,6 +306,10 @@ String _subtitle(DashboardConsultationData item) {
 
   return '$patientName · 환자 #${item.patientId}$dueText';
 }
+
+// ============================================================
+// Status Label
+// ============================================================
 
 String _statusLabel(String status) {
   switch (status) {
@@ -314,6 +337,10 @@ String _statusLabel(String status) {
   }
 }
 
+// ============================================================
+// Status Color
+// ============================================================
+
 Color _statusColor(String status) {
   switch (status) {
     case 'REQUESTED':
@@ -335,6 +362,10 @@ Color _statusColor(String status) {
       return AppColors.textSecondary;
   }
 }
+
+// ============================================================
+// Status Background
+// ============================================================
 
 Color _statusBackground(String status) {
   switch (status) {
@@ -358,9 +389,12 @@ Color _statusBackground(String status) {
   }
 }
 
+// ============================================================
+// Date Format
+// ============================================================
+
 String _formatDateTime(DateTime date) {
   final month = date.month.toString().padLeft(2, '0');
-
   final day = date.day.toString().padLeft(2, '0');
 
   return '$month.$day';

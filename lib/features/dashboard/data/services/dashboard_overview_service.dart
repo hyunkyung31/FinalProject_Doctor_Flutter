@@ -123,14 +123,12 @@ class DashboardOverviewService {
     return const [];
   }
 
+  // Dashboard 조회 날짜
   String _formatDate(DateTime date) {
-    final koreaTime = date.toUtc().add(const Duration(hours: 9));
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
 
-    final month = koreaTime.month.toString().padLeft(2, '0');
-
-    final day = koreaTime.day.toString().padLeft(2, '0');
-
-    return '${koreaTime.year}-$month-$day';
+    return '${date.year}-$month-$day';
   }
 }
 

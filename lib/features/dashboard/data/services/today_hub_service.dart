@@ -113,14 +113,57 @@ class TodayHubService {
     );
   }
 
+  // ============================================================
+  // 오늘 의료진 일정 조회
+  // React와 동일하게 서버에 오늘 범위(from / to)를 전달
+  // ============================================================
+
   Future<List<TodayHubScheduleItem>> _fetchTodaySchedules() async {
-    final response = await apiClient.dio.get(ApiEndpoints.staffSchedules);
+    final today = _nowKst();
+
+    // ============================================================
+    // STEP 1. 오늘 KST 범위를 UTC ISO 문자열로 변환
+    //
+    // 예:
+    // 2026-09-28 00:00 KST
+    // → 2026-09-27T15:00:00.000Z
+    // ============================================================
+
+    final startUtc = DateTime.utc(
+      today.year,
+      today.month,
+      today.day,
+    ).subtract(const Duration(hours: 9));
+
+    final endUtc = DateTime.utc(
+      today.year,
+      today.month,
+      today.day,
+      23,
+      59,
+      59,
+      999,
+    ).subtract(const Duration(hours: 9));
+
+    // ============================================================
+    // STEP 2. React와 동일하게 오늘 범위로 서버 조회
+    // ============================================================
+
+    final response = await apiClient.dio.get(
+      ApiEndpoints.staffSchedules,
+      queryParameters: {
+        'from': startUtc.toIso8601String(),
+        'to': endUtc.toIso8601String(),
+      },
+    );
 
     final items = _extractItems(response.data, '의료진 일정');
 
-    final today = _nowKst();
-
     final schedules = <TodayHubScheduleItem>[];
+
+    // ============================================================
+    // STEP 3. 서버가 반환한 오늘 일정 변환
+    // ============================================================
 
     for (final item in items) {
       final status = item['status']?.toString().toUpperCase() ?? '';
@@ -137,15 +180,6 @@ class TodayHubService {
         continue;
       }
 
-      final sameDay =
-          startsAt.year == today.year &&
-          startsAt.month == today.month &&
-          startsAt.day == today.day;
-
-      if (!sameDay) {
-        continue;
-      }
-
       schedules.add(
         TodayHubScheduleItem(
           id: _parseInt(item['id']),
@@ -158,7 +192,19 @@ class TodayHubService {
       );
     }
 
-    schedules.sort((a, b) => a.startsAt.compareTo(b.startsAt));
+    // ============================================================
+    // STEP 4. 종일 일정 먼저 → 이후 시간순
+    // ============================================================
+
+    schedules.sort((a, b) {
+      if (a.isAllDay != b.isAllDay) {
+        return a.isAllDay ? -1 : 1;
+      }
+
+      return a.startsAt.compareTo(b.startsAt);
+    });
+
+    debugPrint('[DASHBOARD] 오늘 일정 조회 완료: ${schedules.length}건');
 
     return schedules;
   }

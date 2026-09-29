@@ -6,14 +6,6 @@ import '../consultation_ui_models.dart';
 
 // ============================================================
 // STEP 1. Consultation Detail Panel
-//
-// Tablet Consult Cockpit
-// - 협진 상태/진행 단계
-// - 협진 요청
-// - 핵심 임상 요약
-// - Clinical Evidence
-// - 최근 협진 기록
-// - 하단 Action Dock
 // ============================================================
 
 class ConsultationDetailPanel extends StatefulWidget {
@@ -22,6 +14,7 @@ class ConsultationDetailPanel extends StatefulWidget {
   final VoidCallback onAccept;
   final VoidCallback onComplete;
   final VoidCallback onWithdraw;
+
   final ValueChanged<ConsultationOpinionUiModel> onOpinionAdded;
 
   final bool showBackButton;
@@ -43,643 +36,626 @@ class ConsultationDetailPanel extends StatefulWidget {
       _ConsultationDetailPanelState();
 }
 
+enum _ConsultationDetailTab { overview, participants, references, opinions }
+
 class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
-  static const int _demoCurrentDoctorId = 4;
-  static const String _demoCurrentDoctorName = '이서준';
-  static const String _demoCurrentDepartment = '순환기내과';
+  _ConsultationDetailTab _selectedTab = _ConsultationDetailTab.overview;
 
   // ============================================================
-  // STEP 2. UI
+  // STEP 2. Consultation 변경 시 첫 탭으로 복귀
+  // ============================================================
+
+  @override
+  void didUpdateWidget(covariant ConsultationDetailPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.consultation.id != widget.consultation.id) {
+      _selectedTab = _ConsultationDetailTab.overview;
+    }
+  }
+
+  // ============================================================
+  // STEP 3. Main UI
   // ============================================================
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: context.appBackground,
-        borderRadius: BorderRadius.circular(16),
+        color: context.appSurface,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: context.appBorder),
       ),
       clipBehavior: Clip.antiAlias,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final wide = constraints.maxWidth >= 760;
-          final horizontalPadding = wide ? 16.0 : 12.0;
-
-          return Column(
-            children: [
-              // 환자/협진 상태는 스크롤과 관계없이 항상 보이도록 고정합니다.
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  horizontalPadding,
-                  14,
-                  horizontalPadding,
-                  0,
-                ),
-                child: _buildHero(wide),
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    0,
-                    horizontalPadding,
-                    16,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildRequestAndSummary(wide),
-                      const SizedBox(height: 16),
-                      _buildEvidenceSection(wide),
-                      const SizedBox(height: 16),
-                      _buildBottomWorkspace(wide),
-                    ],
-                  ),
-                ),
-              ),
-              _buildActionDock(),
-            ],
-          );
-        },
+      child: Column(
+        children: [
+          _buildHeader(),
+          Divider(height: 1, color: context.appBorder),
+          _buildTabs(),
+          Divider(height: 1, color: context.appBorder),
+          Expanded(child: _buildSelectedTab()),
+          _buildActionDock(),
+        ],
       ),
     );
   }
 
   // ============================================================
-  // STEP 3. Hero
+  // STEP 4. Header
   // ============================================================
 
-  Widget _buildHero(bool wide) {
+  Widget _buildHeader() {
     final item = widget.consultation;
 
-    return _CockpitCard(
-      padding: EdgeInsets.fromLTRB(wide ? 18 : 14, 14, wide ? 18 : 14, 14),
-      child: Column(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (widget.showBackButton) ...[
-                IconButton(
-                  onPressed: widget.onBack,
-                  tooltip: '협진 목록',
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.arrow_back_rounded, size: 19),
-                ),
-                const SizedBox(width: 4),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          if (widget.showBackButton) ...[
+            IconButton(
+              onPressed: widget.onBack,
+              tooltip: '협진 목록',
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.arrow_back_rounded, size: 19),
+            ),
+            const SizedBox(width: 4),
+          ],
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
                   children: [
-                    Wrap(
-                      spacing: 7,
-                      runSpacing: 7,
-                      children: [
-                        _StatusBadge(status: item.status),
-                        _DirectionBadge(direction: item.direction),
-                        _DueBadge(dueAt: item.dueAt),
-                      ],
+                    _StatusBadge(status: item.status),
+                    _DirectionBadge(direction: item.direction),
+                    if (item.dueAt != null)
+                      _SimpleBadge(
+                        icon: Icons.schedule_outlined,
+                        text: '기한 ${_formatDateTime(item.dueAt!)}',
+                      ),
+                  ],
+                ),
+
+                const SizedBox(height: 10),
+
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        item.patientName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: context.appTextPrimary,
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 9),
+
+                    const SizedBox(width: 7),
+
                     Text(
-                      '${item.patientName} · ${item.subject}',
-                      maxLines: wide ? 2 : 3,
-                      overflow: TextOverflow.ellipsis,
+                      item.patientMeta,
                       style: TextStyle(
-                        fontSize: wide ? 18 : 16,
-                        height: 1.25,
-                        fontWeight: FontWeight.w800,
-                        color: context.appTextPrimary,
+                        fontSize: 9,
+                        color: context.appTextDisabled,
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 12),
-              _ParticipantStack(
-                participants: item.participants,
-                onTap: _showParticipantsSheet,
-              ),
-            ],
+
+                const SizedBox(height: 5),
+
+                Text(
+                  item.subject,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.35,
+                    fontWeight: FontWeight.w700,
+                    color: context.appTextPrimary,
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 13),
-          _ConsultationStepper(status: item.status),
+
+          const SizedBox(width: 16),
+
+          _ParticipantSummary(participants: item.participants),
         ],
       ),
     );
   }
 
   // ============================================================
-  // STEP 4. Request + Clinical Summary
+  // STEP 5. Tabs
   // ============================================================
 
-  Widget _buildRequestAndSummary(bool wide) {
-    final requestCard = _buildRequestCard();
-    final summaryCard = _buildClinicalSummaryCard();
+  Widget _buildTabs() {
+    return SizedBox(
+      height: 45,
+      child: Row(
+        children: [
+          Expanded(
+            child: _DetailTabButton(
+              icon: Icons.dashboard_outlined,
+              label: '개요',
+              selected: _selectedTab == _ConsultationDetailTab.overview,
+              onTap: () {
+                setState(() {
+                  _selectedTab = _ConsultationDetailTab.overview;
+                });
+              },
+            ),
+          ),
 
-    if (!wide) {
-      return Column(
-        children: [requestCard, const SizedBox(height: 10), summaryCard],
-      );
-    }
+          Expanded(
+            child: _DetailTabButton(
+              icon: Icons.groups_outlined,
+              label: '참여자',
+              count: widget.consultation.participants.length,
+              selected: _selectedTab == _ConsultationDetailTab.participants,
+              onTap: () {
+                setState(() {
+                  _selectedTab = _ConsultationDetailTab.participants;
+                });
+              },
+            ),
+          ),
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(flex: 7, child: requestCard),
-        const SizedBox(width: 10),
-        Expanded(flex: 4, child: summaryCard),
-      ],
+          Expanded(
+            child: _DetailTabButton(
+              icon: Icons.folder_copy_outlined,
+              label: '참조',
+              count: widget.consultation.references.length,
+              selected: _selectedTab == _ConsultationDetailTab.references,
+              onTap: () {
+                setState(() {
+                  _selectedTab = _ConsultationDetailTab.references;
+                });
+              },
+            ),
+          ),
+
+          Expanded(
+            child: _DetailTabButton(
+              icon: Icons.rate_review_outlined,
+              label: '협진 의견',
+              count: widget.consultation.opinions.length,
+              selected: _selectedTab == _ConsultationDetailTab.opinions,
+              onTap: () {
+                setState(() {
+                  _selectedTab = _ConsultationDetailTab.opinions;
+                });
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildRequestCard() {
+  Widget _buildSelectedTab() {
+    switch (_selectedTab) {
+      case _ConsultationDetailTab.overview:
+        return _buildOverview();
+
+      case _ConsultationDetailTab.participants:
+        return _buildParticipants();
+
+      case _ConsultationDetailTab.references:
+        return _buildReferences();
+
+      case _ConsultationDetailTab.opinions:
+        return _buildOpinions();
+    }
+  }
+
+  // ============================================================
+  // STEP 6. Overview
+  // ============================================================
+
+  Widget _buildOverview() {
     final item = widget.consultation;
     final requester = item.requester;
 
-    return _CockpitCard(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              _SectionIcon(icon: Icons.assignment_outlined),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '요청 내용',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                    color: context.appTextPrimary,
-                  ),
-                ),
-              ),
-              _TinyPill(text: '우선순위 · ${item.priorityLabel}'),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            item.note.isEmpty ? '등록된 협진 요청 내용이 없습니다.' : item.note,
-            style: TextStyle(
-              fontSize: 10.5,
-              height: 1.55,
-              color: context.appTextSecondary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 7,
-            runSpacing: 7,
-            children: [
-              _MetaChip(
-                icon: Icons.person_outline_rounded,
-                text: requester == null
-                    ? '요청 의료진 -'
-                    : '${requester.doctorName} · ${requester.department}',
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildClinicalSummaryCard() {
-    final followUp = widget.consultation.followUp;
-    final metrics = followUp?.clinicalMetrics ?? const [];
-
-    return _CockpitCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _SectionIcon(icon: Icons.monitor_heart_outlined),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '핵심 지표',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                    color: context.appTextPrimary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (metrics.isEmpty)
-            _EmptyMiniState(
-              icon: Icons.monitor_heart_outlined,
-              text: '표시할 임상 지표가 없습니다.',
-            )
-          else
-            LayoutBuilder(
+          _SectionCard(
+            title: '협진 정보',
+            icon: Icons.info_outline_rounded,
+            child: LayoutBuilder(
               builder: (context, constraints) {
-                final visibleMetrics = metrics.take(4).toList();
-                const gap = 8.0;
-                final itemWidth = (constraints.maxWidth - gap) / 2;
+                final twoColumns = constraints.maxWidth >= 600;
+
+                final itemWidth = twoColumns
+                    ? (constraints.maxWidth - 16) / 2
+                    : constraints.maxWidth;
 
                 return Wrap(
-                  spacing: gap,
-                  runSpacing: 6,
+                  spacing: 16,
+                  runSpacing: 14,
                   children: [
-                    for (final metric in visibleMetrics)
-                      SizedBox(
-                        width: itemWidth,
-                        child: _ClinicalMetricCompact(metric: metric),
+                    SizedBox(
+                      width: itemWidth,
+                      child: _InfoField(label: '상태', value: item.status.label),
+                    ),
+                    SizedBox(
+                      width: itemWidth,
+                      child: _InfoField(
+                        label: '구분',
+                        value: item.direction.label,
                       ),
+                    ),
+                    SizedBox(
+                      width: itemWidth,
+                      child: _InfoField(
+                        label: '우선순위',
+                        value: item.priorityLabel,
+                      ),
+                    ),
+                    SizedBox(
+                      width: itemWidth,
+                      child: _InfoField(
+                        label: '요청일',
+                        value: _formatDateTime(item.createdAt),
+                      ),
+                    ),
+                    SizedBox(
+                      width: itemWidth,
+                      child: _InfoField(
+                        label: '기한',
+                        value: item.dueAt == null
+                            ? '-'
+                            : _formatDateTime(item.dueAt!),
+                      ),
+                    ),
+                    SizedBox(
+                      width: itemWidth,
+                      child: _InfoField(
+                        label: 'Encounter',
+                        value: item.encounterId == null
+                            ? '-'
+                            : '#${item.encounterId}',
+                      ),
+                    ),
                   ],
                 );
               },
             ),
+          ),
+
+          const SizedBox(height: 12),
+
+          _SectionCard(
+            title: '담당 의료진',
+            icon: Icons.medical_services_outlined,
+            child: Row(
+              children: [
+                Expanded(
+                  child: _DoctorSummaryCard(
+                    eyebrow: '요청 의료진',
+                    name: requester?.doctorName ?? '요청 의료진 미확인',
+                    department: requester?.department ?? '진료과 미확인',
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 18,
+                    color: context.appTextDisabled,
+                  ),
+                ),
+
+                Expanded(
+                  child: _DoctorSummaryCard(
+                    eyebrow: '담당 의료진',
+                    name: item.assignedDoctorName,
+                    department: item.assignedDepartment,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          _SectionCard(
+            title: '협진 요청 내용',
+            icon: Icons.assignment_outlined,
+            trailing: _PriorityBadge(
+              priority: item.priority,
+              label: item.priorityLabel,
+            ),
+            child: Text(
+              item.note.trim().isEmpty ? '등록된 협진 요청 내용이 없습니다.' : item.note,
+              style: TextStyle(
+                fontSize: 10.5,
+                height: 1.6,
+                color: context.appTextSecondary,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          _SectionCard(
+            title: '일정',
+            icon: Icons.event_outlined,
+            child: Column(
+              children: [
+                _ScheduleRow(
+                  icon: Icons.schedule_outlined,
+                  label: '완료 기한',
+                  value: item.dueAt == null
+                      ? '설정되지 않음'
+                      : _formatDateTime(item.dueAt!),
+                ),
+                Divider(height: 20, color: context.appBorder),
+                _ScheduleRow(
+                  icon: Icons.history_rounded,
+                  label: '협진 등록',
+                  value: _formatDateTime(item.createdAt),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
   // ============================================================
-  // STEP 5. Clinical Evidence
+  // STEP 7. Participants
   // ============================================================
 
-  Widget _buildEvidenceSection(bool wide) {
-    final item = widget.consultation;
-    final evidenceCards = <Widget>[];
+  Widget _buildParticipants() {
+    final participants = widget.consultation.participants;
 
-    if (item.followUp?.cctaExaminationId != null) {
-      evidenceCards.add(
-        _EvidenceCard(
-          kind: _EvidenceKind.ccta,
-          eyebrow: 'CCTA',
-          title: '관상동맥 CT 혈관조영술',
-          primaryValue: 'Exam #${item.followUp!.cctaExaminationId}',
-          secondaryValue: item.followUp!.cctaResultStatus ?? '결과 확인',
-          onTap: _showCctaSheet,
-        ),
+    if (participants.isEmpty) {
+      return const _EmptyTabState(
+        icon: Icons.groups_outlined,
+        title: '참여 의료진이 없습니다.',
+        description: '등록된 협진 참여자가 없습니다.',
       );
     }
 
-    if (item.aiSummary != null) {
-      final ai = item.aiSummary!;
-      evidenceCards.add(
-        _EvidenceCard(
-          kind: _EvidenceKind.ai,
-          eyebrow: ai.analysisType,
-          title: '2D 혈관조영 AI',
-          primaryValue:
-              'L ${ai.leftSignificantScore.toStringAsFixed(3)} · R ${ai.rightSignificantScore.toStringAsFixed(3)}',
-          secondaryValue: ai.resultStatus.replaceAll('_', ' '),
-          onTap: _showAiSheet,
-        ),
-      );
-    }
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: participants.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 9),
+      itemBuilder: (context, index) {
+        final participant = participants[index];
 
-    if ((item.followUp?.clinicalMetrics ?? const []).isNotEmpty) {
-      evidenceCards.add(
-        _EvidenceCard(
-          kind: _EvidenceKind.lab,
-          eyebrow: 'LAB',
-          title: '심혈관 혈액·임상 패널',
-          primaryValue: '${item.followUp!.clinicalMetrics.length}개 지표',
-          secondaryValue: '추적검사',
-          onTap: _showLabSheet,
-        ),
-      );
-    }
-
-    for (final reference in item.references.take(1)) {
-      evidenceCards.add(
-        _EvidenceCard(
-          kind: _EvidenceKind.reference,
-          eyebrow: reference.referenceTypeLabel,
-          title: reference.title,
-          primaryValue: '#${reference.referenceId}',
-          secondaryValue: reference.description,
-          onTap: () => _showReferenceSheet(reference),
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '근거 자료',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            color: context.appTextPrimary,
-          ),
-        ),
-        const SizedBox(height: 9),
-        if (evidenceCards.isEmpty)
-          _CockpitCard(
-            child: _EmptyMiniState(
-              icon: Icons.folder_open_outlined,
-              text: '연결된 임상 근거 자료가 없습니다.',
-            ),
-          )
-        else
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final columns = constraints.maxWidth >= 760
-                  ? (evidenceCards.length >= 3 ? 3 : evidenceCards.length)
-                  : constraints.maxWidth >= 480
-                  ? (evidenceCards.length >= 2 ? 2 : evidenceCards.length)
-                  : 1;
-
-              final safeColumns = columns == 0 ? 1 : columns;
-              final cardWidth =
-                  (constraints.maxWidth - ((safeColumns - 1) * 9)) /
-                  safeColumns;
-
-              return Wrap(
-                spacing: 9,
-                runSpacing: 9,
-                children: [
-                  for (final card in evidenceCards)
-                    SizedBox(width: cardWidth, child: card),
-                ],
-              );
-            },
-          ),
-      ],
+        return _ParticipantCard(participant: participant);
+      },
     );
   }
 
   // ============================================================
-  // STEP 6. Bottom Workspace
+  // STEP 8. References
   // ============================================================
 
-  Widget _buildBottomWorkspace(bool wide) {
-    final records = _buildRecentRecordsCard();
-    final contextCard = _buildPatientContextCard();
+  Widget _buildReferences() {
+    final references = widget.consultation.references;
 
-    if (!wide) {
-      return Column(
-        children: [records, const SizedBox(height: 10), contextCard],
+    if (references.isEmpty) {
+      return const _EmptyTabState(
+        icon: Icons.folder_open_outlined,
+        title: '연결된 참조 자료가 없습니다.',
+        description: '검사, 영상, AI 결과 또는 보고서를 협진에 연결할 수 있습니다.',
       );
     }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(flex: 7, child: records),
-        const SizedBox(width: 10),
-        Expanded(flex: 4, child: contextCard),
-      ],
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: references.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 9),
+      itemBuilder: (context, index) {
+        final reference = references[index];
+
+        return _ReferenceCard(reference: reference);
+      },
     );
   }
 
-  Widget _buildRecentRecordsCard() {
+  // ============================================================
+  // STEP 9. Opinions
+  // ============================================================
+
+  Widget _buildOpinions() {
     final opinions = [...widget.consultation.opinions]
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    return _CockpitCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _SectionIcon(icon: Icons.history_rounded),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '최근 협진 의견',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                    color: context.appTextPrimary,
+    return Column(
+      children: [
+        if (widget.consultation.canWriteOpinion)
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            decoration: BoxDecoration(
+              color: context.appSurface,
+              border: Border(bottom: BorderSide(color: context.appBorder)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '의견을 작성하여 협진 의료진과 공유할 수 있습니다.',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      color: context.appTextSecondary,
+                    ),
                   ),
                 ),
-              ),
-              if (opinions.isNotEmpty) _TinyPill(text: '${opinions.length}건'),
-            ],
-          ),
-          const SizedBox(height: 10),
-          if (opinions.isEmpty)
-            const _EmptyMiniState(
-              icon: Icons.rate_review_outlined,
-              text: '등록된 의견이 없습니다.',
-              compact: true,
-            )
-          else ...[
-            for (final opinion in opinions.take(2)) ...[
-              _RecentOpinionRow(opinion: opinion),
-              if (opinion != opinions.take(2).last)
-                Divider(height: 14, color: context.appBorder),
-            ],
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _showAllOpinionsSheet,
-                icon: const Icon(Icons.article_outlined, size: 15),
-                label: const Text('전체 의견 보기'),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPatientContextCard() {
-    final item = widget.consultation;
-    final followUp = item.followUp;
-
-    return _CockpitCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _SectionIcon(icon: Icons.fact_check_outlined),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '진료 컨텍스트',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                    color: context.appTextPrimary,
-                  ),
+                const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  onPressed: _showOpinionDialog,
+                  icon: const Icon(Icons.edit_note_rounded, size: 15),
+                  label: const Text('의견 작성'),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          if (followUp != null)
-            _InfoLine(label: 'MRN', value: followUp.medicalRecordNo),
-          if (followUp?.encounterId != null)
-            _InfoLine(label: 'Encounter', value: '#${followUp!.encounterId}'),
-          if (followUp != null)
-            _InfoLine(label: '추적 단계', value: followUp.stageLabel),
-          _InfoLine(
-            label: '담당 의료진',
-            value: '${item.assignedDoctorName} · ${item.assignedDepartment}',
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _showParticipantsSheet,
-              icon: const Icon(Icons.group_outlined, size: 15),
-              label: Text('참여 의료진 ${item.participants.length}명'),
+              ],
             ),
           ),
-        ],
-      ),
+
+        Expanded(
+          child: opinions.isEmpty
+              ? const _EmptyTabState(
+                  icon: Icons.rate_review_outlined,
+                  title: '등록된 협진 의견이 없습니다.',
+                  description: '협진이 진행되면 의료진 의견이 이곳에 표시됩니다.',
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: opinions.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 9),
+                  itemBuilder: (context, index) {
+                    return _OpinionCard(opinion: opinions[index]);
+                  },
+                ),
+        ),
+      ],
     );
   }
 
   // ============================================================
-  // STEP 7. Action Dock
+  // STEP 10. Action Dock
   // ============================================================
 
   Widget _buildActionDock() {
     final item = widget.consultation;
 
+    if (item.status == ConsultationUiStatus.completed) {
+      return _ReadOnlyActionDock(icon: Icons.verified_rounded, label: '완료된 협진');
+    }
+
+    if (item.status == ConsultationUiStatus.withdrawn) {
+      return _ReadOnlyActionDock(icon: Icons.block_outlined, label: '회수된 협진');
+    }
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 11),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 11),
       decoration: BoxDecoration(
         color: context.appSurface,
         border: Border(top: BorderSide(color: context.appBorder)),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 560;
+      child: Row(
+        children: [
+          if (item.canWriteOpinion) ...[
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _showOpinionDialog,
+                style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44)),
+                icon: const Icon(Icons.edit_note_rounded, size: 16),
+                label: const Text('의견 작성'),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
 
-          final shareButton = _DockButton(
-            icon: Icons.add_link_rounded,
-            label: '자료 공유',
-            onPressed: item.isReadOnly ? null : _showSharePlaceholder,
-          );
-
-          final opinionButton = _DockButton(
-            icon: Icons.edit_note_rounded,
-            label: '의견 작성',
-            onPressed: item.canWriteOpinion ? _showOpinionDialog : null,
-          );
-
-          final primaryButton = _buildPrimaryDockButton();
-
-          if (compact) {
-            return Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(child: shareButton),
-                    const SizedBox(width: 8),
-                    Expanded(child: opinionButton),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                SizedBox(width: double.infinity, child: primaryButton),
-              ],
-            );
-          }
-
-          return Row(
-            children: [
-              Expanded(child: shareButton),
-              const SizedBox(width: 8),
-              Expanded(child: opinionButton),
-              const SizedBox(width: 8),
-              Expanded(flex: 2, child: primaryButton),
-            ],
-          );
-        },
+          Expanded(
+            flex: item.canWriteOpinion ? 2 : 1,
+            child: _buildPrimaryAction(),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildPrimaryDockButton() {
+  Widget _buildPrimaryAction() {
     final item = widget.consultation;
 
     if (item.canAccept) {
-      return _DockButton(
-        icon: Icons.check_circle_outline_rounded,
-        label: '협진 수락',
-        primary: true,
+      return FilledButton.icon(
         onPressed: widget.onAccept,
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.navy,
+          minimumSize: const Size(0, 44),
+        ),
+        icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
+        label: const Text('협진 수락'),
       );
     }
 
     if (item.canWithdraw) {
-      return _DockButton(
-        icon: Icons.undo_rounded,
-        label: '협진 회수',
-        danger: true,
+      return OutlinedButton.icon(
         onPressed: widget.onWithdraw,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.danger,
+          minimumSize: const Size(0, 44),
+        ),
+        icon: const Icon(Icons.undo_rounded, size: 16),
+        label: const Text('협진 회수'),
       );
     }
 
     if (item.canComplete) {
-      return _DockButton(
-        icon: Icons.task_alt_rounded,
-        label: '협진 완료',
-        primary: true,
+      return FilledButton.icon(
         onPressed: widget.onComplete,
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.navy,
+          minimumSize: const Size(0, 44),
+        ),
+        icon: const Icon(Icons.task_alt_rounded, size: 16),
+        label: const Text('협진 완료'),
       );
     }
 
-    return _DockButton(
-      icon: item.status == ConsultationUiStatus.completed
-          ? Icons.verified_rounded
-          : Icons.block_outlined,
-      label: item.status == ConsultationUiStatus.completed
-          ? '완료된 협진'
-          : '철회된 협진',
-      onPressed: null,
-    );
+    return const SizedBox.shrink();
   }
 
   // ============================================================
-  // STEP 8. Opinion Dialog
+  // STEP 11. Opinion Dialog
+  //
+  // author는 Backend에서 로그인 의료진으로 결정합니다.
+  // Flutter 임시 모델의 의료진 필드는 POST payload에 사용하지 않습니다.
   // ============================================================
 
   Future<void> _showOpinionDialog() async {
-    final textController = TextEditingController();
+    final controller = TextEditingController();
     var isFinal = false;
 
-    final result = await showDialog<ConsultationOpinionUiModel>(
+    final result = await showDialog<_OpinionDialogResult>(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              backgroundColor: context.appSurface,
               title: const Text('협진 의견 작성'),
               content: SizedBox(
-                width: 480,
+                width: 440,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextField(
-                      controller: textController,
-                      minLines: 5,
-                      maxLines: 8,
+                      controller: controller,
                       autofocus: true,
+                      minLines: 4,
+                      maxLines: 7,
                       decoration: const InputDecoration(
-                        hintText: '협진 의견을 입력해 주세요.',
-                        border: OutlineInputBorder(),
+                        labelText: '협진 의견',
+                        hintText: '검토 의견을 입력해 주세요.',
+                        alignLabelWithHint: true,
                       ),
                     ),
                     const SizedBox(height: 10),
                     CheckboxListTile(
                       value: isFinal,
                       contentPadding: EdgeInsets.zero,
-                      title: const Text(
-                        '최종 의견으로 등록',
-                        style: TextStyle(fontSize: 11),
-                      ),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: const Text('최종 의견으로 등록'),
+                      subtitle: const Text('최종 의견 여부를 함께 저장합니다.'),
                       onChanged: (value) {
                         setDialogState(() {
                           isFinal = value ?? false;
@@ -691,33 +667,24 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                  },
                   child: const Text('취소'),
                 ),
-                FilledButton.icon(
+                FilledButton(
                   onPressed: () {
-                    final text = textController.text.trim();
+                    final text = controller.text.trim();
+
                     if (text.isEmpty) {
                       return;
                     }
 
-                    Navigator.of(dialogContext).pop(
-                      ConsultationOpinionUiModel(
-                        id: DateTime.now().millisecondsSinceEpoch,
-                        doctorId: _demoCurrentDoctorId,
-                        doctorName: _demoCurrentDoctorName,
-                        department: _demoCurrentDepartment,
-                        opinionText: text,
-                        isFinal: isFinal,
-                        createdAt: DateTime.now(),
-                      ),
-                    );
+                    Navigator.of(
+                      dialogContext,
+                    ).pop(_OpinionDialogResult(text: text, isFinal: isFinal));
                   },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.navy,
-                  ),
-                  icon: const Icon(Icons.save_outlined, size: 16),
-                  label: const Text('등록'),
+                  child: const Text('등록'),
                 ),
               ],
             );
@@ -726,1045 +693,267 @@ class _ConsultationDetailPanelState extends State<ConsultationDetailPanel> {
       },
     );
 
-    textController.dispose();
+    controller.dispose();
 
-    if (result != null) {
-      widget.onOpinionAdded(result);
-      _showMessage('협진 의견이 UI에 등록되었습니다. 실제 POST API 연결 지점입니다.');
-    }
-  }
-
-  // ============================================================
-  // STEP 9. Sheets
-  // ============================================================
-
-  Future<void> _showCctaSheet() async {
-    final followUp = widget.consultation.followUp;
-    if (followUp == null) {
+    if (result == null || !mounted) {
       return;
     }
 
-    await _showInfoSheet(
-      title: 'CCTA 검사 정보',
-      icon: Icons.scanner_outlined,
-      children: [
-        _SheetInfoRow(label: '검사', value: '관상동맥 CT 혈관조영술'),
-        _SheetInfoRow(
-          label: 'Examination',
-          value: '#${followUp.cctaExaminationId ?? '-'}',
-        ),
-        _SheetInfoRow(
-          label: '시행일',
-          value: followUp.cctaPerformedAt == null
-              ? '-'
-              : _formatDate(followUp.cctaPerformedAt!),
-        ),
-        _SheetInfoRow(label: '위치', value: followUp.cctaLocation ?? '-'),
-        _SheetInfoRow(label: '결과 상태', value: followUp.cctaResultStatus ?? '-'),
-      ],
+    widget.onOpinionAdded(
+      ConsultationOpinionUiModel(
+        id: 0,
+        doctorId: 0,
+        doctorName: '',
+        department: '',
+        opinionText: result.text,
+        isFinal: result.isFinal,
+        createdAt: DateTime.now(),
+      ),
     );
-  }
-
-  Future<void> _showAiSheet() async {
-    final ai = widget.consultation.aiSummary;
-    if (ai == null) {
-      return;
-    }
-
-    await _showInfoSheet(
-      title: 'ANGIO 2D AI 결과',
-      icon: Icons.psychology_alt_outlined,
-      children: [
-        _SheetInfoRow(label: 'Analysis', value: '#${ai.analysisId}'),
-        _SheetInfoRow(label: 'Result', value: '#${ai.resultId}'),
-        _SheetInfoRow(label: '상태', value: ai.resultStatus),
-        const SizedBox(height: 8),
-        _AiSideResult(
-          side: 'LEFT',
-          positive: ai.leftSignificantPositive,
-          score: ai.leftSignificantScore,
-        ),
-        const SizedBox(height: 8),
-        _AiSideResult(
-          side: 'RIGHT',
-          positive: ai.rightSignificantPositive,
-          score: ai.rightSignificantScore,
-        ),
-        const SizedBox(height: 10),
-        _SheetInfoRow(
-          label: '분석 규모',
-          value: '${ai.seriesCount} series · ${ai.frameCount} frames',
-        ),
-        if (ai.warning != null) ...[
-          const SizedBox(height: 10),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(11),
-            decoration: BoxDecoration(
-              color: context.appSurfaceSoft,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: context.appBorder),
-            ),
-            child: Text(
-              ai.warning!,
-              style: TextStyle(
-                fontSize: 9.5,
-                height: 1.45,
-                color: context.appTextSecondary,
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Future<void> _showLabSheet() async {
-    final metrics = widget.consultation.followUp?.clinicalMetrics ?? const [];
-
-    await _showInfoSheet(
-      title: '최신 임상 지표',
-      icon: Icons.biotech_outlined,
-      children: [
-        for (final metric in metrics) ...[
-          _SheetInfoRow(
-            label: metric.label,
-            value:
-                '${metric.value}${metric.unit == null ? '' : ' ${metric.unit}'}'
-                '${metric.flag == null ? '' : ' · ${metric.flag}'}',
-          ),
-        ],
-      ],
-    );
-  }
-
-  Future<void> _showReferenceSheet(
-    ConsultationReferenceUiModel reference,
-  ) async {
-    await _showInfoSheet(
-      title: reference.title,
-      icon: Icons.link_rounded,
-      children: [
-        _SheetInfoRow(label: '유형', value: reference.referenceTypeLabel),
-        _SheetInfoRow(
-          label: 'Reference ID',
-          value: '#${reference.referenceId}',
-        ),
-        _SheetInfoRow(label: '설명', value: reference.description),
-      ],
-    );
-  }
-
-  Future<void> _showParticipantsSheet() async {
-    final participants = widget.consultation.participants;
-
-    await _showInfoSheet(
-      title: '협진 참여 의료진',
-      icon: Icons.groups_2_outlined,
-      children: [
-        for (final participant in participants) ...[
-          Container(
-            padding: const EdgeInsets.all(11),
-            decoration: BoxDecoration(
-              color: context.appBackground,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: context.appBorder),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: context.appSurfaceSoft,
-                  child: Text(
-                    _initial(participant.doctorName),
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: context.appBrand,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        participant.doctorName,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: context.appTextPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${participant.department}${participant.title == null ? '' : ' · ${participant.title}'}',
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: context.appTextSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                _TinyPill(text: participant.roleLabel),
-              ],
-            ),
-          ),
-          const SizedBox(height: 7),
-        ],
-      ],
-    );
-  }
-
-  Future<void> _showAllOpinionsSheet() async {
-    final opinions = [...widget.consultation.opinions]
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-    await _showInfoSheet(
-      title: '협진 의견 기록',
-      icon: Icons.article_outlined,
-      children: opinions.isEmpty
-          ? [
-              _EmptyMiniState(
-                icon: Icons.rate_review_outlined,
-                text: '등록된 협진 의견이 없습니다.',
-              ),
-            ]
-          : [
-              for (final opinion in opinions) ...[
-                _OpinionRecordCard(opinion: opinion),
-                const SizedBox(height: 8),
-              ],
-            ],
-    );
-  }
-
-  Future<void> _showInfoSheet({
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-  }) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        final height = MediaQuery.sizeOf(sheetContext).height;
-
-        return SafeArea(
-          child: Container(
-            constraints: BoxConstraints(maxHeight: height * 0.78),
-            decoration: BoxDecoration(
-              color: context.appSurface,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 14, 10, 10),
-                  child: Row(
-                    children: [
-                      _SectionIcon(icon: icon),
-                      const SizedBox(width: 9),
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: context.appTextPrimary,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(sheetContext).pop(),
-                        icon: const Icon(Icons.close_rounded, size: 19),
-                      ),
-                    ],
-                  ),
-                ),
-                Divider(height: 1, color: context.appBorder),
-                Flexible(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: children,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showSharePlaceholder() {
-    _showMessage('자료 공유 UI입니다. 실제 references POST API 연결 단계에서 구현합니다.');
-  }
-
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
-      );
   }
 }
 
 // ============================================================
-// STEP 10. Cockpit Components
+// STEP 12. Tab Button
 // ============================================================
 
-class _CockpitCard extends StatelessWidget {
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-
-  const _CockpitCard({
-    required this.child,
-    this.padding = const EdgeInsets.all(14),
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: padding,
-      decoration: BoxDecoration(
-        color: context.appSurface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: context.appBorder),
-      ),
-      child: child,
-    );
-  }
-}
-
-class _SectionIcon extends StatelessWidget {
+class _DetailTabButton extends StatelessWidget {
   final IconData icon;
-
-  const _SectionIcon({required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 31,
-      height: 31,
-      decoration: BoxDecoration(
-        color: context.appSurfaceSoft,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Icon(icon, size: 16, color: context.appBrand),
-    );
-  }
-}
-
-class _TinyPill extends StatelessWidget {
-  final String text;
-
-  const _TinyPill({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: context.appSurfaceSoft,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 8.5,
-          fontWeight: FontWeight.w700,
-          color: context.appTextSecondary,
-        ),
-      ),
-    );
-  }
-}
-
-class _MetaChip extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _MetaChip({required this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: context.appBackground,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: context.appBorder),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: context.appTextSecondary),
-          const SizedBox(width: 5),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 8.8,
-              fontWeight: FontWeight.w600,
-              color: context.appTextSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ClinicalMetricCompact extends StatelessWidget {
-  final ConsultationClinicalMetricUiModel metric;
-
-  const _ClinicalMetricCompact({required this.metric});
-
-  @override
-  Widget build(BuildContext context) {
-    final flag = metric.flag?.toUpperCase();
-    final abnormal = flag == 'HIGH' || flag == 'LOW' || flag == 'ABNORMAL';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-      decoration: BoxDecoration(
-        color: context.appSurfaceSoft,
-        borderRadius: BorderRadius.circular(9),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  metric.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 7.8,
-                    fontWeight: FontWeight.w700,
-                    color: context.appTextSecondary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: metric.value,
-                          style: TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w800,
-                            color: context.appTextPrimary,
-                          ),
-                        ),
-                        if (metric.unit != null)
-                          TextSpan(
-                            text: ' ${metric.unit}',
-                            style: TextStyle(
-                              fontSize: 7,
-                              fontWeight: FontWeight.w500,
-                              color: context.appTextSecondary,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (metric.flag != null) ...[
-            const SizedBox(width: 5),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-              decoration: BoxDecoration(
-                color: abnormal
-                    ? AppColors.warning.withValues(alpha: 0.10)
-                    : context.appBackground,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                metric.flag!,
-                style: TextStyle(
-                  fontSize: 6.5,
-                  fontWeight: FontWeight.w800,
-                  color: abnormal
-                      ? AppColors.warning
-                      : context.appTextSecondary,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-enum _EvidenceKind { ccta, ai, lab, reference }
-
-class _EvidenceCard extends StatelessWidget {
-  final _EvidenceKind kind;
-  final String eyebrow;
-  final String title;
-  final String primaryValue;
-  final String secondaryValue;
+  final String label;
+  final int? count;
+  final bool selected;
   final VoidCallback onTap;
 
-  const _EvidenceCard({
-    required this.kind,
-    required this.eyebrow,
-    required this.title,
-    required this.primaryValue,
-    required this.secondaryValue,
+  const _DetailTabButton({
+    required this.icon,
+    required this.label,
+    required this.selected,
     required this.onTap,
+    this.count,
   });
-
-  IconData get _icon {
-    switch (kind) {
-      case _EvidenceKind.ccta:
-        return Icons.scanner_outlined;
-      case _EvidenceKind.ai:
-        return Icons.psychology_alt_outlined;
-      case _EvidenceKind.lab:
-        return Icons.biotech_outlined;
-      case _EvidenceKind.reference:
-        return Icons.description_outlined;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 108),
-          padding: const EdgeInsets.all(11),
-          decoration: BoxDecoration(
-            color: context.appSurface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: context.appBorder),
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        height: double.infinity,
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: selected ? context.appBrand : Colors.transparent,
+              width: 2,
+            ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: context.appSurfaceSoft,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      eyebrow,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 8,
-                        fontWeight: FontWeight.w800,
-                        color: context.appBrand,
-                      ),
-                    ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 15,
+              color: selected ? context.appBrand : context.appTextSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 9.5,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: selected ? context.appBrand : context.appTextSecondary,
+              ),
+            ),
+            if (count != null) ...[
+              const SizedBox(width: 5),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? context.appSurfaceSoft
+                      : context.appBackground,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 7.5,
+                    fontWeight: FontWeight.w700,
+                    color: selected
+                        ? context.appBrand
+                        : context.appTextDisabled,
                   ),
-                  const Spacer(),
-                  Icon(_icon, size: 17, color: context.appTextSecondary),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w800,
-                  color: context.appTextPrimary,
-                ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                primaryValue,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: kind == _EvidenceKind.ai ? 13 : 11,
-                  fontWeight: FontWeight.w800,
-                  color: context.appTextPrimary,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                secondaryValue,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 8.5,
-                  color: context.appTextSecondary,
                 ),
               ),
             ],
-          ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _RecentOpinionRow extends StatelessWidget {
-  final ConsultationOpinionUiModel opinion;
+// ============================================================
+// STEP 13. Section Card
+// ============================================================
 
-  const _RecentOpinionRow({required this.opinion});
+class _SectionCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Widget child;
+  final Widget? trailing;
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        CircleAvatar(
-          radius: 18,
-          backgroundColor: context.appSurfaceSoft,
-          child: Text(
-            _initial(opinion.doctorName),
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: context.appBrand,
-            ),
-          ),
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                spacing: 6,
-                runSpacing: 5,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text(
-                    opinion.doctorName,
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w800,
-                      color: context.appTextPrimary,
-                    ),
-                  ),
-                  _TinyPill(text: opinion.department),
-                  if (opinion.isFinal) const _FinalBadge(),
-                ],
-              ),
-              const SizedBox(height: 5),
-              Text(
-                opinion.opinionText,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 9.5,
-                  height: 1.45,
-                  color: context.appTextSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          _formatTime(opinion.createdAt),
-          style: TextStyle(fontSize: 8, color: context.appTextDisabled),
-        ),
-      ],
-    );
-  }
-}
-
-class _OpinionRecordCard extends StatelessWidget {
-  final ConsultationOpinionUiModel opinion;
-
-  const _OpinionRecordCard({required this.opinion});
+  const _SectionCard({
+    required this.title,
+    required this.icon,
+    required this.child,
+    this.trailing,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: context.appBackground,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(
-          color: opinion.isFinal ? AppColors.success : context.appBorder,
-        ),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
+              Container(
+                width: 30,
+                height: 30,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: context.appSurfaceSoft,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 15, color: context.appBrand),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${opinion.doctorName} · ${opinion.department}',
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: context.appTextPrimary,
+                  ),
+                ),
+              ),
+              ?trailing,
+            ],
+          ),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoField extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InfoField({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(fontSize: 8.5, color: context.appTextDisabled),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w700,
+            color: context.appTextPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ============================================================
+// STEP 14. Doctor Summary
+// ============================================================
+
+class _DoctorSummaryCard extends StatelessWidget {
+  final String eyebrow;
+  final String name;
+  final String department;
+
+  const _DoctorSummaryCard({
+    required this.eyebrow,
+    required this.name,
+    required this.department,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: context.appBackground,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: context.appBorder),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 17,
+            backgroundColor: context.appSurfaceSoft,
+            child: Text(
+              _initial(name),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: context.appBrand,
+              ),
+            ),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  eyebrow,
+                  style: TextStyle(fontSize: 8, color: context.appTextDisabled),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w800,
                     color: context.appTextPrimary,
                   ),
                 ),
-              ),
-              if (opinion.isFinal) const _FinalBadge(),
-            ],
-          ),
-          const SizedBox(height: 7),
-          Text(
-            opinion.opinionText,
-            style: TextStyle(
-              fontSize: 10,
-              height: 1.55,
-              color: context.appTextSecondary,
-            ),
-          ),
-          const SizedBox(height: 7),
-          Text(
-            _formatDateTime(opinion.createdAt),
-            style: TextStyle(fontSize: 8.5, color: context.appTextDisabled),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoLine extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _InfoLine({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 74,
-            child: Text(
-              label,
-              style: TextStyle(fontSize: 8.5, color: context.appTextSecondary),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 9.5,
-                fontWeight: FontWeight.w700,
-                color: context.appTextPrimary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyMiniState extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  final bool compact;
-
-  const _EmptyMiniState({
-    required this.icon,
-    required this.text,
-    this.compact = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: compact ? 10 : 18,
-      ),
-      decoration: BoxDecoration(
-        color: context.appBackground,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: context.appBorder),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: compact ? 17 : 20, color: context.appTextDisabled),
-          SizedBox(height: compact ? 4 : 7),
-          Text(
-            text,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 9.3,
-              height: 1.45,
-              color: context.appTextSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ============================================================
-// STEP 11. Status / Stepper / Participants
-// ============================================================
-
-class _ConsultationStepper extends StatelessWidget {
-  final ConsultationUiStatus status;
-
-  const _ConsultationStepper({required this.status});
-
-  int get _currentStep {
-    switch (status) {
-      case ConsultationUiStatus.requested:
-        return 0;
-      case ConsultationUiStatus.inProgress:
-        return 2;
-      case ConsultationUiStatus.completed:
-        return 3;
-      case ConsultationUiStatus.withdrawn:
-        return 0;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    const labels = ['요청', '수락', '의견 작성', '완료'];
-    final current = _currentStep;
-
-    return Row(
-      children: [
-        for (var index = 0; index < labels.length; index++) ...[
-          _StepNode(
-            label: labels[index],
-            completed:
-                status != ConsultationUiStatus.withdrawn && index < current,
-            current:
-                status != ConsultationUiStatus.withdrawn && index == current,
-          ),
-          if (index < labels.length - 1)
-            Expanded(
-              child: Container(
-                height: 2,
-                margin: const EdgeInsets.symmetric(horizontal: 5),
-                color:
-                    status != ConsultationUiStatus.withdrawn && index < current
-                    ? AppColors.primaryBlue
-                    : context.appBorder,
-              ),
-            ),
-        ],
-      ],
-    );
-  }
-}
-
-class _StepNode extends StatelessWidget {
-  final String label;
-  final bool completed;
-  final bool current;
-
-  const _StepNode({
-    required this.label,
-    required this.completed,
-    required this.current,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final active = completed || current;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: completed ? AppColors.primaryBlue : context.appSurface,
-            border: Border.all(
-              color: active ? AppColors.primaryBlue : context.appBorder,
-              width: current ? 2.4 : 1.4,
-            ),
-          ),
-          child: completed
-              ? const Icon(Icons.check_rounded, size: 12, color: Colors.white)
-              : null,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 8.2,
-            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-            color: active ? context.appTextPrimary : context.appTextDisabled,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ParticipantStack extends StatelessWidget {
-  final List<ConsultationParticipantUiModel> participants;
-  final VoidCallback onTap;
-
-  const _ParticipantStack({required this.participants, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final visible = participants.take(2).toList();
-    final remain = participants.length - visible.length;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(3),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var index = 0; index < visible.length; index++) ...[
-              if (index > 0) const SizedBox(width: 4),
-              CircleAvatar(
-                radius: 17,
-                backgroundColor: context.appSurfaceSoft,
-                child: Text(
-                  _initial(visible[index].doctorName),
+                const SizedBox(height: 2),
+                Text(
+                  department,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w800,
-                    color: context.appBrand,
-                  ),
-                ),
-              ),
-            ],
-            if (remain > 0) ...[
-              const SizedBox(width: 4),
-              CircleAvatar(
-                radius: 17,
-                backgroundColor: context.appBackground,
-                child: Text(
-                  '+$remain',
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 8.5,
                     color: context.appTextSecondary,
                   ),
                 ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================
-// STEP 12. Dock / Sheet Components
-// ============================================================
-
-class _DockButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback? onPressed;
-  final bool primary;
-  final bool danger;
-
-  const _DockButton({
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-    this.primary = false,
-    this.danger = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (primary) {
-      return FilledButton.icon(
-        onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: AppColors.navy,
-          minimumSize: const Size(0, 46),
-        ),
-        icon: Icon(icon, size: 16),
-        label: Text(label),
-      );
-    }
-
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: danger ? AppColors.danger : null,
-        minimumSize: const Size(0, 46),
-      ),
-      icon: Icon(icon, size: 16),
-      label: Text(label),
-    );
-  }
-}
-
-class _SheetInfoRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _SheetInfoRow({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              label,
-              style: TextStyle(fontSize: 9.5, color: context.appTextSecondary),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w700,
-                color: context.appTextPrimary,
-              ),
+              ],
             ),
           ),
         ],
@@ -1773,59 +962,229 @@ class _SheetInfoRow extends StatelessWidget {
   }
 }
 
-class _AiSideResult extends StatelessWidget {
-  final String side;
-  final bool positive;
-  final double score;
+// ============================================================
+// STEP 15. Participant
+// ============================================================
 
-  const _AiSideResult({
-    required this.side,
-    required this.positive,
-    required this.score,
-  });
+class _ParticipantCard extends StatelessWidget {
+  final ConsultationParticipantUiModel participant;
+
+  const _ParticipantCard({required this.participant});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(11),
+      padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: context.appBackground,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: context.appBorder),
       ),
       child: Row(
         children: [
+          CircleAvatar(
+            radius: 19,
+            backgroundColor: context.appSurfaceSoft,
+            child: Text(
+              _initial(participant.doctorName),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: context.appBrand,
+              ),
+            ),
+          ),
+          const SizedBox(width: 11),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  side,
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                    color: context.appTextSecondary,
-                  ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        participant.doctorName,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: context.appTextPrimary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                    _SmallLabel(text: participant.roleLabel),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Significant stenosis',
+                  [participant.department, participant.title?.trim()]
+                      .whereType<String>()
+                      .where((value) => value.isNotEmpty)
+                      .join(' · '),
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: context.appTextSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// STEP 16. Reference
+// ============================================================
+
+class _ReferenceCard extends StatelessWidget {
+  final ConsultationReferenceUiModel reference;
+
+  const _ReferenceCard({required this.reference});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: context.appBorder),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: context.appSurfaceSoft,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(
+              _referenceIcon(reference.referenceTypeLabel),
+              size: 18,
+              color: context.appBrand,
+            ),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    _SmallLabel(text: reference.referenceTypeLabel),
+                    const SizedBox(width: 7),
+                    Text(
+                      '#${reference.referenceId}',
+                      style: TextStyle(
+                        fontSize: 8,
+                        color: context.appTextDisabled,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  reference.title,
                   style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
                     color: context.appTextPrimary,
                   ),
                 ),
+                const SizedBox(height: 2),
+                Text(
+                  reference.description,
+                  style: TextStyle(
+                    fontSize: 8.8,
+                    color: context.appTextSecondary,
+                  ),
+                ),
               ],
             ),
           ),
-          _TinyPill(text: positive ? 'Positive' : 'Negative'),
-          const SizedBox(width: 8),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// STEP 17. Opinion
+// ============================================================
+
+class _OpinionCard extends StatelessWidget {
+  final ConsultationOpinionUiModel opinion;
+
+  const _OpinionCard({required this.opinion});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: context.appBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 15,
+                backgroundColor: context.appSurfaceSoft,
+                child: Text(
+                  _initial(opinion.doctorName),
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                    color: context.appBrand,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      opinion.doctorName,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: context.appTextPrimary,
+                      ),
+                    ),
+                    Text(
+                      opinion.department,
+                      style: TextStyle(
+                        fontSize: 8,
+                        color: context.appTextSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (opinion.isFinal) const _FinalBadge(),
+              const SizedBox(width: 8),
+              Text(
+                _formatDateTime(opinion.createdAt),
+                style: TextStyle(fontSize: 8, color: context.appTextDisabled),
+              ),
+            ],
+          ),
+          const SizedBox(height: 11),
           Text(
-            'AI score ${score.toStringAsFixed(3)}',
+            opinion.opinionText,
             style: TextStyle(
-              fontSize: 9.5,
-              fontWeight: FontWeight.w800,
+              fontSize: 10.2,
+              height: 1.55,
               color: context.appTextPrimary,
             ),
           ),
@@ -1836,7 +1195,50 @@ class _AiSideResult extends StatelessWidget {
 }
 
 // ============================================================
-// STEP 13. Badges
+// STEP 18. Schedule
+// ============================================================
+
+class _ScheduleRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _ScheduleRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 15, color: context.appTextSecondary),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 80,
+          child: Text(
+            label,
+            style: TextStyle(fontSize: 9, color: context.appTextSecondary),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: context.appTextPrimary,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ============================================================
+// STEP 19. Badges
 // ============================================================
 
 class _StatusBadge extends StatelessWidget {
@@ -1846,42 +1248,24 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color;
-    final Color background;
+    final foreground = switch (status) {
+      ConsultationUiStatus.requested => AppColors.warning,
+      ConsultationUiStatus.inProgress => AppColors.primaryBlue,
+      ConsultationUiStatus.completed => AppColors.success,
+      ConsultationUiStatus.withdrawn => AppColors.danger,
+    };
 
-    switch (status) {
-      case ConsultationUiStatus.requested:
-        color = AppColors.warning;
-        background = AppColors.warningBackground;
-        break;
-      case ConsultationUiStatus.inProgress:
-        color = AppColors.primaryBlue;
-        background = context.appSurfaceSoft;
-        break;
-      case ConsultationUiStatus.completed:
-        color = AppColors.success;
-        background = AppColors.successBackground;
-        break;
-      case ConsultationUiStatus.withdrawn:
-        color = AppColors.danger;
-        background = AppColors.dangerBackground;
-        break;
-    }
+    final background = switch (status) {
+      ConsultationUiStatus.requested => AppColors.warningBackground,
+      ConsultationUiStatus.inProgress => context.appSurfaceSoft,
+      ConsultationUiStatus.completed => AppColors.successBackground,
+      ConsultationUiStatus.withdrawn => AppColors.dangerBackground,
+    };
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status.label,
-        style: TextStyle(
-          fontSize: 8.5,
-          fontWeight: FontWeight.w800,
-          color: color,
-        ),
-      ),
+    return _ColoredBadge(
+      text: status.label,
+      foreground: foreground,
+      background: background,
     );
   }
 }
@@ -1893,69 +1277,123 @@ class _DirectionBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return _ColoredBadge(
+      text: direction.shortLabel,
+      foreground: context.appTextSecondary,
+      background: context.appBackground,
+      borderColor: context.appBorder,
+    );
+  }
+}
+
+class _PriorityBadge extends StatelessWidget {
+  final String priority;
+  final String label;
+
+  const _PriorityBadge({required this.priority, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final urgent =
+        priority.toUpperCase() == 'URGENT' || priority.toUpperCase() == 'HIGH';
+
+    return _ColoredBadge(
+      text: '우선순위 · $label',
+      foreground: urgent ? AppColors.danger : context.appTextSecondary,
+      background: urgent ? AppColors.dangerBackground : context.appBackground,
+      borderColor: urgent ? null : context.appBorder,
+    );
+  }
+}
+
+class _SimpleBadge extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _SimpleBadge({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: context.appBackground,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: context.appBorder),
       ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: context.appTextSecondary),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 8,
+              fontWeight: FontWeight.w600,
+              color: context.appTextSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ColoredBadge extends StatelessWidget {
+  final String text;
+  final Color foreground;
+  final Color background;
+  final Color? borderColor;
+
+  const _ColoredBadge({
+    required this.text,
+    required this.foreground,
+    required this.background,
+    this.borderColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(20),
+        border: borderColor == null ? null : Border.all(color: borderColor!),
+      ),
       child: Text(
-        direction.shortLabel,
+        text,
         style: TextStyle(
-          fontSize: 8.5,
-          fontWeight: FontWeight.w700,
-          color: context.appTextSecondary,
+          fontSize: 8,
+          fontWeight: FontWeight.w800,
+          color: foreground,
         ),
       ),
     );
   }
 }
 
-class _DueBadge extends StatelessWidget {
-  final DateTime dueAt;
+class _SmallLabel extends StatelessWidget {
+  final String text;
 
-  const _DueBadge({required this.dueAt});
+  const _SmallLabel({required this.text});
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final diff = dueAt.difference(now);
-    final expired = diff.isNegative;
-    final day = diff.inDays;
-    final label = expired
-        ? '기한 경과'
-        : day <= 0
-        ? '오늘 ${_formatTime(dueAt)}'
-        : 'D-$day · ${_formatTime(dueAt)}';
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: expired ? AppColors.dangerBackground : context.appBackground,
+        color: context.appSurfaceSoft,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: expired ? AppColors.danger : context.appBorder,
-        ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.schedule_outlined,
-            size: 11,
-            color: expired ? AppColors.danger : context.appTextSecondary,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 8.5,
-              fontWeight: FontWeight.w700,
-              color: expired ? AppColors.danger : context.appTextSecondary,
-            ),
-          ),
-        ],
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 7.5,
+          fontWeight: FontWeight.w700,
+          color: context.appTextSecondary,
+        ),
       ),
     );
   }
@@ -1967,7 +1405,7 @@ class _FinalBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: AppColors.successBackground,
         borderRadius: BorderRadius.circular(20),
@@ -1985,29 +1423,187 @@ class _FinalBadge extends StatelessWidget {
 }
 
 // ============================================================
-// STEP 14. Helpers
+// STEP 20. Participant Summary
+// ============================================================
+
+class _ParticipantSummary extends StatelessWidget {
+  final List<ConsultationParticipantUiModel> participants;
+
+  const _ParticipantSummary({required this.participants});
+
+  @override
+  Widget build(BuildContext context) {
+    if (participants.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final visible = participants.take(3).toList();
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var index = 0; index < visible.length; index++)
+          Transform.translate(
+            offset: Offset(index == 0 ? 0 : -6.0 * index, 0),
+            child: CircleAvatar(
+              radius: 16,
+              backgroundColor: context.appSurfaceSoft,
+              child: Text(
+                _initial(visible[index].doctorName),
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  color: context.appBrand,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ============================================================
+// STEP 21. Empty State
+// ============================================================
+
+class _EmptyTabState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+
+  const _EmptyTabState({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 30, color: context.appTextDisabled),
+            const SizedBox(height: 9),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                color: context.appTextPrimary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              description,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 9, color: context.appTextSecondary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// STEP 22. Read Only Dock
+// ============================================================
+
+class _ReadOnlyActionDock extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _ReadOnlyActionDock({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 11),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        border: Border(top: BorderSide(color: context.appBorder)),
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: null,
+          style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44)),
+          icon: Icon(icon, size: 16),
+          label: Text(label),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// STEP 23. Opinion Result
+// ============================================================
+
+class _OpinionDialogResult {
+  final String text;
+  final bool isFinal;
+
+  const _OpinionDialogResult({required this.text, required this.isFinal});
+}
+
+// ============================================================
+// STEP 24. Helpers
 // ============================================================
 
 String _initial(String name) {
-  if (name.trim().isEmpty) {
+  final trimmed = name.trim();
+
+  if (trimmed.isEmpty) {
     return '-';
   }
 
-  return name.trim().substring(0, 1);
+  return trimmed.substring(0, 1);
 }
 
 String _formatDate(DateTime date) {
   final month = date.month.toString().padLeft(2, '0');
+
   final day = date.day.toString().padLeft(2, '0');
+
   return '${date.year}.$month.$day';
 }
 
 String _formatTime(DateTime date) {
   final hour = date.hour.toString().padLeft(2, '0');
+
   final minute = date.minute.toString().padLeft(2, '0');
+
   return '$hour:$minute';
 }
 
 String _formatDateTime(DateTime date) {
   return '${_formatDate(date)} ${_formatTime(date)}';
+}
+
+IconData _referenceIcon(String type) {
+  final normalized = type.toUpperCase();
+
+  if (normalized.contains('AI')) {
+    return Icons.auto_awesome_outlined;
+  }
+
+  if (normalized.contains('검사') || normalized.contains('EXAM')) {
+    return Icons.science_outlined;
+  }
+
+  if (normalized.contains('영상') || normalized.contains('IMAGE')) {
+    return Icons.image_outlined;
+  }
+
+  if (normalized.contains('보고서') || normalized.contains('REPORT')) {
+    return Icons.description_outlined;
+  }
+
+  return Icons.attach_file_rounded;
 }

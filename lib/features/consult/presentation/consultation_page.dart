@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_doctor/core/theme/app_theme_context.dart';
+import 'package:provider/provider.dart';
 
+import '../../../core/auth/auth_provider.dart';
+import '../../../core/network/api_endpoints.dart';
 import '../../../core/widgets/app_shell.dart';
 
+import '../data/services/consultation_service.dart';
 import 'consultation_ui_models.dart';
 import 'widgets/consultation_detail_panel.dart';
 import 'widgets/consultation_form_dialog.dart';
@@ -10,6 +14,7 @@ import 'widgets/consultation_list_panel.dart';
 
 // ============================================================
 // STEP 1. Consultation Page
+// 실제 Backend /consultations API 연결
 // ============================================================
 
 class ConsultationPage extends StatefulWidget {
@@ -20,29 +25,41 @@ class ConsultationPage extends StatefulWidget {
 }
 
 class _ConsultationPageState extends State<ConsultationPage> {
-  late List<ConsultationUiModel> _consultations;
+  List<ConsultationUiModel> _consultations = [];
+
+  ConsultationService? _consultationService;
 
   int? _selectedId;
   bool _showCompactDetail = false;
 
-  // 실제 Auth 연결 전 UI DEMO 기준
-  static const int _demoCurrentDoctorId = 4;
-  static const String _demoCurrentDoctorName = '이서준';
-  static const String _demoCurrentDepartment = '순환기내과';
+  bool _isLoading = true;
+  bool _isDetailLoading = false;
+
+  String? _loadError;
 
   // ============================================================
-  // STEP 2. Init
+  // STEP 2. Auth / Service 초기화
   // ============================================================
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
 
-    _consultations = _buildMockConsultations();
-
-    if (_consultations.isNotEmpty) {
-      _selectedId = _consultations.first.id;
+    if (_consultationService != null) {
+      return;
     }
+
+    final auth = context.read<AuthProvider>();
+
+    _consultationService = ConsultationService(
+      apiClient: auth.authService.apiClient,
+    );
+
+    _loadConsultations();
+  }
+
+  int? get _currentDoctorId {
+    return context.read<AuthProvider>().currentUser?.doctorId;
   }
 
   ConsultationUiModel? get _selected {
@@ -56,8 +73,221 @@ class _ConsultationPageState extends State<ConsultationPage> {
   }
 
   // ============================================================
-  // STEP 3. Create
-  // POST /api/consultations/
+  // STEP 3. 협진 목록 조회
+  // GET /consultations/
+  // ============================================================
+
+  Future<void> _loadConsultations({int? preferredSelectedId}) async {
+    final service = _consultationService;
+
+    if (service == null) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
+
+    try {
+      final currentDoctorId = _currentDoctorId;
+
+      if (currentDoctorId == null) {
+        throw StateError('현재 로그인 의사의 doctor_id를 확인할 수 없습니다.');
+      }
+
+      final apiItems = await service.fetchConsultations();
+
+      final patientIds = apiItems
+          .map((item) => item.patientId)
+          .toSet()
+          .toList();
+
+      final patientMap = await _loadPatientSummaries(patientIds);
+
+      final uiItems = apiItems.map((item) {
+        return _mapListItemToUi(
+          item,
+          patient: patientMap[item.patientId],
+          currentDoctorId: currentDoctorId,
+        );
+      }).toList();
+
+      uiItems.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      if (!mounted) {
+        return;
+      }
+
+      int? nextSelectedId = preferredSelectedId;
+
+      if (nextSelectedId == null ||
+          !uiItems.any((item) => item.id == nextSelectedId)) {
+        nextSelectedId = uiItems.isEmpty ? null : uiItems.first.id;
+      }
+
+      setState(() {
+        _consultations = uiItems;
+        _selectedId = nextSelectedId;
+        _isLoading = false;
+        _loadError = null;
+      });
+
+      debugPrint(
+        '[CONSULT] 협진 목록 조회 완료: '
+        '${uiItems.length}건',
+      );
+
+      if (nextSelectedId != null) {
+        await _loadConsultationDetail(nextSelectedId);
+      }
+    } catch (error) {
+      debugPrint('[CONSULT] 협진 목록 조회 실패: $error');
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isLoading = false;
+        _loadError = error.toString();
+      });
+    }
+  }
+
+  // ============================================================
+  // STEP 4. Patient 요약 조회
+  // GET /patients/{patientId}/
+  // ============================================================
+
+  Future<Map<int, _ConsultationPatientSummary>> _loadPatientSummaries(
+    List<int> patientIds,
+  ) async {
+    final auth = context.read<AuthProvider>();
+
+    final entries = await Future.wait(
+      patientIds.map((patientId) async {
+        try {
+          final response = await auth.authService.apiClient.dio.get(
+            ApiEndpoints.patientDetail(patientId),
+          );
+
+          if (response.data is! Map) {
+            return MapEntry(
+              patientId,
+              _ConsultationPatientSummary(
+                patientId: patientId,
+                name: '환자 #$patientId',
+                medicalRecordNo: '-',
+              ),
+            );
+          }
+
+          final data = Map<String, dynamic>.from(response.data as Map);
+
+          return MapEntry(
+            patientId,
+            _ConsultationPatientSummary(
+              patientId: patientId,
+              name: data['name']?.toString().trim().isNotEmpty == true
+                  ? data['name'].toString()
+                  : '환자 #$patientId',
+              medicalRecordNo: data['medical_record_no']?.toString() ?? '-',
+            ),
+          );
+        } catch (error) {
+          debugPrint(
+            '[CONSULT] 환자 조회 실패: '
+            'patientId=$patientId, '
+            'error=$error',
+          );
+
+          return MapEntry(
+            patientId,
+            _ConsultationPatientSummary(
+              patientId: patientId,
+              name: '환자 #$patientId',
+              medicalRecordNo: '-',
+            ),
+          );
+        }
+      }),
+    );
+
+    return Map<int, _ConsultationPatientSummary>.fromEntries(entries);
+  }
+
+  // ============================================================
+  // STEP 5. 협진 상세 조회
+  // GET /consultations/{id}/
+  // ============================================================
+
+  Future<void> _loadConsultationDetail(int consultationId) async {
+    final service = _consultationService;
+
+    if (service == null) {
+      return;
+    }
+
+    setState(() {
+      _isDetailLoading = true;
+    });
+
+    try {
+      final detail = await service.fetchConsultationDetail(consultationId);
+
+      final patientMap = await _loadPatientSummaries([
+        detail.consultation.patientId,
+      ]);
+
+      final currentDoctorId = _currentDoctorId;
+
+      if (currentDoctorId == null) {
+        throw StateError('현재 로그인 의사의 doctor_id를 확인할 수 없습니다.');
+      }
+
+      final uiModel = _mapDetailToUi(
+        detail,
+        patient: patientMap[detail.consultation.patientId],
+        currentDoctorId: currentDoctorId,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      _replaceConsultation(uiModel);
+
+      setState(() {
+        _isDetailLoading = false;
+      });
+
+      debugPrint(
+        '[CONSULT] 협진 상세 조회 완료: '
+        'id=$consultationId',
+      );
+    } catch (error) {
+      debugPrint(
+        '[CONSULT] 협진 상세 조회 실패: '
+        'id=$consultationId, '
+        'error=$error',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isDetailLoading = false;
+      });
+
+      _showMessage('협진 상세 정보를 불러오지 못했습니다.');
+    }
+  }
+
+  // ============================================================
+  // STEP 6. 협진 요청 생성
+  // POST /consultations/
   // ============================================================
 
   Future<void> _openCreateDialog() async {
@@ -67,97 +297,416 @@ class _ConsultationPageState extends State<ConsultationPage> {
       return;
     }
 
-    final consultation = ConsultationUiModel(
-      id: DateTime.now().millisecondsSinceEpoch,
-      patientId: result.patientId,
-      patientName: result.patientName,
-      patientMeta: '환자 정보 연결 대기',
-      subject: result.subject,
-      note: result.note,
-      assignedDoctorId: result.assignedDoctorId,
-      assignedDoctorName: result.assignedDoctorName,
-      assignedDepartment: '진료과 미연결',
-      encounterId: result.encounterId,
-      priority: result.priority,
-      dueAt: result.dueAt,
-      status: ConsultationUiStatus.requested,
-      direction: ConsultationUiDirection.sent,
-      createdAt: DateTime.now(),
+    final service = _consultationService;
+
+    if (service == null) {
+      return;
+    }
+
+    try {
+      final created = await service.createConsultation(
+        patientId: result.patientId,
+        subject: result.subject,
+        note: result.note,
+        assignedDoctorId: result.assignedDoctorId,
+        encounterId: result.encounterId,
+        priority: result.priority,
+        dueAt: result.dueAt,
+      );
+
+      final createdId = created.consultation.id;
+
+      await _loadConsultations(preferredSelectedId: createdId);
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _showCompactDetail = true;
+      });
+
+      _showMessage('협진 요청이 등록되었습니다.');
+    } catch (error) {
+      debugPrint('[CONSULT] 협진 요청 실패: $error');
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('협진 요청을 등록하지 못했습니다.');
+    }
+  }
+
+  // ============================================================
+  // STEP 7. 협진 수락
+  // POST /consultations/{id}/accept/
+  // ============================================================
+
+  Future<void> _accept() async {
+    final selected = _selected;
+    final service = _consultationService;
+
+    if (selected == null || service == null) {
+      return;
+    }
+
+    try {
+      await service.acceptConsultation(selected.id);
+
+      await _loadConsultations(preferredSelectedId: selected.id);
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('협진을 수락했습니다.');
+    } catch (error) {
+      debugPrint('[CONSULT] 협진 수락 실패: $error');
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('협진을 수락하지 못했습니다.');
+    }
+  }
+
+  // ============================================================
+  // STEP 8. 협진 완료
+  // POST /consultations/{id}/complete/
+  // ============================================================
+
+  Future<void> _complete() async {
+    final selected = _selected;
+    final service = _consultationService;
+
+    if (selected == null || service == null) {
+      return;
+    }
+
+    try {
+      await service.completeConsultation(selected.id);
+
+      await _loadConsultations(preferredSelectedId: selected.id);
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('협진을 완료했습니다.');
+    } catch (error) {
+      debugPrint('[CONSULT] 협진 완료 실패: $error');
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('협진을 완료하지 못했습니다.');
+    }
+  }
+
+  // ============================================================
+  // STEP 9. 협진 회수
+  // POST /consultations/{id}/withdraw/
+  // ============================================================
+
+  Future<void> _withdraw() async {
+    final selected = _selected;
+    final service = _consultationService;
+
+    if (selected == null || service == null) {
+      return;
+    }
+
+    final reason = await _showWithdrawDialog();
+
+    if (reason == null || reason.trim().isEmpty || !mounted) {
+      return;
+    }
+
+    try {
+      await service.withdrawConsultation(
+        consultationId: selected.id,
+        reason: reason.trim(),
+      );
+
+      await _loadConsultations(preferredSelectedId: selected.id);
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('협진 요청을 회수했습니다.');
+    } catch (error) {
+      debugPrint('[CONSULT] 협진 회수 실패: $error');
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('협진 요청을 회수하지 못했습니다.');
+    }
+  }
+
+  Future<String?> _showWithdrawDialog() {
+    final controller = TextEditingController();
+
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('협진 회수'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            minLines: 2,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: '회수 사유',
+              hintText: '회수 사유를 입력해 주세요.',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(controller.text.trim());
+              },
+              child: const Text('회수'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ============================================================
+  // STEP 10. 협진 의견
+  // POST /consultations/{id}/opinions/
+  // ============================================================
+
+  Future<void> _addOpinion(ConsultationOpinionUiModel opinion) async {
+    final selected = _selected;
+    final service = _consultationService;
+
+    if (selected == null || service == null) {
+      return;
+    }
+
+    try {
+      await service.addOpinion(
+        consultationId: selected.id,
+        opinionText: opinion.opinionText,
+        isFinal: opinion.isFinal,
+      );
+
+      await _loadConsultationDetail(selected.id);
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('협진 의견이 등록되었습니다.');
+    } catch (error) {
+      debugPrint('[CONSULT] 협진 의견 등록 실패: $error');
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('협진 의견을 등록하지 못했습니다.');
+    }
+  }
+
+  // ============================================================
+  // STEP 11. List API → UI
+  // ============================================================
+
+  ConsultationUiModel _mapListItemToUi(
+    ConsultationApiItem item, {
+    required _ConsultationPatientSummary? patient,
+    required int currentDoctorId,
+  }) {
+    final requesterProfile = item.requestedByProfile;
+
+    final assignedProfile = item.assignedDoctorProfile;
+
+    final requesterName = _profileText(
+      requesterProfile,
+      'name',
+      fallback: '요청 의료진',
+    );
+
+    final requesterDepartment = _profileText(
+      requesterProfile,
+      'department_name',
+      fallback: '진료과 미확인',
+    );
+
+    final requesterTitle = _nullableProfileText(requesterProfile, 'title');
+
+    final assignedName = _profileText(
+      assignedProfile,
+      'name',
+      fallback: '담당 의료진',
+    );
+
+    final assignedDepartment = _profileText(
+      assignedProfile,
+      'department_name',
+      fallback: '진료과 미확인',
+    );
+
+    final assignedTitle = _nullableProfileText(assignedProfile, 'title');
+
+    return ConsultationUiModel(
+      id: item.id,
+      patientId: item.patientId,
+      patientName: patient?.name ?? '환자 #${item.patientId}',
+      patientMeta:
+          patient?.medicalRecordNo == null || patient!.medicalRecordNo == '-'
+          ? 'Patient #${item.patientId}'
+          : 'MRN ${patient.medicalRecordNo}',
+      subject: item.subject,
+      note: item.requestNote,
+      assignedDoctorId: item.assignedDoctorId,
+      assignedDoctorName: assignedName,
+      assignedDepartment: assignedDepartment,
+      encounterId: item.encounterId,
+      priority: item.priority,
+      dueAt: item.dueAt,
+      status: _parseConsultationStatus(item.status),
+      direction: item.requestedById == currentDoctorId
+          ? ConsultationUiDirection.sent
+          : ConsultationUiDirection.received,
+      createdAt: item.createdAt,
       participants: [
-        const ConsultationParticipantUiModel(
-          id: 1,
-          doctorId: _demoCurrentDoctorId,
-          doctorName: _demoCurrentDoctorName,
-          department: _demoCurrentDepartment,
-          roleLabel: '요청 의료진',
-          title: '순환기내과 전문의',
-        ),
         ConsultationParticipantUiModel(
-          id: 2,
-          doctorId: result.assignedDoctorId,
-          doctorName: result.assignedDoctorName,
-          department: '진료과 미연결',
-          roleLabel: '담당 의료진',
+          id: -1,
+          doctorId: item.requestedById,
+          doctorName: requesterName,
+          department: requesterDepartment,
+          roleLabel: '요청 의료진',
+          title: requesterTitle,
         ),
+        if (item.assignedDoctorId != item.requestedById)
+          ConsultationParticipantUiModel(
+            id: -2,
+            doctorId: item.assignedDoctorId,
+            doctorName: assignedName,
+            department: assignedDepartment,
+            roleLabel: '담당 의료진',
+            title: assignedTitle,
+          ),
       ],
       references: const [],
       opinions: const [],
-    );
-
-    setState(() {
-      _consultations = [consultation, ..._consultations];
-      _selectedId = consultation.id;
-      _showCompactDetail = true;
-    });
-
-    _showMessage('협진 요청이 UI에 생성되었습니다. 실제 POST API는 아직 연결하지 않았습니다.');
-  }
-
-  // ============================================================
-  // STEP 4. Status Actions
-  // ============================================================
-
-  void _accept() {
-    _updateStatus(ConsultationUiStatus.inProgress);
-    _showMessage('협진을 UI에서 수락 처리했습니다.');
-  }
-
-  void _complete() {
-    _updateStatus(ConsultationUiStatus.completed);
-    _showMessage('협진을 UI에서 완료 처리했습니다.');
-  }
-
-  void _withdraw() {
-    _updateStatus(ConsultationUiStatus.withdrawn);
-    _showMessage('협진 요청을 UI에서 회수 처리했습니다.');
-  }
-
-  void _updateStatus(ConsultationUiStatus status) {
-    final selected = _selected;
-
-    if (selected == null) {
-      return;
-    }
-
-    _replaceConsultation(selected.copyWith(status: status));
-  }
-
-  // ============================================================
-  // STEP 5. Opinion
-  // POST /api/consultations/{consultation_id}/opinions/
-  // ============================================================
-
-  void _addOpinion(ConsultationOpinionUiModel opinion) {
-    final selected = _selected;
-
-    if (selected == null) {
-      return;
-    }
-
-    _replaceConsultation(
-      selected.copyWith(opinions: [...selected.opinions, opinion]),
+      followUp: null,
+      aiSummary: null,
+      isDemo: false,
     );
   }
+
+  // ============================================================
+  // STEP 12. Detail API → UI
+  // ============================================================
+
+  ConsultationUiModel _mapDetailToUi(
+    ConsultationDetailApiResult detail, {
+    required _ConsultationPatientSummary? patient,
+    required int currentDoctorId,
+  }) {
+    final consultation = detail.consultation;
+
+    final base = _mapListItemToUi(
+      consultation,
+      patient: patient,
+      currentDoctorId: currentDoctorId,
+    );
+
+    final participants = detail.participants.map(_mapParticipant).toList();
+
+    final references = detail.references.map(_mapReference).toList();
+
+    final opinions = detail.opinions.map(_mapOpinion).toList();
+
+    return base.copyWith(
+      participants: participants.isEmpty ? base.participants : participants,
+      references: references,
+      opinions: opinions,
+    );
+  }
+
+  ConsultationParticipantUiModel _mapParticipant(Map<String, dynamic> json) {
+    final profile = json['staff_profile'];
+
+    final profileMap = profile is Map
+        ? Map<String, dynamic>.from(profile)
+        : null;
+
+    final rawRole = json['participant_role']?.toString().toUpperCase() ?? '';
+
+    return ConsultationParticipantUiModel(
+      id: _intValue(json['id']),
+      doctorId: _intValue(json['doctor']),
+      doctorName: _profileText(profileMap, 'name', fallback: '의료진'),
+      department: _profileText(
+        profileMap,
+        'department_name',
+        fallback: '진료과 미확인',
+      ),
+      roleLabel: _participantRoleLabel(rawRole),
+      title: _nullableProfileText(profileMap, 'title'),
+    );
+  }
+
+  ConsultationReferenceUiModel _mapReference(Map<String, dynamic> json) {
+    final referenceType = json['reference_type']?.toString() ?? 'REFERENCE';
+
+    final referenceId = _intValue(json['reference_id']);
+
+    return ConsultationReferenceUiModel(
+      id: _intValue(json['id']),
+      referenceTypeLabel: _referenceTypeLabel(referenceType),
+      referenceId: referenceId,
+      title: '${_referenceTypeLabel(referenceType)} #$referenceId',
+      description: '협진에 연결된 참조 자료',
+    );
+  }
+
+  ConsultationOpinionUiModel _mapOpinion(Map<String, dynamic> json) {
+    final profile = json['author_profile'];
+
+    final profileMap = profile is Map
+        ? Map<String, dynamic>.from(profile)
+        : null;
+
+    return ConsultationOpinionUiModel(
+      id: _intValue(json['id']),
+      doctorId: _intValue(json['doctor']),
+      doctorName: _profileText(profileMap, 'name', fallback: '의료진'),
+      department: _profileText(
+        profileMap,
+        'department_name',
+        fallback: '진료과 미확인',
+      ),
+      opinionText: json['opinion_text']?.toString() ?? '',
+      isFinal: json['is_final'] == true,
+      createdAt:
+          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+    );
+  }
+
+  // ============================================================
+  // STEP 13. Replace
+  // ============================================================
 
   void _replaceConsultation(ConsultationUiModel updated) {
     final index = _consultations.indexWhere((item) => item.id == updated.id);
@@ -167,31 +716,29 @@ class _ConsultationPageState extends State<ConsultationPage> {
     }
 
     setState(() {
-      _consultations[index] = updated;
+      final copied = [..._consultations];
+
+      copied[index] = updated;
+
+      _consultations = copied;
     });
   }
 
   // ============================================================
-  // STEP 6. Responsive UI
-  //
-  // Landscape Tablet:
-  // Case Rail + Consult Cockpit
-  //
-  // Portrait / Narrow:
-  // List -> Cockpit
+  // STEP 14. Responsive UI
   // ============================================================
 
   @override
   Widget build(BuildContext context) {
-    // AppShell 내부 body 영역에서 LayoutBuilder가 0/비정상 제약을 받는
-    // 환경을 피하기 위해 화면 크기는 MediaQuery로만 판단합니다.
-    // 실제 본문 배치는 기존에 정상 동작하던 Container + Row 구조를 유지합니다.
     final screenSize = MediaQuery.sizeOf(context);
+
     final orientation = MediaQuery.orientationOf(context);
+
     final useSplitView =
         orientation == Orientation.landscape && screenSize.width >= 900;
 
     final horizontalPadding = screenSize.width < 700 ? 10.0 : 16.0;
+
     final verticalPadding = screenSize.width < 700 ? 10.0 : 8.0;
 
     return AppShell(
@@ -208,17 +755,35 @@ class _ConsultationPageState extends State<ConsultationPage> {
             horizontalPadding,
             16,
           ),
-          child: useSplitView
-              ? _buildSplitView(screenSize.width)
-              : _buildCompactView(),
+          child: _buildBody(
+            useSplitView: useSplitView,
+            width: screenSize.width,
+          ),
         ),
       ),
     );
   }
 
+  Widget _buildBody({required bool useSplitView, required double width}) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_loadError != null && _consultations.isEmpty) {
+      return _ConsultationLoadError(onRetry: _loadConsultations);
+    }
+
+    if (useSplitView) {
+      return _buildSplitView(width);
+    }
+
+    return _buildCompactView();
+  }
+
   Widget _buildSplitView(double width) {
     final selected = _selected;
-    final railWidth = width >= 1250 ? 270.0 : 238.0;
+
+    final railWidth = width >= 1250 ? 390.0 : 330.0;
 
     return Row(
       children: [
@@ -231,6 +796,8 @@ class _ConsultationPageState extends State<ConsultationPage> {
               setState(() {
                 _selectedId = consultation.id;
               });
+
+              _loadConsultationDetail(consultation.id);
             },
             onCreate: _openCreateDialog,
           ),
@@ -239,9 +806,17 @@ class _ConsultationPageState extends State<ConsultationPage> {
         Expanded(
           child: selected == null
               ? const _EmptyDetail()
-              : _buildDetailPanel(
-                  consultation: selected,
-                  showBackButton: false,
+              : Stack(
+                  children: [
+                    _buildDetailPanel(
+                      consultation: selected,
+                      showBackButton: false,
+                    ),
+                    if (_isDetailLoading)
+                      const Positioned.fill(
+                        child: IgnorePointer(child: _DetailLoadingOverlay()),
+                      ),
+                  ],
                 ),
         ),
       ],
@@ -252,7 +827,15 @@ class _ConsultationPageState extends State<ConsultationPage> {
     final selected = _selected;
 
     if (_showCompactDetail && selected != null) {
-      return _buildDetailPanel(consultation: selected, showBackButton: true);
+      return Stack(
+        children: [
+          _buildDetailPanel(consultation: selected, showBackButton: true),
+          if (_isDetailLoading)
+            const Positioned.fill(
+              child: IgnorePointer(child: _DetailLoadingOverlay()),
+            ),
+        ],
+      );
     }
 
     return ConsultationListPanel(
@@ -263,6 +846,8 @@ class _ConsultationPageState extends State<ConsultationPage> {
           _selectedId = consultation.id;
           _showCompactDetail = true;
         });
+
+        _loadConsultationDetail(consultation.id);
       },
       onCreate: _openCreateDialog,
     );
@@ -290,6 +875,10 @@ class _ConsultationPageState extends State<ConsultationPage> {
     );
   }
 
+  // ============================================================
+  // STEP 15. Message
+  // ============================================================
+
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -297,227 +886,189 @@ class _ConsultationPageState extends State<ConsultationPage> {
         SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
       );
   }
+}
 
-  // ============================================================
-  // STEP 7. Mock / API-shaped Data
-  //
-  // 첫 번째 환자는 사용자가 확인한 실제 API 응답 구조/값을 기준으로 구성.
-  //
-  // Consultation
-  // - consultation id 1
-  // - patient 1626
-  // - requester 이서준 doctor_id 4
-  // - assigned 김도윤 doctor_id 3
-  //
-  // Follow-up
-  // - encounter 1503
-  // - CCTA examination 1668
-  //
-  // AI
-  // - analysis 468
-  // - result 16
-  // ============================================================
+// ============================================================
+// STEP 16. Parser Helpers
+// ============================================================
 
-  List<ConsultationUiModel> _buildMockConsultations() {
-    return [
-      ConsultationUiModel(
-        id: 1,
-        patientId: 1626,
-        patientName: '한지호',
-        patientMeta: 'MRN DEMO-0097',
-        subject: '1차 추적검사 CCTA 결과 협진 요청',
-        note:
-            '1차 추적검사에서 관상동맥 CT 혈관조영술(CCTA_3D)이 완료되었습니다. SIGNIFICANT_LESION 환자의 추적관찰 결과에 대해 추가적인 협진 의견을 요청합니다.',
-        assignedDoctorId: 3,
-        assignedDoctorName: '김도윤',
-        assignedDepartment: '순환기내과',
-        encounterId: null,
-        priority: 'NORMAL',
-        dueAt: DateTime(2026, 9, 20, 3, 2, 20),
-        status: ConsultationUiStatus.requested,
-        direction: ConsultationUiDirection.sent,
-        createdAt: DateTime(2026, 9, 20, 3, 13, 25),
-        participants: const [
-          ConsultationParticipantUiModel(
-            id: 1,
-            doctorId: 4,
-            doctorName: '이서준',
-            department: '순환기내과',
-            roleLabel: '요청 의료진',
-            title: '순환기내과 전문의',
-          ),
-          ConsultationParticipantUiModel(
-            id: 2,
-            doctorId: 3,
-            doctorName: '김도윤',
-            department: '순환기내과',
-            roleLabel: '협진 의료진',
-            title: '순환기내과 과장',
-          ),
-        ],
-        references: const [],
-        opinions: const [],
-        followUp: ConsultationFollowUpUiModel(
-          medicalRecordNo: 'DEMO-0097',
-          stageLabel: '1차 추적검사',
-          encounterId: 1503,
-          visitDate: DateTime(2026, 9, 5),
-          doctorName: '김도윤',
-          doctorDepartment: '순환기내과',
-          cctaExaminationId: 1668,
-          cctaPerformedAt: DateTime(2026, 9, 8),
-          cctaLocation: 'CT 촬영실',
-          cctaResultStatus: 'FINAL',
-          clinicalMetrics: const [
-            ConsultationClinicalMetricUiModel(
-              label: 'EF-TTE',
-              value: '42.6',
-              unit: '%',
-              flag: 'LOW',
+ConsultationUiStatus _parseConsultationStatus(String value) {
+  switch (value.toUpperCase()) {
+    case 'REQUESTED':
+    case 'PENDING':
+      return ConsultationUiStatus.requested;
+
+    case 'ACCEPTED':
+    case 'IN_PROGRESS':
+      return ConsultationUiStatus.inProgress;
+
+    case 'COMPLETED':
+      return ConsultationUiStatus.completed;
+
+    case 'WITHDRAWN':
+    case 'REJECTED':
+    case 'CANCELED':
+    case 'CANCELLED':
+      return ConsultationUiStatus.withdrawn;
+
+    default:
+      return ConsultationUiStatus.requested;
+  }
+}
+
+String _participantRoleLabel(String value) {
+  switch (value) {
+    case 'REQUESTER':
+    case 'REQUESTED_BY':
+    case 'OWNER':
+      return '요청 의료진';
+
+    case 'ASSIGNEE':
+    case 'ASSIGNED':
+    case 'CONSULTANT':
+      return '담당 의료진';
+
+    default:
+      return value.isEmpty ? '참여 의료진' : value;
+  }
+}
+
+String _referenceTypeLabel(String value) {
+  switch (value.toUpperCase()) {
+    case 'EXAMINATION':
+      return '검사';
+
+    case 'AI_ANALYSIS':
+    case 'AI_RESULT':
+      return 'AI';
+
+    case 'REPORT':
+      return '보고서';
+
+    case 'IMAGING':
+    case 'IMAGE':
+      return '영상';
+
+    default:
+      return value;
+  }
+}
+
+String _profileText(
+  Map<String, dynamic>? profile,
+  String key, {
+  required String fallback,
+}) {
+  final value = profile?[key]?.toString().trim();
+
+  if (value == null || value.isEmpty) {
+    return fallback;
+  }
+
+  return value;
+}
+
+String? _nullableProfileText(Map<String, dynamic>? profile, String key) {
+  final value = profile?[key]?.toString().trim();
+
+  if (value == null || value.isEmpty) {
+    return null;
+  }
+
+  return value;
+}
+
+int _intValue(dynamic value) {
+  if (value is num) {
+    return value.toInt();
+  }
+
+  return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+// ============================================================
+// STEP 17. Patient Summary
+// ============================================================
+
+class _ConsultationPatientSummary {
+  final int patientId;
+  final String name;
+  final String medicalRecordNo;
+
+  const _ConsultationPatientSummary({
+    required this.patientId,
+    required this.name,
+    required this.medicalRecordNo,
+  });
+}
+
+// ============================================================
+// STEP 18. Loading / Error
+// ============================================================
+
+class _DetailLoadingOverlay extends StatelessWidget {
+  const _DetailLoadingOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: context.appBackground.withValues(alpha: 0.35),
+      alignment: Alignment.center,
+      child: const SizedBox(
+        width: 28,
+        height: 28,
+        child: CircularProgressIndicator(strokeWidth: 2.5),
+      ),
+    );
+  }
+}
+
+class _ConsultationLoadError extends StatelessWidget {
+  final VoidCallback onRetry;
+
+  const _ConsultationLoadError({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: context.appSurface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: context.appBorder),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.error_outline_rounded,
+              size: 32,
+              color: context.appTextSecondary,
             ),
-            ConsultationClinicalMetricUiModel(
-              label: 'LDL',
-              value: '152.23',
-              unit: 'mg/dL',
-              flag: 'HIGH',
+            const SizedBox(height: 10),
+            Text(
+              '협진 목록을 불러오지 못했습니다.',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: context.appTextPrimary,
+              ),
             ),
-            ConsultationClinicalMetricUiModel(
-              label: 'HDL',
-              value: '34.4',
-              unit: 'mg/dL',
-              flag: 'LOW',
-            ),
-            ConsultationClinicalMetricUiModel(
-              label: 'Creatinine',
-              value: '1.511',
-              unit: 'mg/dL',
-              flag: 'HIGH',
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('다시 시도'),
             ),
           ],
         ),
-        aiSummary: const ConsultationAiSummaryUiModel(
-          analysisId: 468,
-          resultId: 16,
-          analysisType: 'ANGIO_2D',
-          resultStatus: 'REVIEW_REQUIRED',
-          leftSignificantPositive: true,
-          leftSignificantScore: 0.8518154183272847,
-          rightSignificantPositive: true,
-          rightSignificantScore: 0.9736131977550838,
-          seriesCount: 11,
-          frameCount: 458,
-          warning: '외부 테스트 결과입니다. AI score는 협착률·보정된 신뢰도가 아닙니다.',
-        ),
-        isDemo: false,
       ),
-
-      ConsultationUiModel(
-        id: 102,
-        patientId: 1630,
-        patientName: '이OO',
-        patientMeta: '65세 · 남',
-        subject: '관상동맥조영술 결과 협진 요청',
-        note: '관상동맥조영술에서 다혈관 병변이 의심됩니다. 추가 치료 방향에 대한 의견을 요청합니다.',
-        assignedDoctorId: 4,
-        assignedDoctorName: '이서준',
-        assignedDepartment: '순환기내과',
-        encounterId: 1214,
-        priority: 'URGENT',
-        dueAt: DateTime(2026, 9, 20, 18),
-        status: ConsultationUiStatus.inProgress,
-        direction: ConsultationUiDirection.received,
-        createdAt: DateTime(2026, 9, 20, 11, 40),
-        participants: const [
-          ConsultationParticipantUiModel(
-            id: 3,
-            doctorId: 8,
-            doctorName: '최OO 의사',
-            department: '심장혈관흉부외과',
-            roleLabel: '요청 의료진',
-          ),
-          ConsultationParticipantUiModel(
-            id: 4,
-            doctorId: 4,
-            doctorName: '이서준',
-            department: '순환기내과',
-            roleLabel: '협진 의료진',
-          ),
-        ],
-        references: const [
-          ConsultationReferenceUiModel(
-            id: 5,
-            referenceTypeLabel: '영상',
-            referenceId: 1011,
-            title: 'CAG Study #1011',
-            description: '관상동맥조영술 영상 · UI DEMO',
-          ),
-        ],
-        opinions: [
-          ConsultationOpinionUiModel(
-            id: 11,
-            doctorId: 8,
-            doctorName: '최OO 의사',
-            department: '심장혈관흉부외과',
-            opinionText: '영상상 다혈관 병변 가능성이 있어 임상 상태와 함께 추가 평가가 필요합니다.',
-            isFinal: false,
-            createdAt: DateTime(2026, 9, 20, 12, 20),
-          ),
-        ],
-        isDemo: true,
-      ),
-
-      ConsultationUiModel(
-        id: 103,
-        patientId: 1620,
-        patientName: '정OO',
-        patientMeta: '59세 · 여',
-        subject: '심혈관 위험도 종합 검토',
-        note: '혈액검사와 영상 결과를 종합하여 추적 검사 계획에 대한 협진을 요청했습니다.',
-        assignedDoctorId: 4,
-        assignedDoctorName: '이서준',
-        assignedDepartment: '순환기내과',
-        encounterId: 1201,
-        priority: 'NORMAL',
-        dueAt: DateTime(2026, 9, 19, 18),
-        status: ConsultationUiStatus.completed,
-        direction: ConsultationUiDirection.received,
-        createdAt: DateTime(2026, 9, 18, 9, 15),
-        participants: const [
-          ConsultationParticipantUiModel(
-            id: 5,
-            doctorId: 6,
-            doctorName: '한OO 의사',
-            department: '가정의학과',
-            roleLabel: '요청 의료진',
-          ),
-          ConsultationParticipantUiModel(
-            id: 6,
-            doctorId: 4,
-            doctorName: '이서준',
-            department: '순환기내과',
-            roleLabel: '협진 의료진',
-          ),
-        ],
-        references: const [],
-        opinions: [
-          ConsultationOpinionUiModel(
-            id: 20,
-            doctorId: 4,
-            doctorName: '이서준',
-            department: '순환기내과',
-            opinionText: '현재 검사 결과를 기준으로 추적 관찰 및 위험인자 조절을 권고합니다.',
-            isFinal: true,
-            createdAt: DateTime(2026, 9, 19, 10, 20),
-          ),
-        ],
-        isDemo: true,
-      ),
-    ];
+    );
   }
 }
 
 // ============================================================
-// STEP 8. Empty Detail
+// STEP 19. Empty Detail
 // ============================================================
 
 class _EmptyDetail extends StatelessWidget {

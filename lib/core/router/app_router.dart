@@ -14,6 +14,7 @@ import '../../features/appointments/presentation/appointments_page.dart';
 import '../../features/examinations/presentation/examinations_page.dart';
 import '../../features/imaging/presentation/imaging_page.dart';
 import '../../features/ai/presentation/ai_page.dart';
+import '../../features/ai/presentation/ai_ui_models.dart';
 import '../../features/consult/presentation/consultation_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
 import '../../features/imaging/presentation/angio_viewer_page.dart';
@@ -188,19 +189,15 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.imaging,
       builder: (context, state) {
         final query = state.uri.queryParameters;
-
         final analysisType = query['analysisType'];
-
         final examinationId = int.tryParse(query['examinationId'] ?? '');
-
         final analysisId = int.tryParse(query['analysisId'] ?? '');
-
         final patientId = int.tryParse(query['patientId'] ?? '');
-
+        final extra = state.extra;
+        final cctaResult = extra is AiResultUiModel ? extra : null;
         // ========================================================
         // ANGIO 실제 Frame Viewer
         // ========================================================
-
         if (analysisType == 'ANGIO_2D' &&
             examinationId != null &&
             patientId != null) {
@@ -210,12 +207,15 @@ final GoRouter appRouter = GoRouter(
             analysisId: analysisId,
           );
         }
-
         // ========================================================
-        // 기존 영상 화면
-        // Sidebar 직접 진입 / CCTA
+        // CCTA 실제 Viewer
         // ========================================================
-
+        if (cctaResult != null) {
+          return ImagingPage(initialCctaResult: cctaResult);
+        }
+        // ========================================================
+        // 영상 메뉴 직접 진입
+        // ========================================================
         return const ImagingPage();
       },
     ),

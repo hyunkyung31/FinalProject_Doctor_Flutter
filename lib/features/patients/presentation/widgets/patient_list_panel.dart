@@ -42,7 +42,7 @@ class PatientListPanel extends StatefulWidget {
     required this.selectedPatientId,
     required this.onPatientSelected,
     this.onSearchChanged,
-    this.selectedScope = PatientListScope.all,
+    this.selectedScope = PatientListScope.assigned,
     this.onScopeChanged,
     this.totalCount = 0,
     this.currentPage = 1,
@@ -73,7 +73,7 @@ class _PatientListPanelState extends State<PatientListPanel> {
         return '전체 ${widget.totalCount}명';
 
       case PatientListScope.assigned:
-        return '담당 ${widget.totalCount}명';
+        return '내 담당 ${widget.totalCount}명';
 
       case PatientListScope.consultation:
         return '협진 ${widget.totalCount}명';
@@ -241,7 +241,7 @@ class _PatientListPanelState extends State<PatientListPanel> {
 
           // ======================================================
           // Patient Scope
-          // 환자 조회 / 협진 / 최근 조회
+          // 내 담당 / 전체 환자 / 협진 / 최근 조회
           // ======================================================
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -249,7 +249,19 @@ class _PatientListPanelState extends State<PatientListPanel> {
               children: [
                 Expanded(
                   child: _ScopeButton(
-                    label: '환자 조회',
+                    label: '내 담당',
+                    selected: widget.selectedScope == PatientListScope.assigned,
+                    onTap: () {
+                      widget.onScopeChanged?.call(PatientListScope.assigned);
+                    },
+                  ),
+                ),
+
+                const SizedBox(width: 5),
+
+                Expanded(
+                  child: _ScopeButton(
+                    label: '전체 환자',
                     selected: widget.selectedScope == PatientListScope.all,
                     onTap: () {
                       widget.onScopeChanged?.call(PatientListScope.all);
