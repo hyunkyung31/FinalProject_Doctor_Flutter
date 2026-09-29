@@ -11,21 +11,21 @@ import '../../../core/auth/auth_provider.dart';
 import '../../ai/data/services/ai_analysis_service.dart';
 import '../../ai/presentation/ai_ui_models.dart';
 import '../../ai/presentation/report/ai_medical_report.dart';
+import '../data/services/imaging_service.dart';
 
 // ============================================================
 // STEP 1. CCTA 전용 Viewer
-//
-// 실제 연결 흐름:
-// AI Analysis Input / 검사+환자 -> ImagingStudy
-// -> Series -> DICOM Instance -> Preview
-// AI Result -> Segmentation -> Mesh FileAsset -> STL 3D
-// -> 결과보고서
 // ============================================================
 
 class CctaViewerPage extends StatefulWidget {
   final AiResultUiModel result;
+  final bool embedded;
 
-  const CctaViewerPage({super.key, required this.result});
+  const CctaViewerPage({
+    super.key,
+    required this.result,
+    this.embedded = false,
+  });
 
   @override
   State<CctaViewerPage> createState() => _CctaViewerPageState();
@@ -36,6 +36,7 @@ enum _ViewerMode { dicom, mesh, ai }
 class _CctaViewerPageState extends State<CctaViewerPage> {
   AiAnalysisService? _aiService;
   _CctaService? _service;
+  ImagingService? _imagingService;
 
   AiAnalysisPatientContextRecord? _patient;
   _Study? _study;
@@ -68,6 +69,7 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
     final api = context.read<AuthProvider>().authService.apiClient;
     _aiService = AiAnalysisService(apiClient: api);
     _service = _CctaService(apiClient: api);
+    _imagingService = ImagingService(apiClient: api);
     _load();
   }
 
@@ -132,6 +134,13 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
       setState(() => _study = study);
 
       if (study != null) {
+        final renderings = await _imagingService!.fetchRenderings(study.id);
+
+        debugPrint(
+          '[CCTA 3D] studyId=${study.id}, renderings=$renderings',
+          wrapWidth: 2048,
+        );
+
         await _loadSeries(study.id);
       } else {
         setState(() {
@@ -349,6 +358,34 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
 
   @override
   Widget build(BuildContext context) {
+    final content = _loading
+        ? const Center(child: CircularProgressIndicator())
+        : Column(
+            children: [
+              _summaryBar(),
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(child: _mainViewer()),
+                    SizedBox(width: 280, child: _rightPanel()),
+                  ],
+                ),
+              ),
+            ],
+          );
+
+    // ==========================================================
+    // 영상 메뉴 내부에 포함될 때
+    // ==========================================================
+
+    if (widget.embedded) {
+      return Material(color: context.appBackground, child: content);
+    }
+
+    // ==========================================================
+    // 기존 독립 실행 방식
+    // ==========================================================
+
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 0,
@@ -360,7 +397,9 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
             Text(
-              '검사 #${widget.result.examinationId} · Analysis #${widget.result.analysisId} · Result #${widget.result.id}',
+              '검사 #${widget.result.examinationId} · '
+              'Analysis #${widget.result.analysisId} · '
+              'Result #${widget.result.id}',
               style: TextStyle(fontSize: 9.5, color: context.appTextSecondary),
             ),
           ],
@@ -376,21 +415,7 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
           ),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                _summaryBar(),
-                Expanded(
-                  child: Row(
-                    children: [
-                      Expanded(child: _mainViewer()),
-                      SizedBox(width: 280, child: _rightPanel()),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+      body: content,
     );
   }
 
@@ -415,10 +440,21 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
         const SizedBox(width: 7),
         _Chip(_study == null ? 'Study 미연결' : 'Study #${_study!.id}'),
         const Spacer(),
+
         Text(
           widget.result.modelLabel,
           style: TextStyle(fontSize: 9.5, color: context.appTextSecondary),
         ),
+
+        if (widget.embedded) ...[
+          const SizedBox(width: 10),
+
+          FilledButton.icon(
+            onPressed: _openReport,
+            icon: const Icon(Icons.description_outlined, size: 16),
+            label: const Text('결과보고서 작성', style: TextStyle(fontSize: 10)),
+          ),
+        ],
       ],
     ),
   );
@@ -643,9 +679,56 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
     final candidates = widget.result.segmentationDetails
         .where((e) => e.meshFileAssetId != null)
         .toList();
+
     return Column(
       children: [
-        if (candidates.isNotEmpty)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: context.appSurface,
+            border: Border(bottom: BorderSide(color: context.appBorder)),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.view_in_ar_outlined,
+                size: 17,
+                color: context.appTextPrimary,
+              ),
+
+              const SizedBox(width: 8),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '석회화 3D 분할 모델',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: context.appTextPrimary,
+                      ),
+                    ),
+
+                    const SizedBox(height: 2),
+
+                    Text(
+                      'AI가 분할한 석회화 영역을 3D로 표시합니다.',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: context.appTextSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        if (candidates.length > 1)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(8),
@@ -660,7 +743,9 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
                 for (final item in candidates)
                   ChoiceChip(
                     label: Text(
-                      '${item.structureName} · Mesh #${item.meshFileAssetId}',
+                      item.structureName == 'CALCIFICATION'
+                          ? '석회화 영역'
+                          : item.structureName,
                       style: const TextStyle(fontSize: 9.5),
                     ),
                     selected: _meshFileId == item.meshFileAssetId,
@@ -669,6 +754,7 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
               ],
             ),
           ),
+
         Expanded(
           child: Container(
             color: Theme.of(context).colorScheme.surfaceContainerLowest,
@@ -678,8 +764,8 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
                 ? Center(
                     child: _Message(
                       Icons.view_in_ar_outlined,
-                      '3D Mesh를 표시할 수 없습니다.',
-                      _meshMessage ?? 'Segmentation Mesh FileAsset을 확인해주세요.',
+                      '3D 모델을 표시할 수 없습니다.',
+                      _meshMessage ?? '석회화 분할 결과의 3D 모델을 확인해주세요.',
                     ),
                   )
                 : _StlView(bytes: _meshBytes!),
@@ -696,39 +782,101 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
   Widget _aiViewer() {
     final items = widget.result.segmentationDetails;
     final cac = widget.result.cacScore;
+
+    num? metricNumber(dynamic value) {
+      if (value is num) {
+        return value;
+      }
+
+      return num.tryParse(value?.toString() ?? '');
+    }
+
+    final totalHu130Voxels = items.fold<num>(
+      0,
+      (sum, item) =>
+          sum + (metricNumber(item.metricsJson['hu130_voxels']) ?? 0),
+    );
+
+    final hasSegmentation = items.isNotEmpty;
+    final hasCalcificationSignal = totalHu130Voxels > 0;
+    final hasMesh = items.any((item) => item.meshFileAssetId != null);
+
     return ListView(
       padding: const EdgeInsets.all(18),
       children: [
         Text(
-          'AI 분석 요약',
+          'AI 분석 결과',
           style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w700,
             color: context.appTextPrimary,
           ),
         ),
-        const SizedBox(height: 8),
+
+        const SizedBox(height: 6),
+
         Text(
-          widget.result.summary,
+          widget.result.summary.trim().isEmpty
+              ? 'CCTA 영상 기반 석회화 분석 결과입니다.'
+              : widget.result.summary,
           style: TextStyle(
             fontSize: 11,
             height: 1.5,
+            color: context.appTextSecondary,
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // ========================================================
+        // 분석 상태
+        // ========================================================
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: context.appSurfaceSoft,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: context.appBorder),
+          ),
+          child: Column(
+            children: [
+              _KV('분석 상태', hasSegmentation ? '분할 완료' : '분할 결과 없음', bold: true),
+              _KV('석회화 영역', hasCalcificationSignal ? '확인됨' : '확인되지 않음'),
+              _KV('3D 모델', hasMesh ? '생성 완료' : '생성되지 않음'),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 14),
+
+        // ========================================================
+        // 분할 결과
+        // ========================================================
+        Text(
+          '석회화 분할 정보',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
             color: context.appTextPrimary,
           ),
         ),
-        const SizedBox(height: 16),
-        if (items.isEmpty)
+
+        const SizedBox(height: 8),
+
+        if (!hasSegmentation)
           const _Message(
             Icons.hub_outlined,
-            'Segmentation 결과가 없습니다.',
-            'AI Result의 segmentation endpoint 응답을 확인해주세요.',
+            '분할 결과가 없습니다.',
+            '현재 AI 결과에 연결된 Segmentation 데이터가 없습니다.',
           )
         else
           for (final item in items)
             Container(
               margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(13),
               decoration: BoxDecoration(
+                color: context.appSurface,
                 border: Border.all(color: context.appBorder),
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -736,50 +884,123 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item.structureName,
+                    item.structureName == 'CALCIFICATION'
+                        ? '석회화 영역'
+                        : item.structureName,
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: context.appTextPrimary,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  _KV('Mask FileAsset', '#${item.maskFileAssetId ?? '-'}'),
-                  _KV('Mesh FileAsset', '#${item.meshFileAssetId ?? '-'}'),
-                  if (item.volumeMm3 != null)
-                    _KV('Volume', '${item.volumeMm3!.toStringAsFixed(1)} mm³'),
+
+                  const SizedBox(height: 9),
+
                   if (item.metricsJson['raw_voxels'] != null)
-                    _KV('Raw Voxels', '${item.metricsJson['raw_voxels']}'),
+                    _KV('전체 검출 voxel', '${item.metricsJson['raw_voxels']}'),
+
                   if (item.metricsJson['hu130_voxels'] != null)
                     _KV(
-                      'HU ≥ 130 Voxels',
+                      'HU ≥ 130 voxel',
                       '${item.metricsJson['hu130_voxels']}',
                     ),
+
+                  if (item.volumeMm3 != null)
+                    _KV('분할 부피', '${item.volumeMm3!.toStringAsFixed(1)} mm³'),
+
+                  _KV(
+                    '3D 시각화',
+                    item.meshFileAssetId != null ? '사용 가능' : '사용 불가',
+                  ),
                 ],
               ),
             ),
+
+        if (hasMesh) ...[
+          const SizedBox(height: 2),
+
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                setState(() {
+                  _mode = _ViewerMode.mesh;
+                });
+              },
+              icon: const Icon(Icons.view_in_ar_outlined, size: 17),
+              label: const Text('3D 석회화에서 위치 확인'),
+            ),
+          ),
+        ],
+
+        // ========================================================
+        // CAC Score - 실제 값이 있을 때만 노출
+        // ========================================================
         if (cac != null) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: 18),
+
           Text(
-            'CAC Score',
+            '관상동맥 석회화 점수 (CAC)',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: context.appTextPrimary,
             ),
           ),
-          _KV('LAD', cac.lad.toStringAsFixed(0)),
-          _KV('LCX', cac.lcx.toStringAsFixed(0)),
-          _KV('RCA', cac.rca.toStringAsFixed(0)),
-          _KV('Total', cac.total.toStringAsFixed(0), bold: true),
+
+          const SizedBox(height: 8),
+
+          Container(
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+              color: context.appSurface,
+              border: Border.all(color: context.appBorder),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              children: [
+                _KV('LAD', cac.lad.toStringAsFixed(0)),
+                _KV('LCX', cac.lcx.toStringAsFixed(0)),
+                _KV('RCA', cac.rca.toStringAsFixed(0)),
+                Divider(color: context.appBorder),
+                _KV('Total', cac.total.toStringAsFixed(0), bold: true),
+              ],
+            ),
+          ),
         ],
-        const SizedBox(height: 16),
-        Text(
-          '본 화면은 CCTA AI 분석 결과 확인용 보조 Viewer입니다. 3D Mesh 표시 자체는 정량 측정 도구가 아니며 최종 판독은 원본 CT와 임상 정보를 함께 검토해야 합니다.',
-          style: TextStyle(
-            fontSize: 9.5,
-            height: 1.5,
-            color: context.appTextSecondary,
+
+        const SizedBox(height: 18),
+
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: context.appSurfaceSoft,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.info_outline_rounded,
+                size: 17,
+                color: context.appTextSecondary,
+              ),
+
+              const SizedBox(width: 8),
+
+              Expanded(
+                child: Text(
+                  'AI 기반 CCTA 석회화 분할 결과입니다. '
+                  '3D 시각화는 위치 확인을 위한 보조 정보이며, '
+                  '최종 판독은 원본 CT와 환자의 임상 정보를 함께 검토해야 합니다.',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    height: 1.5,
+                    color: context.appTextSecondary,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -812,7 +1033,7 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
         Divider(color: context.appBorder),
         const SizedBox(height: 8),
         Text(
-          'Segmentation / Mesh',
+          'AI 분할 결과',
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
@@ -840,7 +1061,7 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Mask #${item.maskFileAssetId ?? '-'} · Mesh #${item.meshFileAssetId ?? '-'}',
+                  item.meshFileAssetId != null ? '분할 완료 · 3D 모델 생성됨' : '분할 완료',
                   style: TextStyle(
                     fontSize: 8.5,
                     color: context.appTextSecondary,
@@ -864,7 +1085,6 @@ class _CctaViewerPageState extends State<CctaViewerPage> {
 
 // ============================================================
 // STEP 8. CCTA API Service
-// 확인된 API 문서 경로만 사용한다.
 // ============================================================
 
 class _CctaService {
@@ -883,6 +1103,27 @@ class _CctaService {
       },
     );
     return _list(response.data).map(_Study.fromJson).toList();
+  }
+
+  // ============================================================
+  // STEP. Study 3D Rendering 목록 확인
+  // ============================================================
+  Future<List<Map<String, dynamic>>> renderings(int studyId) async {
+    final response = await apiClient.dio.get(
+      '/staff/imaging-studies/$studyId/renderings-3d/',
+    );
+    final data = response.data;
+    debugPrint(
+      '[CCTA RENDERINGS] studyId=$studyId, data=$data',
+      wrapWidth: 2048,
+    );
+    if (data is! List) {
+      return const [];
+    }
+    return data
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
   }
 
   Future<_Study> study(int id) async {
@@ -911,15 +1152,44 @@ class _CctaService {
   Future<Uint8List> instancePreview(int instanceId) async {
     try {
       final response = await apiClient.dio.get<List<int>>(
-        '/imaging-instances/$instanceId/preview/',
+        '/imaging-instances/$instanceId/rendered/',
         options: Options(responseType: ResponseType.bytes),
       );
+
       final data = response.data;
+
+      final head = data == null
+          ? ''
+          : data
+                .take(16)
+                .map((value) => value.toRadixString(16).padLeft(2, '0'))
+                .join(' ');
+
+      debugPrint(
+        '[CCTA PREVIEW] '
+        'instanceId=$instanceId, '
+        'status=${response.statusCode}, '
+        'contentType=${response.headers.value('content-type')}, '
+        'bytes=${data?.length ?? 0}, '
+        'head=$head',
+        wrapWidth: 1024,
+      );
+
       if (data == null || data.isEmpty) {
         throw const _CctaException('DICOM 미리보기 응답이 비어 있습니다.');
       }
+
       return Uint8List.fromList(data);
     } on DioException catch (error) {
+      debugPrint(
+        '[CCTA PREVIEW ERROR] '
+        'instanceId=$instanceId, '
+        'status=${error.response?.statusCode}, '
+        'dataType=${error.response?.data.runtimeType}, '
+        'error=$error',
+        wrapWidth: 1024,
+      );
+
       throw _CctaException(
         _errorText(error, 'DICOM Instance #$instanceId 미리보기를 불러오지 못했습니다.'),
       );
@@ -928,40 +1198,36 @@ class _CctaService {
 
   Future<Uint8List> fileBytes(int fileId) async {
     try {
-      final response = await apiClient.dio.get('/files/$fileId/download/');
-      final map = _single(response.data);
-      final raw =
-          map['download_url'] ??
-          map['downloadUrl'] ??
-          map['signed_url'] ??
-          map['signedUrl'] ??
-          map['url'];
-      if (raw == null || raw.toString().trim().isEmpty) {
-        throw const _CctaException('FileAsset 다운로드 URL이 없습니다.');
-      }
-      final url = raw.toString().trim();
-      final uri = Uri.tryParse(url);
-      if (uri == null) {
-        throw const _CctaException('FileAsset URL 형식이 올바르지 않습니다.');
-      }
+      final response = await apiClient.dio.get<List<int>>(
+        '/files/$fileId/content/',
+        options: Options(responseType: ResponseType.bytes),
+      );
 
-      final Response<List<int>> downloaded = uri.hasScheme
-          ? await Dio().get<List<int>>(
-              url,
-              options: Options(responseType: ResponseType.bytes),
-            )
-          : await apiClient.dio.get<List<int>>(
-              url,
-              options: Options(responseType: ResponseType.bytes),
-            );
-      final data = downloaded.data;
+      final data = response.data;
+
+      debugPrint(
+        '[CCTA FILE CONTENT] '
+        'fileId=$fileId, '
+        'status=${response.statusCode}, '
+        'contentType=${response.headers.value('content-type')}, '
+        'bytes=${data?.length ?? 0}',
+        wrapWidth: 1024,
+      );
+
       if (data == null || data.isEmpty) {
         throw const _CctaException('다운로드된 FileAsset이 비어 있습니다.');
       }
+
       return Uint8List.fromList(data);
-    } on _CctaException {
-      rethrow;
     } on DioException catch (error) {
+      debugPrint(
+        '[CCTA FILE ERROR] '
+        'fileId=$fileId, '
+        'status=${error.response?.statusCode}, '
+        'error=$error',
+        wrapWidth: 1024,
+      );
+
       throw _CctaException(
         _errorText(error, 'FileAsset #$fileId를 불러오지 못했습니다.'),
       );
@@ -1069,8 +1335,8 @@ class _StlViewState extends State<_StlView> {
   late _Mesh _mesh;
   double _yaw = -.55;
   double _pitch = .3;
-  double _zoom = 1;
-  double _startZoom = 1;
+  double _zoom = 1.35;
+  double _startZoom = 1.35;
 
   @override
   void initState() {
@@ -1085,33 +1351,43 @@ class _StlViewState extends State<_StlView> {
       _mesh = _Mesh.parse(widget.bytes);
       _yaw = -.55;
       _pitch = .3;
-      _zoom = 1;
+      _zoom = 1.35;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_mesh.triangles.isEmpty) {
-      return const Center(child: Text('STL Triangle을 읽지 못했습니다.'));
+      return const Center(child: Text('3D 모델 데이터를 읽지 못했습니다.'));
     }
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onDoubleTap: () => setState(() {
+
+    void resetView() {
+      setState(() {
         _yaw = -.55;
         _pitch = .3;
-        _zoom = 1;
-      }),
-      onScaleStart: (_) => _startZoom = _zoom,
-      onScaleUpdate: (d) => setState(() {
-        if (d.pointerCount >= 2) {
-          _zoom = (_startZoom * d.scale).clamp(.45, 4.0).toDouble();
-        } else {
-          _yaw += d.focalPointDelta.dx * .01;
-          _pitch = (_pitch + d.focalPointDelta.dy * .01)
-              .clamp(-1.4, 1.4)
-              .toDouble();
-        }
-      }),
+        _zoom = 1.35;
+      });
+    }
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onDoubleTap: resetView,
+      onScaleStart: (_) {
+        _startZoom = _zoom;
+      },
+      onScaleUpdate: (details) {
+        setState(() {
+          if (details.pointerCount >= 2) {
+            _zoom = (_startZoom * details.scale).clamp(.45, 4.0).toDouble();
+          } else {
+            _yaw += details.focalPointDelta.dx * .01;
+
+            _pitch = (_pitch + details.focalPointDelta.dy * .01)
+                .clamp(-1.4, 1.4)
+                .toDouble();
+          }
+        });
+      },
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -1127,20 +1403,103 @@ class _StlViewState extends State<_StlView> {
               ).colorScheme.outline.withValues(alpha: .22),
             ),
           ),
+
+          // ======================================================
+          // 석회화 모델 안내
+          // ======================================================
           Positioned(
-            left: 12,
-            bottom: 10,
+            left: 14,
+            top: 14,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               decoration: BoxDecoration(
                 color: Theme.of(
                   context,
-                ).colorScheme.surface.withValues(alpha: .88),
+                ).colorScheme.surface.withValues(alpha: .92),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: context.appBorder),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.view_in_ar_outlined,
+                    size: 15,
+                    color: context.appTextPrimary,
+                  ),
+
+                  const SizedBox(width: 6),
+
+                  Text(
+                    '석회화 분할 3D',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      color: context.appTextPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ======================================================
+          // 초기화 버튼
+          // ======================================================
+          Positioned(
+            right: 14,
+            top: 14,
+            child: IconButton.filledTonal(
+              tooltip: '3D 화면 초기화',
+              onPressed: resetView,
+              icon: const Icon(Icons.restart_alt_rounded, size: 18),
+            ),
+          ),
+
+          // ======================================================
+          // 조작 안내
+          // ======================================================
+          Positioned(
+            left: 14,
+            bottom: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.surface.withValues(alpha: .90),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                '${_mesh.triangles.length} triangles · Drag 회전 · Pinch 확대',
+                'Drag 회전 · Pinch 확대/축소 · 두 번 탭 초기화',
                 style: TextStyle(fontSize: 9, color: context.appTextSecondary),
+              ),
+            ),
+          ),
+
+          // ======================================================
+          // 임상 오해 방지 안내
+          // ======================================================
+          Positioned(
+            right: 14,
+            bottom: 12,
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 290),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.surface.withValues(alpha: .90),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '현재 모델은 혈관 전체가 아닌 '
+                'AI 분할 석회화 영역을 표시합니다.',
+                style: TextStyle(
+                  fontSize: 8.5,
+                  height: 1.4,
+                  color: context.appTextSecondary,
+                ),
               ),
             ),
           ),

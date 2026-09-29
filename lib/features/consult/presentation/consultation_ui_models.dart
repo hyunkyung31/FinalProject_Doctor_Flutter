@@ -221,7 +221,7 @@ class ConsultationUiModel {
   final int? encounterId;
 
   final String priority;
-  final DateTime dueAt;
+  final DateTime? dueAt;
 
   final ConsultationUiStatus status;
   final ConsultationUiDirection direction;

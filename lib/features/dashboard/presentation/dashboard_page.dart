@@ -503,11 +503,11 @@ class _DashboardSupportRow extends StatelessWidget {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(flex: 3, child: noticeCard),
+          Expanded(flex: 8, child: noticeCard),
 
           const SizedBox(width: 10),
 
-          Expanded(flex: 2, child: consultationCard),
+          Expanded(flex: 6, child: consultationCard),
         ],
       );
     }

@@ -77,7 +77,7 @@ class _PatientsPageState extends State<PatientsPage> {
   // 전체 / 내 담당 / 협진 / 최근 조회
   // ============================================================
 
-  PatientListScope _selectedScope = PatientListScope.all;
+  PatientListScope _selectedScope = PatientListScope.assigned;
 
   // ============================================================
   // STEP 5. Pagination 상태
@@ -182,14 +182,6 @@ class _PatientsPageState extends State<PatientsPage> {
     return future;
   }
 
-  Future<void> _warmEncountersCache() async {
-    try {
-      await _loadEncountersCached();
-    } catch (_) {
-      // 진료 화면 진입 시 기존 방식으로 다시 시도할 수 있도록 둡니다.
-    }
-  }
-
   // ============================================================
   // STEP 8. Init
   // ============================================================
@@ -199,8 +191,7 @@ class _PatientsPageState extends State<PatientsPage> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_warmEncountersCache());
-      _loadPatients(page: 1);
+      _loadAssignedPatients(page: 1);
     });
   }
 
@@ -985,22 +976,100 @@ class _PatientsPageState extends State<PatientsPage> {
   }
 
   // ============================================================
+  // 협진 환자 목록
+  // GET /patients/?scope=CONSULTATION
+  // ============================================================
+
+  Future<void> _loadConsultationPatients({required int page}) async {
+    try {
+      if (mounted) {
+        setState(() {
+          _isPageLoading = true;
+        });
+      }
+
+      final auth = context.read<AuthProvider>();
+
+      final patientService = PatientService(
+        apiClient: auth.authService.apiClient,
+      );
+
+      final result = await patientService.fetchConsultationPatientPage(
+        page: page,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      if (_selectedScope != PatientListScope.consultation) {
+        return;
+      }
+
+      setState(() {
+        _patients = result.patients;
+
+        _currentPage = page;
+        _totalCount = result.count;
+        _hasPreviousPage = result.hasPrevious;
+        _hasNextPage = result.hasNext;
+
+        _isLoading = false;
+        _isPageLoading = false;
+        _loadError = null;
+
+        _selectedTab = PatientDetailTab.overview;
+
+        if (_patients.isEmpty) {
+          _selectedPatientId = null;
+        } else {
+          _selectedPatientId = _patients.first.id;
+        }
+      });
+
+      debugPrint(
+        '[PATIENTS] 협진 환자 목록 조회 완료: '
+        'page=$page, '
+        'pageCount=${result.patients.length}건, '
+        'total=${result.count}건',
+      );
+
+      if (_patients.isNotEmpty) {
+        await _loadPatientOverviewData(_patients.first);
+      }
+    } catch (error) {
+      debugPrint(
+        '[PATIENTS] 협진 환자 목록 조회 실패: '
+        'page=$page, '
+        'error=$error',
+      );
+
+      if (!mounted || _selectedScope != PatientListScope.consultation) {
+        return;
+      }
+
+      setState(() {
+        _isLoading = false;
+        _isPageLoading = false;
+
+        if (_patients.isEmpty) {
+          _loadError = error.toString();
+          _selectedPatientId = null;
+        }
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('협진 환자를 불러오지 못했습니다.')));
+    }
+  }
+
+  // ============================================================
   // STEP 12. Scope 변경
   // ============================================================
 
   void _changeScope(PatientListScope scope) {
     if (_selectedScope == scope) {
-      return;
-    }
-
-    // ==========================================================
-    // 협진 API는 Backend 수정 대기
-    // ==========================================================
-
-    if (scope == PatientListScope.consultation) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('협진 환자 API는 Backend 수정 후 연결합니다.')),
-      );
       return;
     }
 
@@ -1028,6 +1097,11 @@ class _PatientsPageState extends State<PatientsPage> {
 
     if (scope == PatientListScope.assigned) {
       _loadAssignedPatients(page: 1);
+      return;
+    }
+
+    if (scope == PatientListScope.consultation) {
+      _loadConsultationPatients(page: 1);
       return;
     }
 
@@ -1190,6 +1264,11 @@ class _PatientsPageState extends State<PatientsPage> {
       return;
     }
 
+    if (_selectedScope == PatientListScope.consultation) {
+      _loadConsultationPatients(page: previousPage);
+      return;
+    }
+
     if (_selectedScope == PatientListScope.recent) {
       _loadRecentPatients(page: previousPage);
       return;
@@ -1221,6 +1300,11 @@ class _PatientsPageState extends State<PatientsPage> {
 
     if (_selectedScope == PatientListScope.assigned) {
       _loadAssignedPatients(page: nextPage);
+      return;
+    }
+
+    if (_selectedScope == PatientListScope.consultation) {
+      _loadConsultationPatients(page: nextPage);
       return;
     }
 

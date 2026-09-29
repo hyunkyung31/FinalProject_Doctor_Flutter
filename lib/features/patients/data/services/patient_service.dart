@@ -216,6 +216,110 @@ class PatientService {
   }
 
   // ==========================================================
+  // 협진 환자 목록
+  // ==========================================================
+
+  Future<PatientPageResult> fetchConsultationPatientPage({int page = 1}) async {
+    const pageSize = 20;
+
+    final safePage = page < 1 ? 1 : page;
+
+    // ==========================================================
+    // 1. 현재 의료진의 진행 중 협진 조회
+    // ==========================================================
+
+    final consultationResponse = await apiClient.dio.get(
+      ApiEndpoints.dashboardConsultations,
+    );
+
+    if (consultationResponse.data is! List) {
+      throw const FormatException('협진 목록 응답 형식이 올바르지 않습니다.');
+    }
+
+    final consultationList = consultationResponse.data as List;
+
+    // ==========================================================
+    // 2. 협진에 연결된 Patient ID 중복 제거
+    // ==========================================================
+
+    final patientIds = <int>{};
+
+    for (final item in consultationList) {
+      if (item is! Map) {
+        continue;
+      }
+
+      final data = Map<String, dynamic>.from(item);
+
+      final rawPatientId = data['patient_id'];
+
+      final patientId = rawPatientId is num
+          ? rawPatientId.toInt()
+          : int.tryParse(rawPatientId?.toString() ?? '');
+
+      if (patientId != null && patientId > 0) {
+        patientIds.add(patientId);
+      }
+    }
+
+    final allPatientIds = patientIds.toList();
+
+    // ==========================================================
+    // 3. Flutter 화면 Pagination
+    // ==========================================================
+
+    final totalCount = allPatientIds.length;
+
+    final startIndex = (safePage - 1) * pageSize;
+
+    if (startIndex >= totalCount) {
+      return PatientPageResult(
+        patients: const [],
+        count: totalCount,
+        next: null,
+        previous: safePage > 1 ? 'page=${safePage - 1}' : null,
+      );
+    }
+
+    final endIndex = (startIndex + pageSize) > totalCount
+        ? totalCount
+        : startIndex + pageSize;
+
+    final currentPatientIds = allPatientIds.sublist(startIndex, endIndex);
+
+    // ==========================================================
+    // 4. Patient 상세 병렬 조회
+    // ==========================================================
+
+    final patientResponses = await Future.wait(
+      currentPatientIds.map(
+        (patientId) => apiClient.dio.get(ApiEndpoints.patientDetail(patientId)),
+      ),
+    );
+
+    final patients = <PatientUiModel>[];
+
+    for (final response in patientResponses) {
+      if (response.data is! Map) {
+        continue;
+      }
+
+      patients.add(
+        PatientUiModel.fromJson(
+          Map<String, dynamic>.from(response.data as Map),
+        ),
+      );
+    }
+
+    return PatientPageResult(
+      patients: patients,
+      count: totalCount,
+      next: endIndex < totalCount ? 'page=${safePage + 1}' : null,
+      previous: safePage > 1 ? 'page=${safePage - 1}' : null,
+    );
+  }
+
+  // ==========================================================
   // 생년월일 기반 환자 필터
   // GET /patients/?birth_date=YYYY-MM-DD
   // ==========================================================

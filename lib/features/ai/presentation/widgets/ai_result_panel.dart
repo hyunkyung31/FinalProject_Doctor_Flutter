@@ -4,7 +4,6 @@ import 'package:flutter_doctor/core/theme/app_theme_context.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../ai_ui_models.dart';
 
-import '../../../imaging/presentation/ccta_viewer_page.dart';
 import '../report/ai_medical_report.dart';
 import 'clinical_ai_result_view.dart';
 
@@ -341,16 +340,10 @@ class _ResultDetail extends StatelessWidget {
                   OutlinedButton.icon(
                     onPressed: result.id < 1
                         ? null
-                        : () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => CctaViewerPage(result: result),
-                              ),
-                            );
-                          },
-                    icon: const Icon(Icons.view_in_ar_outlined, size: 15),
+                        : () => onOpenImaging(result),
+                    icon: const Icon(Icons.image_outlined, size: 15),
                     label: const Text(
-                      'CCTA Viewer',
+                      '영상에서 보기',
                       style: TextStyle(fontSize: 10.5),
                     ),
                   ),

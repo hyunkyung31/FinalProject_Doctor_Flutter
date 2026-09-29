@@ -38,6 +38,7 @@ class ConsultationFormResult {
 
 // ============================================================
 // STEP 2. Dialog Helper
+// 기존 호출부 호환 유지
 // ============================================================
 
 Future<ConsultationFormResult?> showConsultationFormDialog({
@@ -53,7 +54,7 @@ Future<ConsultationFormResult?> showConsultationFormDialog({
 }
 
 // ============================================================
-// STEP 3. Dialog
+// STEP 3. Consultation Form Dialog
 // ============================================================
 
 class ConsultationFormDialog extends StatefulWidget {
@@ -64,12 +65,23 @@ class ConsultationFormDialog extends StatefulWidget {
 }
 
 class _ConsultationFormDialogState extends State<ConsultationFormDialog> {
+  final _formKey = GlobalKey<FormState>();
+
+  // ============================================================
+  // 테스트 데이터
+  // 추후 실제 환자 / 의료진 선택 UI 연결 가능
+  // ============================================================
+
   final TextEditingController _patientIdController = TextEditingController(
     text: '1629',
   );
 
   final TextEditingController _patientNameController = TextEditingController(
     text: '김OO',
+  );
+
+  final TextEditingController _encounterController = TextEditingController(
+    text: '1213',
   );
 
   final TextEditingController _subjectController = TextEditingController();
@@ -84,52 +96,63 @@ class _ConsultationFormDialogState extends State<ConsultationFormDialog> {
     text: '박OO 의사',
   );
 
-  final TextEditingController _encounterController = TextEditingController(
-    text: '1213',
-  );
-
   String _priority = 'NORMAL';
 
-  DateTime _dueAt = DateTime(2026, 9, 20, 18);
+  late DateTime _dueAt;
 
   // ============================================================
-  // STEP 4. Dispose
+  // STEP 4. Init
+  // ============================================================
+
+  @override
+  void initState() {
+    super.initState();
+
+    final now = DateTime.now();
+
+    // 고정된 과거 날짜를 사용하지 않고
+    // 현재 날짜 기준 3일 뒤 18:00을 기본 기한으로 사용합니다.
+    _dueAt = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      18,
+    ).add(const Duration(days: 3));
+  }
+
+  // ============================================================
+  // STEP 5. Dispose
   // ============================================================
 
   @override
   void dispose() {
     _patientIdController.dispose();
     _patientNameController.dispose();
+    _encounterController.dispose();
     _subjectController.dispose();
     _noteController.dispose();
     _doctorIdController.dispose();
     _doctorNameController.dispose();
-    _encounterController.dispose();
 
     super.dispose();
   }
 
   // ============================================================
-  // STEP 5. Save
+  // STEP 6. Submit
   // ============================================================
 
   void _submit() {
-    final patientId = int.tryParse(_patientIdController.text.trim());
+    final valid = _formKey.currentState?.validate() ?? false;
 
-    final doctorId = int.tryParse(_doctorIdController.text.trim());
-
-    final encounterId = int.tryParse(_encounterController.text.trim());
-
-    if (patientId == null ||
-        doctorId == null ||
-        encounterId == null ||
-        _subjectController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('필수 항목을 확인해 주세요.')));
-
+    if (!valid) {
       return;
     }
+
+    final patientId = int.parse(_patientIdController.text.trim());
+
+    final encounterId = int.parse(_encounterController.text.trim());
+
+    final doctorId = int.parse(_doctorIdController.text.trim());
 
     Navigator.of(context).pop(
       ConsultationFormResult(
@@ -147,18 +170,26 @@ class _ConsultationFormDialogState extends State<ConsultationFormDialog> {
   }
 
   // ============================================================
-  // STEP 6. Due Date
+  // STEP 7. Due Date
   // ============================================================
 
   Future<void> _pickDueDate() async {
+    final now = DateTime.now();
+
+    final today = DateTime(now.year, now.month, now.day);
+
+    final initialDate = _dueAt.isBefore(today)
+        ? today
+        : DateTime(_dueAt.year, _dueAt.month, _dueAt.day);
+
     final result = await showDatePicker(
       context: context,
-      initialDate: _dueAt,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDate: initialDate,
+      firstDate: today,
+      lastDate: DateTime(today.year + 1, today.month, today.day),
     );
 
-    if (result == null) {
+    if (result == null || !mounted) {
       return;
     }
 
@@ -174,339 +205,569 @@ class _ConsultationFormDialogState extends State<ConsultationFormDialog> {
   }
 
   // ============================================================
-  // STEP 7. UI
+  // STEP 8. UI
   // ============================================================
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.sizeOf(context).height;
+    final screenSize = MediaQuery.sizeOf(context);
 
     return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: screenSize.width < 700 ? 16 : 30,
+        vertical: 24,
+      ),
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          minWidth: 520,
-          maxWidth: 520,
-          maxHeight: screenHeight * 0.88,
+          minWidth: 560,
+          maxWidth: 640,
+          maxHeight: screenSize.height * 0.88,
         ),
         child: Container(
           decoration: BoxDecoration(
-            color: context.appBackground,
-            borderRadius: BorderRadius.circular(16),
+            color: context.appSurface,
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(color: context.appBorder),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
+          clipBehavior: Clip.antiAlias,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ==================================================
-              // Header
-              // ==================================================
-              Container(
-                padding: const EdgeInsets.fromLTRB(18, 14, 14, 14),
-                decoration: BoxDecoration(
-                  color: context.appSurface,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: context.appSurfaceSoft,
-                        borderRadius: BorderRadius.circular(9),
-                      ),
-                      child: Icon(
-                        Icons.groups_outlined,
-                        size: 19,
-                        color: context.appBrand,
-                      ),
-                    ),
+              _buildHeader(),
 
-                    const SizedBox(width: 10),
+              Divider(height: 1, color: context.appBorder),
 
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '협진 요청',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: context.appTextPrimary,
-                            ),
-                          ),
-                          SizedBox(height: 3),
-                          Text(
-                            '환자와 담당 의료진을 선택하여 협진을 요청합니다.',
-                            style: TextStyle(
-                              fontSize: 9.5,
-                              color: context.appTextSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    IconButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      icon: const Icon(Icons.close_rounded, size: 19),
-                    ),
-                  ],
-                ),
-              ),
-
-              // ==================================================
-              // Body
-              // ==================================================
               Flexible(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      _FormCard(
-                        title: '환자 · 진료',
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _TextField(
-                                    label: '환자 ID',
-                                    controller: _patientIdController,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  flex: 2,
-                                  child: _TextField(
-                                    label: '환자',
-                                    controller: _patientNameController,
-                                  ),
-                                ),
-                              ],
-                            ),
+                  padding: const EdgeInsets.all(18),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        _buildPatientSection(),
 
-                            const SizedBox(height: 10),
+                        const SizedBox(height: 12),
 
-                            _TextField(
-                              label: 'Encounter ID',
-                              controller: _encounterController,
-                            ),
-                          ],
-                        ),
-                      ),
+                        _buildConsultationSection(),
 
-                      const SizedBox(height: 10),
+                        const SizedBox(height: 12),
 
-                      _FormCard(
-                        title: '협진 내용',
-                        child: Column(
-                          children: [
-                            _TextField(
-                              label: '제목 *',
-                              controller: _subjectController,
-                              hintText: '예: CCTA 결과 관련 협진 요청',
-                            ),
-
-                            const SizedBox(height: 10),
-
-                            _TextField(
-                              label: '요청 내용',
-                              controller: _noteController,
-                              hintText: '협진 요청 내용을 입력해 주세요.',
-                              minLines: 3,
-                              maxLines: 4,
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      _FormCard(
-                        title: '담당 의료진 · 일정',
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _TextField(
-                                    label: '의료진 ID',
-                                    controller: _doctorIdController,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  flex: 2,
-                                  child: _TextField(
-                                    label: '담당 의료진',
-                                    controller: _doctorNameController,
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 10),
-
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: DropdownButtonFormField<String>(
-                                    initialValue: _priority,
-                                    decoration: InputDecoration(
-                                      labelText: '우선순위',
-                                      filled: true,
-                                      fillColor: context.appSurface,
-                                      border: OutlineInputBorder(),
-                                    ),
-                                    items: const [
-                                      DropdownMenuItem(
-                                        value: 'NORMAL',
-                                        child: Text('일반'),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: 'URGENT',
-                                        child: Text('긴급'),
-                                      ),
-                                    ],
-                                    onChanged: (value) {
-                                      if (value == null) {
-                                        return;
-                                      }
-
-                                      setState(() {
-                                        _priority = value;
-                                      });
-                                    },
-                                  ),
-                                ),
-
-                                const SizedBox(width: 8),
-
-                                Expanded(
-                                  child: InkWell(
-                                    onTap: _pickDueDate,
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: InputDecorator(
-                                      decoration: InputDecoration(
-                                        labelText: '기한',
-                                        filled: true,
-                                        fillColor: context.appSurface,
-                                        border: OutlineInputBorder(),
-                                      ),
-                                      child: Text(
-                                        _formatDate(_dueAt),
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: context.appTextPrimary,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                        _buildDoctorSection(),
+                      ],
+                    ),
                   ),
                 ),
               ),
 
-              // ==================================================
-              // Footer
-              // ==================================================
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: context.appSurface,
-                  borderRadius: BorderRadius.vertical(
-                    bottom: Radius.circular(16),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '* UI DEMO · 실제 API 연결 전',
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: context.appTextSecondary,
-                        ),
-                      ),
-                    ),
+              Divider(height: 1, color: context.appBorder),
 
-                    OutlinedButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text('취소'),
-                    ),
-
-                    const SizedBox(width: 8),
-
-                    FilledButton.icon(
-                      onPressed: _submit,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.navy,
-                      ),
-                      icon: const Icon(Icons.send_outlined, size: 15),
-                      label: const Text('협진 요청'),
-                    ),
-                  ],
-                ),
-              ),
+              _buildFooter(),
             ],
           ),
         ),
       ),
     );
   }
+
+  // ============================================================
+  // STEP 9. Header
+  // ============================================================
+
+  Widget _buildHeader() {
+    return Container(
+      color: context.appSurface,
+      padding: const EdgeInsets.fromLTRB(20, 17, 14, 16),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: context.appSurfaceSoft,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(
+              Icons.groups_outlined,
+              size: 18,
+              color: context.appBrand,
+            ),
+          ),
+
+          const SizedBox(width: 11),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '협진 요청',
+                  style: TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w800,
+                    color: context.appTextPrimary,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '대상 환자와 담당 의료진을 확인하고 협진 내용을 작성해 주세요.',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    color: context.appTextSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          IconButton(
+            tooltip: '닫기',
+            visualDensity: VisualDensity.compact,
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            icon: Icon(
+              Icons.close_rounded,
+              size: 19,
+              color: context.appTextSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // STEP 10. Patient Section
+  // ============================================================
+
+  Widget _buildPatientSection() {
+    return _DialogSection(
+      icon: Icons.person_outline_rounded,
+      title: '대상 환자',
+      subtitle: '협진 대상 환자와 진료 건을 확인합니다.',
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 2,
+                child: _AppTextField(
+                  label: '환자명',
+                  controller: _patientNameController,
+                  icon: Icons.person_outline_rounded,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return '환자명을 입력해 주세요.';
+                    }
+
+                    return null;
+                  },
+                ),
+              ),
+
+              const SizedBox(width: 10),
+
+              Expanded(
+                child: _AppTextField(
+                  label: '환자 ID',
+                  controller: _patientIdController,
+                  icon: Icons.tag_rounded,
+                  keyboardType: TextInputType.number,
+                  validator: _positiveIdValidator('환자 ID'),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+
+          _AppTextField(
+            label: 'Encounter ID',
+            controller: _encounterController,
+            icon: Icons.medical_information_outlined,
+            keyboardType: TextInputType.number,
+            helperText: '현재 진료 건을 기준으로 협진을 연결합니다.',
+            validator: _positiveIdValidator('Encounter ID'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // STEP 11. Consultation Section
+  // ============================================================
+
+  Widget _buildConsultationSection() {
+    return _DialogSection(
+      icon: Icons.assignment_outlined,
+      title: '협진 내용',
+      subtitle: '협진 목적과 확인이 필요한 내용을 작성합니다.',
+      child: Column(
+        children: [
+          _AppTextField(
+            label: '제목 *',
+            controller: _subjectController,
+            icon: Icons.title_rounded,
+            hintText: '예: CCTA 결과 판독 및 치료 방향 협진',
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return '협진 제목을 입력해 주세요.';
+              }
+
+              return null;
+            },
+          ),
+
+          const SizedBox(height: 10),
+
+          _AppTextField(
+            label: '요청 내용 *',
+            controller: _noteController,
+            icon: Icons.notes_rounded,
+            hintText: '협진 배경, 확인 요청 사항, 참고할 임상 정보를 입력해 주세요.',
+            minLines: 4,
+            maxLines: 6,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return '협진 요청 내용을 입력해 주세요.';
+              }
+
+              return null;
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // STEP 12. Doctor / Schedule Section
+  // ============================================================
+
+  Widget _buildDoctorSection() {
+    return _DialogSection(
+      icon: Icons.medical_services_outlined,
+      title: '담당 의료진 · 일정',
+      subtitle: '협진 담당 의료진과 우선순위, 완료 기한을 지정합니다.',
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 2,
+                child: _AppTextField(
+                  label: '담당 의료진',
+                  controller: _doctorNameController,
+                  icon: Icons.badge_outlined,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return '담당 의료진을 입력해 주세요.';
+                    }
+
+                    return null;
+                  },
+                ),
+              ),
+
+              const SizedBox(width: 10),
+
+              Expanded(
+                child: _AppTextField(
+                  label: '의료진 ID',
+                  controller: _doctorIdController,
+                  icon: Icons.tag_rounded,
+                  keyboardType: TextInputType.number,
+                  validator: _positiveIdValidator('의료진 ID'),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '우선순위',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                color: context.appTextSecondary,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 7),
+
+          Row(
+            children: [
+              Expanded(
+                child: _PriorityButton(
+                  label: '일반',
+                  icon: Icons.remove_rounded,
+                  selected: _priority == 'NORMAL',
+                  onTap: () {
+                    setState(() {
+                      _priority = 'NORMAL';
+                    });
+                  },
+                ),
+              ),
+
+              const SizedBox(width: 8),
+
+              Expanded(
+                child: _PriorityButton(
+                  label: '긴급',
+                  icon: Icons.priority_high_rounded,
+                  selected: _priority == 'URGENT',
+                  danger: true,
+                  onTap: () {
+                    setState(() {
+                      _priority = 'URGENT';
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '완료 기한',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                color: context.appTextSecondary,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 7),
+
+          InkWell(
+            onTap: _pickDueDate,
+            borderRadius: BorderRadius.circular(9),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+              decoration: BoxDecoration(
+                color: context.appBackground,
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(color: context.appBorder),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 31,
+                    height: 31,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: context.appSurfaceSoft,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.calendar_today_outlined,
+                      size: 15,
+                      color: context.appBrand,
+                    ),
+                  ),
+
+                  const SizedBox(width: 10),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _formatDate(_dueAt),
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            color: context.appTextPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '기본 완료 시각 18:00',
+                          style: TextStyle(
+                            fontSize: 8.5,
+                            color: context.appTextSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: context.appTextDisabled,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // STEP 13. Footer
+  // ============================================================
+
+  Widget _buildFooter() {
+    return Container(
+      color: context.appSurface,
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
+      child: Row(
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            size: 14,
+            color: context.appTextDisabled,
+          ),
+
+          const SizedBox(width: 6),
+
+          Expanded(
+            child: Text(
+              '* 표시 항목은 필수 입력입니다.',
+              style: TextStyle(fontSize: 8.5, color: context.appTextSecondary),
+            ),
+          ),
+
+          OutlinedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            style: OutlinedButton.styleFrom(minimumSize: const Size(72, 40)),
+            child: const Text('취소'),
+          ),
+
+          const SizedBox(width: 8),
+
+          FilledButton.icon(
+            onPressed: _submit,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.navy,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(112, 40),
+            ),
+            icon: const Icon(Icons.send_rounded, size: 15),
+            label: const Text('협진 요청'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // STEP 14. Validators
+  // ============================================================
+
+  String? Function(String?) _positiveIdValidator(String label) {
+    return (value) {
+      final parsed = int.tryParse(value?.trim() ?? '');
+
+      if (parsed == null || parsed <= 0) {
+        return '$label를 확인해 주세요.';
+      }
+
+      return null;
+    };
+  }
 }
 
 // ============================================================
-// STEP 8. Form Widgets
+// STEP 15. Dialog Section
 // ============================================================
 
-class _FormCard extends StatelessWidget {
+class _DialogSection extends StatelessWidget {
+  final IconData icon;
   final String title;
+  final String subtitle;
   final Widget child;
 
-  const _FormCard({required this.title, required this.child});
+  const _DialogSection({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(13),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: context.appSurface,
-        borderRadius: BorderRadius.circular(11),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              color: context.appTextPrimary,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: context.appSurfaceSoft,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 15, color: context.appBrand),
+              ),
+
+              const SizedBox(width: 8),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        color: context.appTextPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 8.5,
+                        color: context.appTextSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 13),
 
           child,
         ],
@@ -515,40 +776,138 @@ class _FormCard extends StatelessWidget {
   }
 }
 
-class _TextField extends StatelessWidget {
+// ============================================================
+// STEP 16. Text Field
+// ============================================================
+
+class _AppTextField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
+  final IconData icon;
 
   final String? hintText;
+  final String? helperText;
 
   final int minLines;
   final int maxLines;
 
-  const _TextField({
+  final TextInputType? keyboardType;
+  final String? Function(String?)? validator;
+
+  const _AppTextField({
     required this.label,
     required this.controller,
+    required this.icon,
     this.hintText,
+    this.helperText,
     this.minLines = 1,
     this.maxLines = 1,
+    this.keyboardType,
+    this.validator,
   });
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return TextFormField(
       controller: controller,
       minLines: minLines,
       maxLines: maxLines,
-      style: const TextStyle(fontSize: 10.5),
+      keyboardType: keyboardType,
+      validator: validator,
+      style: TextStyle(fontSize: 10.5, color: context.appTextPrimary),
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
+        helperText: helperText,
+        helperMaxLines: 2,
+        prefixIcon: Icon(icon, size: 15),
         filled: true,
-        fillColor: context.appSurface,
-        border: const OutlineInputBorder(),
+        fillColor: context.appBackground,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(9)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(9),
+          borderSide: BorderSide(color: context.appBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(9),
+          borderSide: BorderSide(color: context.appBrand),
+        ),
       ),
     );
   }
 }
+
+// ============================================================
+// STEP 17. Priority Button
+// ============================================================
+
+class _PriorityButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final bool danger;
+  final VoidCallback onTap;
+
+  const _PriorityButton({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+    this.danger = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedColor = danger ? AppColors.danger : context.appBrand;
+
+    final selectedBackground = danger
+        ? AppColors.dangerBackground
+        : context.appSurfaceSoft;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(9),
+      child: Container(
+        height: 40,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? selectedBackground : context.appBackground,
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(
+            color: selected ? selectedColor : context.appBorder,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: selected ? selectedColor : context.appTextSecondary,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w700,
+                color: selected ? selectedColor : context.appTextSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// STEP 18. Date Helper
+// ============================================================
 
 String _formatDate(DateTime date) {
   final month = date.month.toString().padLeft(2, '0');

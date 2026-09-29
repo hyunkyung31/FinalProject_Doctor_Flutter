@@ -121,6 +121,20 @@ class _AiPageState extends State<AiPage> {
 
     // ==========================================================
     // CCTA
+    // ==========================================================
+    if (analysisType == 'CCTA') {
+      debugPrint(
+        '[AI → IMAGING] '
+        'CCTA navigation: '
+        'examinationId=${result.examinationId}, '
+        'analysisId=${result.analysisId}, '
+        'resultId=${result.id}',
+      );
+      context.go(AppRoutes.imaging, extra: result);
+      return;
+    }
+    // ==========================================================
+    // 기타 영상
     // 기존 Imaging Page 사용
     // ==========================================================
 

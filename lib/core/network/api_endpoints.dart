@@ -10,7 +10,7 @@ class ApiEndpoints {
   // Base URL
   // ==========================================================
 
-  static const String baseUrl = 'https://api.34-50-57-207.sslip.io/api';
+  static const String baseUrl = 'https://api.34-22-111-104.sslip.io/api';
 
   // ==========================================================
   // Auth
@@ -196,6 +196,34 @@ class ApiEndpoints {
   // ==========================================================
 
   static const String consultations = '/consultations/';
+
+  static String consultationDetail(int consultationId) {
+    return '/consultations/$consultationId/';
+  }
+
+  static String consultationAccept(int consultationId) {
+    return '/consultations/$consultationId/accept/';
+  }
+
+  static String consultationComplete(int consultationId) {
+    return '/consultations/$consultationId/complete/';
+  }
+
+  static String consultationWithdraw(int consultationId) {
+    return '/consultations/$consultationId/withdraw/';
+  }
+
+  static String consultationParticipants(int consultationId) {
+    return '/consultations/$consultationId/participants/';
+  }
+
+  static String consultationReferences(int consultationId) {
+    return '/consultations/$consultationId/references/';
+  }
+
+  static String consultationOpinions(int consultationId) {
+    return '/consultations/$consultationId/opinions/';
+  }
 
   // ==========================================================
   // Dashboard
