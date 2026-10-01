@@ -176,26 +176,56 @@ class _AiWorkStatus extends StatelessWidget {
   Widget build(BuildContext context) {
     return _WorkSection(
       title: 'AI 분석',
-      child: Wrap(
-        spacing: 26,
-        runSpacing: 8,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _WorkNumber(
-            label: '대기',
-            value: data.queued,
-            color: AppColors.warning,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _WorkNumber(
+                  label: '대기',
+                  value: data.queued,
+                  color: AppColors.warning,
+                ),
+              ),
+
+              const SizedBox(width: 18),
+
+              Expanded(
+                child: _WorkNumber(
+                  label: '진행',
+                  value: data.running,
+                  color: AppColors.primaryBlue,
+                ),
+              ),
+            ],
           ),
-          _WorkNumber(
-            label: '진행',
-            value: data.running,
-            color: AppColors.primaryBlue,
+
+          const SizedBox(height: 10),
+
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _WorkNumber(
+                  label: '완료',
+                  value: data.completed,
+                  color: AppColors.success,
+                ),
+              ),
+
+              const SizedBox(width: 18),
+
+              Expanded(
+                child: _WorkNumber(
+                  label: '실패',
+                  value: data.failed,
+                  color: AppColors.danger,
+                ),
+              ),
+            ],
           ),
-          _WorkNumber(
-            label: '완료',
-            value: data.completed,
-            color: AppColors.success,
-          ),
-          _WorkNumber(label: '실패', value: data.failed, color: AppColors.danger),
         ],
       ),
     );

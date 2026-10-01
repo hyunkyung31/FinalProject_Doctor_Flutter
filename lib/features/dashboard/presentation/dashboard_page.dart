@@ -437,19 +437,24 @@ class _DashboardMainRow extends StatelessWidget {
     final todoCard = MyTodoSection(items: todos, loadFailed: todosLoadFailed);
 
     if (width >= 900 && !isLargeText) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(flex: 7, child: todayCard),
+      const rowHeight = 265.0;
 
-          const SizedBox(width: 10),
+      return SizedBox(
+        height: rowHeight,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(flex: 7, child: todayCard),
 
-          Expanded(flex: 2, child: recentCard),
+            const SizedBox(width: 10),
 
-          const SizedBox(width: 10),
+            Expanded(flex: 2, child: recentCard),
 
-          Expanded(flex: 3, child: todoCard),
-        ],
+            const SizedBox(width: 10),
+
+            Expanded(flex: 3, child: todoCard),
+          ],
+        ),
       );
     }
 
@@ -500,15 +505,20 @@ class _DashboardSupportRow extends StatelessWidget {
     final consultationCard = ReceivedConsultationsCard(data: consultations);
 
     if (width >= 900 && !isLargeText) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(flex: 8, child: noticeCard),
+      const rowHeight = 170.0;
 
-          const SizedBox(width: 10),
+      return SizedBox(
+        height: rowHeight,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(flex: 8, child: noticeCard),
 
-          Expanded(flex: 6, child: consultationCard),
-        ],
+            const SizedBox(width: 10),
+
+            Expanded(flex: 6, child: consultationCard),
+          ],
+        ),
       );
     }
 
