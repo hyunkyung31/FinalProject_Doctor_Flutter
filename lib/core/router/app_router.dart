@@ -193,8 +193,7 @@ final GoRouter appRouter = GoRouter(
         final examinationId = int.tryParse(query['examinationId'] ?? '');
         final analysisId = int.tryParse(query['analysisId'] ?? '');
         final patientId = int.tryParse(query['patientId'] ?? '');
-        final extra = state.extra;
-        final cctaResult = extra is AiResultUiModel ? extra : null;
+
         // ========================================================
         // ANGIO 실제 Frame Viewer
         // ========================================================
@@ -207,16 +206,18 @@ final GoRouter appRouter = GoRouter(
             analysisId: analysisId,
           );
         }
+
         // ========================================================
-        // CCTA 실제 Viewer
+        // CCTA AI 결과 연결
         // ========================================================
-        if (cctaResult != null) {
-          return ImagingPage(initialCctaResult: cctaResult);
-        }
+        final cctaResult = state.extra is AiResultUiModel
+            ? state.extra as AiResultUiModel
+            : null;
+
         // ========================================================
-        // 영상 메뉴 직접 진입
+        // 일반 영상 / CCTA 통합 화면
         // ========================================================
-        return const ImagingPage();
+        return ImagingPage(initialCctaResult: cctaResult);
       },
     ),
 

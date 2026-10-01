@@ -130,7 +130,9 @@ class _AiPageState extends State<AiPage> {
         'analysisId=${result.analysisId}, '
         'resultId=${result.id}',
       );
+
       context.go(AppRoutes.imaging, extra: result);
+
       return;
     }
     // ==========================================================
